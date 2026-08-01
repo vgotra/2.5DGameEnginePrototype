@@ -21,6 +21,7 @@ public sealed class Win32Input : IInputState
         Set(GameKey.Right, IsDown(0x44) || IsDown(0x27));
         Set(GameKey.Escape, IsDown(0x1B));
         Set(GameKey.Space, IsDown(0x20));
+        Set(GameKey.Fullscreen, IsDown(0x7A));
     }
 
     public bool IsDown(GameKey key) => (_current & Mask(key)) != 0;

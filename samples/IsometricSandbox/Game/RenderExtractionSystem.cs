@@ -11,14 +11,17 @@ public static class RenderExtractionSystem
         const float border = 2f;
         Vector4 white = new(1, 1, 1, 1);
         Vector4 black = new(0, 0, 0, 1);
+        ShapeKind shape = camera.Isometric ? ShapeKind.Diamond : ShapeKind.Box;
+        float tileWidth = map.TileWidth;
+        float tileHeight = camera.Isometric ? map.TileHeight : map.TileWidth;
         int written = 0;
         for (int y = 0; y < map.Height && written + 2 <= sprites.Length; y++)
         for (int x = 0; x < map.Width && written + 2 <= sprites.Length; x++)
         {
             Vector2 screen = camera.WorldToScreen(map.TileToWorld(x, y), map);
             int sortKey = y * map.Width + x;
-            sprites[written++] = new SpritePacket(screen, new(map.TileWidth + border * 2, map.TileHeight + border * 2), black, default, default, sortKey);
-            sprites[written++] = new SpritePacket(screen, new(map.TileWidth, map.TileHeight), white, default, default, sortKey);
+            sprites[written++] = new SpritePacket(screen, new(tileWidth + border * 2, tileHeight + border * 2), black, default, default, sortKey, shape);
+            sprites[written++] = new SpritePacket(screen, new(tileWidth, tileHeight), white, default, default, sortKey, shape);
         }
         return written;
     }

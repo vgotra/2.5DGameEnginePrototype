@@ -26,10 +26,24 @@ Assert(map.CanOccupy(new Vector2(10.5f, 10.5f), 0.2f), "open movement");
 IsometricCamera camera = new(new Vector2(800, 600));
 camera.Follow(new Vector2(10, 10), map);
 Assert(camera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(400, 300), "camera center");
+IsometricCamera fullscreenCamera = new(new Vector2(1920, 1080));
+fullscreenCamera.Follow(new Vector2(2, 2), map);
+Assert(fullscreenCamera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(960, 540), "iso map centered in fullscreen viewport");
 ShapeVertex[] geometry = new ShapeVertex[6];
 Assert(GeneratedGeometry.AppendDiamond(geometry, Vector2.Zero, 64, 32, Vector4.One) == 6, "diamond geometry");
 SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2];
 Assert(RenderExtractionSystem.ExtractMapSprites(map, camera, sprites) == map.Width * map.Height * 2, "map sprite extraction");
+Assert(sprites[0].Shape == ShapeKind.Diamond && sprites[1].Shape == ShapeKind.Diamond, "iso sprites are diamonds");
+IsometricCamera flatCamera = new(new Vector2(800, 600)) { Isometric = false };
+flatCamera.Follow(new Vector2(10, 10), map);
+Assert(flatCamera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(400, 300), "flat camera center");
+Assert(flatCamera.WorldToScreen(new Vector2(11, 10), map) == new Vector2(464, 300), "flat camera mapping");
+IsometricCamera fullscreenFlat = new(new Vector2(1920, 1080)) { Isometric = false };
+fullscreenFlat.Follow(new Vector2(2, 2), map);
+Assert(fullscreenFlat.WorldToScreen(new Vector2(10, 10), map).X == 960, "flat map centered horizontally in fullscreen viewport");
+SpritePacket[] flatSprites = new SpritePacket[map.Width * map.Height * 2];
+Assert(RenderExtractionSystem.ExtractMapSprites(map, flatCamera, flatSprites) == map.Width * map.Height * 2, "flat map sprite extraction");
+Assert(flatSprites[0].Shape == ShapeKind.Box && flatSprites[1].Shape == ShapeKind.Box && flatSprites[1].Size == new Vector2(map.TileWidth, map.TileWidth), "flat sprites are boxes");
 Console.WriteLine("Smoke tests passed");
 
 static void Assert(bool condition, string name)

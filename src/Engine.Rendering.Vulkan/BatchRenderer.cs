@@ -119,7 +119,7 @@ public unsafe class BatchRenderer : IDisposable
         for (int i = 0; i < sprites.Length; i++)
         {
             var sprite = sprites[i];
-            AddShape(new ShapePacket(sprite.Position, sprite.Size, sprite.Color, sprite.SortKey));
+            AddShape(new ShapePacket(sprite.Position, sprite.Size, sprite.Color, sprite.SortKey, sprite.Shape));
         }
     }
 
@@ -131,15 +131,30 @@ public unsafe class BatchRenderer : IDisposable
         float halfWidth = packet.Size.X * 0.5f;
         float halfHeight = packet.Size.Y * 0.5f;
 
-        Vector2 top = packet.Position + new Vector2(0, -halfHeight);
-        Vector2 right = packet.Position + new Vector2(halfWidth, 0);
-        Vector2 bottom = packet.Position + new Vector2(0, halfHeight);
-        Vector2 left = packet.Position + new Vector2(-halfWidth, 0);
+        if (packet.Shape == ShapeKind.Box)
+        {
+            Vector2 topLeft = packet.Position + new Vector2(-halfWidth, -halfHeight);
+            Vector2 topRight = packet.Position + new Vector2(halfWidth, -halfHeight);
+            Vector2 bottomRight = packet.Position + new Vector2(halfWidth, halfHeight);
+            Vector2 bottomLeft = packet.Position + new Vector2(-halfWidth, halfHeight);
 
-        _vertices.Add(new ShapeVertex(top, packet.Color));
-        _vertices.Add(new ShapeVertex(right, packet.Color));
-        _vertices.Add(new ShapeVertex(bottom, packet.Color));
-        _vertices.Add(new ShapeVertex(left, packet.Color));
+            _vertices.Add(new ShapeVertex(topLeft, packet.Color));
+            _vertices.Add(new ShapeVertex(topRight, packet.Color));
+            _vertices.Add(new ShapeVertex(bottomRight, packet.Color));
+            _vertices.Add(new ShapeVertex(bottomLeft, packet.Color));
+        }
+        else
+        {
+            Vector2 top = packet.Position + new Vector2(0, -halfHeight);
+            Vector2 right = packet.Position + new Vector2(halfWidth, 0);
+            Vector2 bottom = packet.Position + new Vector2(0, halfHeight);
+            Vector2 left = packet.Position + new Vector2(-halfWidth, 0);
+
+            _vertices.Add(new ShapeVertex(top, packet.Color));
+            _vertices.Add(new ShapeVertex(right, packet.Color));
+            _vertices.Add(new ShapeVertex(bottom, packet.Color));
+            _vertices.Add(new ShapeVertex(left, packet.Color));
+        }
 
         _indices.Add((uint)vertexOffset + 0);
         _indices.Add((uint)vertexOffset + 1);

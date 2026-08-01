@@ -92,9 +92,10 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan device creation failed: {result}");
         _deviceApi = global::Vortice.Vulkan.Vulkan.GetApi(_instance, _device);
         _deviceApi.vkGetDeviceQueue(GraphicsQueueFamily, 0, out _graphicsQueue);
-        CreateSwapchain(960, 640);
+        CreateSwapchain(800, 600);
         _renderPass = CreateRenderPass();
         CreateFramebuffers();
+        CreateCommandResources();
         _shaderLoader = new ShaderModuleLoader(_deviceApi);
         VkShaderModule vertexModule = _shaderLoader.Load(ShaderPath("shape.vert.spv"));
         VkShaderModule fragmentModule = _shaderLoader.Load(ShaderPath("shape.frag.spv"));
@@ -204,6 +205,18 @@ public sealed unsafe class VulkanRenderer : IRenderer
         return renderPass;
     }
 
+    public void Resize(int width, int height)
+    {
+        if ((uint)width == _swapchainExtent.width && (uint)height == _swapchainExtent.height) return;
+        _deviceApi.vkDeviceWaitIdle();
+        for (int i = 0; i < _framebuffers.Length; i++) if (_framebuffers[i].IsNotNull) _deviceApi.vkDestroyFramebuffer(_framebuffers[i]);
+        for (int i = 0; i < _swapchainViews.Length; i++) if (_swapchainViews[i].IsNotNull) _deviceApi.vkDestroyImageView(_swapchainViews[i]);
+        if (_swapchain.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
+        CreateSwapchain((uint)width, (uint)height);
+        CreateFramebuffers();
+        _imageIndex = uint.MaxValue;
+    }
+
     private void CreateFramebuffers()
     {
         _framebuffers = new VkFramebuffer[_swapchainViews.Length];
@@ -288,6 +301,11 @@ public sealed unsafe class VulkanRenderer : IRenderer
             result = _deviceApi.vkCreateImageView(&viewInfo, out _swapchainViews[i]);
             if (result != VkResult.Success) throw new InvalidOperationException($"Swapchain image view creation failed: {result}");
         }
+    }
+
+    private void CreateCommandResources()
+    {
+        VkResult result;
         VkCommandPoolCreateInfo poolInfo = new() { queueFamilyIndex = GraphicsQueueFamily };
         result = _deviceApi.vkCreateCommandPool(&poolInfo, out _commandPool);
         if (result != VkResult.Success) throw new InvalidOperationException($"Command pool creation failed: {result}");

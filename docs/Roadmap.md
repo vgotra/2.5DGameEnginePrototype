@@ -10,11 +10,20 @@
 - Batched Vulkan shape renderer implementing `IRenderer` (`--vulkan`): render pass, per-swapchain framebuffers, SPIR-V shape shaders (compiled with glslc), graphics pipeline, per-frame staging uploads, acquire/present synchronization.
 - GDI reference/fallback renderer (`--gdi`).
 - Visual parity: tiles and player drawn as white diamonds with black borders in both backends; Vulkan NDC-Y orientation matches GDI.
+- Fullscreen switching: `F11` toggles borderless fullscreen in both backends; window drag-resize and fullscreen trigger a Vulkan swapchain rebuild (`VulkanRenderer.Resize`). `--fullscreen` starts fullscreen.
+- `--2d` mode: flat top-down projection (white squares with black borders) in both backends via `ShapeKind` + a cartesian camera path.
+- Vulkan is the default backend (no backend flag runs `--vulkan`); the window opens centered on the screen at 800x600.
+- Map-bounds camera centering: the camera clamps to the map bounds so the map is centered on screen when it fits the viewport (fullscreen) and follows the player otherwise.
 - Smoke tests and resumable Codex context.
+
+## Milestones
+
+- **Milestone 1 — Win32 + GDI reference (Codex).** SDK/build policy, core entity/clock types, isometric math, ECS storage, deterministic tile map, movement/collision/jump, camera follow, Win32 window/input, and the initial GDI reference renderer. Authored with Codex.
+- **Milestone 2 — Vulkan + `IRenderer` + windowing (OpenCode).** Backend-neutral rendering contracts, the batched Vulkan renderer (`Engine.Rendering.Vulkan`), fullscreen switching with swapchain rebuild, `--2d` mode, Vulkan as the default backend, the centered 800x600 window, and map-bounds camera centering in fullscreen. Authored with OpenCode.
 
 ## Next features, ordered by usefulness
 
-1. **Stable game loop and window lifecycle** — resize handling with swapchain rebuild, frame pacing, and clean shutdown.
+1. **Stable game loop and window lifecycle** — frame pacing (vsync/frame limits) and clean shutdown. Resize/swapchain rebuild is now handled by both backends.
 2. **Texture sampling path** — sample textures in the fragment shader, bind descriptor sets per sprite batch, texture atlas support, and honor `SpritePacket.Texture`/`Material`.
 3. **Asset loading** — PNG decoding, texture upload, sprite handles, and a small `assets/` convention.
 4. **ECS queries and system scheduling** — replace sample-local state with ECS systems and explicit read/write access.
