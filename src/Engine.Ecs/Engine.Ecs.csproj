@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>Engine.Ecs</AssemblyName></PropertyGroup>
+  <ItemGroup><ProjectReference Include="..\Engine.Core\Engine.Core.csproj" /></ItemGroup>
+</Project>

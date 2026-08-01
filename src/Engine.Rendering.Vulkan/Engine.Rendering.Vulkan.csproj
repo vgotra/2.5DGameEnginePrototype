@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>Engine.Rendering.Vulkan</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine.Rendering\Engine.Rendering.csproj" />
+    <PackageReference Include="Vortice.Vulkan" />
+  </ItemGroup>
+</Project>
