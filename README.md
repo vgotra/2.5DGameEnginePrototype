@@ -11,7 +11,7 @@ Requirements: Windows and the .NET 10 SDK.
 From the repository root:
 
 ```powershell
-dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --window
+dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --gdi
 ```
 
 Controls:
@@ -32,14 +32,14 @@ Run the smoke tests:
 dotnet run --project tests\Engine.Tests\Engine.Tests.csproj
 ```
 
-Run Vulkan initialization and one clear frame:
+Run the Vulkan renderer, which draws the full isometric scene through the batched `IRenderer` implementation:
 
 ```powershell
 dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --vulkan
 ```
 
-The current visible MVP uses the simple Win32 double-buffered renderer. Vulkan initialization and swapchain code are present, while the final textured/batched Vulkan game renderer remains a later step.
+Both backends render the same scene: an isometric tile map and a jumping player drawn as white diamonds with black borders. `--vulkan` runs through the batched `IRenderer` path (SPIR-V shape shaders, per-frame staging uploads, a single indexed draw); `--gdi` is the GDI reference/fallback renderer. The two windows match in orientation and layout. Texture sampling, swapchain resize handling, and frame pacing remain later steps.
 
 ## What to implement next
 
-The prioritized feature list is maintained in [docs/Roadmap.md](docs/Roadmap.md). The most valuable next step is the real Vulkan shape/sprite renderer, followed by asset loading, profiling, ECS queries, and dependency-aware background jobs.
+The prioritized feature list is maintained in [docs/Roadmap.md](docs/Roadmap.md). The most valuable next steps are the texture sampling path (bind descriptor sets, texture-blended sprites, atlas support), followed by asset loading, profiling, ECS queries, and dependency-aware background jobs.

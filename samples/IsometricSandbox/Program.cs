@@ -1,31 +1,67 @@
 using System.Numerics;
 using Engine.Core;
-using Engine.Ecs;
-using Engine.Mathematics;
 using Engine.Platform;
 using Engine.Platform.Win32;
+using Engine.Rendering;
 using IsometricSandbox.Game;
 using Engine.Rendering.Vulkan;
-
-World world = new();
-EntityId player = world.Create();
-world.Storage<Position>().Add(player, new Position(4, 3));
-Vector2 screen = IsometricMath.WorldToScreen(new Vector2(4, 3), 64, 32);
-// DBG: Console.WriteLine($"IsometricSandbox ready: entity={player.Index}, screen=({screen.X:0},{screen.Y:0})");
 
 if (args.Length > 0 && args[0] == "--vulkan")
 {
     using Win32Window vulkanWindow = new(960, 640, "Isometric Sandbox Vulkan");
-    using VulkanRenderer renderer = new(vulkanWindow.Handle, vulkanWindow.ModuleHandle);
-    // DBG: Console.WriteLine($"Vulkan device and swapchain created successfully ({renderer.SwapchainImageCount} images).");
-    // DBG: Console.WriteLine($"Initial clear frame result: {renderer.RenderFrame()}");
-    // DBG: Console.WriteLine("Arrow keys and WASD are enabled in --window mode.");
+    Win32Input vulkanInput = new(vulkanWindow.Handle);
+    using IRenderer renderer = new VulkanRenderer(vulkanWindow.Handle, vulkanWindow.ModuleHandle);
+    TileMap vulkanMap = new();
+    Vector2 vulkanPosition = vulkanMap.TileToWorld(2, 2);
+    Vector2 vulkanFacing = new(0, 1), vulkanJumpStart = vulkanPosition, vulkanJumpTarget = vulkanPosition;
+    float vulkanJumpTime = 1f;
+    const float jumpDuration = 0.24f;
+    IsometricCamera vulkanCamera = new(vulkanWindow.Size);
+    GameClock vulkanClock = new();
+    long vulkanPrevious = Environment.TickCount64;
+    SpritePacket[] sprites = new SpritePacket[vulkanMap.Width * vulkanMap.Height * 2 + 2];
+    while (!vulkanWindow.ShouldClose && !vulkanInput.IsDown(GameKey.Escape))
+    {
+        vulkanWindow.PumpEvents();
+        vulkanInput.Update();
+        long now = Environment.TickCount64;
+        vulkanClock.Advance((now - vulkanPrevious) / 1000.0);
+        vulkanPrevious = now;
+        Vector2 direction = new((vulkanInput.IsDown(GameKey.Right) ? 1 : 0) - (vulkanInput.IsDown(GameKey.Left) ? 1 : 0), (vulkanInput.IsDown(GameKey.Down) ? 1 : 0) - (vulkanInput.IsDown(GameKey.Up) ? 1 : 0));
+        while (vulkanClock.TryConsumeFixedStep())
+        {
+            if (direction.LengthSquared() > 0) vulkanFacing = Vector2.Normalize(direction);
+            if (vulkanInput.WasPressed(GameKey.Space) && vulkanJumpTime >= jumpDuration)
+            {
+                Vector2 candidate = vulkanPosition + vulkanFacing * 2f;
+                if (vulkanMap.CanOccupy(candidate, 0.2f)) { vulkanJumpStart = vulkanPosition; vulkanJumpTarget = candidate; vulkanJumpTime = 0; }
+            }
+            if (vulkanJumpTime < jumpDuration)
+            {
+                vulkanJumpTime = Math.Min(jumpDuration, vulkanJumpTime + (float)GameClock.FixedStep);
+                vulkanPosition = Vector2.Lerp(vulkanJumpStart, vulkanJumpTarget, vulkanJumpTime / jumpDuration);
+            }
+            else vulkanPosition = MovementSystem.Move(vulkanMap, vulkanPosition, direction, 4, 0.2f, (float)GameClock.FixedStep);
+        }
+        vulkanCamera.Follow(vulkanPosition, vulkanMap);
+        renderer.BeginFrame(vulkanWindow.Size);
+        int tileCount = RenderExtractionSystem.ExtractMapSprites(vulkanMap, vulkanCamera, sprites);
+        float jumpProgress = Math.Clamp(vulkanJumpTime / jumpDuration, 0, 1);
+        float jumpHeight = jumpProgress >= 1 ? 0 : MathF.Sin(jumpProgress * MathF.PI) * 18f;
+        const float playerBorder = 2f;
+        Vector2 playerScreen = vulkanCamera.WorldToScreen(vulkanPosition, vulkanMap) - new Vector2(0, jumpHeight);
+        sprites[tileCount] = new SpritePacket(playerScreen, new(40 + playerBorder * 2, 20 + playerBorder * 2), new(0, 0, 0, 1), default, default, tileCount + 1);
+        sprites[tileCount + 1] = new SpritePacket(playerScreen, new(40, 20), new(1, 1, 1, 1), default, default, tileCount + 1);
+        renderer.Submit(sprites.AsSpan(0, tileCount + 2));
+        renderer.EndFrame();
+        Thread.Sleep(2);
+    }
 }
 
-if (args.Length > 0 && args[0] == "--window")
+if (args.Length > 0 && args[0] == "--gdi")
 {
     using Win32Window window = new(960, 640, "Isometric Sandbox");
-    Win32Input input = new();
+    Win32Input input = new(window.Handle);
     using Win32TileRenderer tileRenderer = new(window);
     TileMap map = new();
     Vector2 position = map.TileToWorld(2, 2);
@@ -71,5 +107,3 @@ if (args.Length > 0 && args[0] == "--window")
         Thread.Sleep(2);
     }
 }
-
-public readonly record struct Position(float X, float Y);

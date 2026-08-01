@@ -6,15 +6,19 @@ namespace IsometricSandbox.Game;
 
 public static class RenderExtractionSystem
 {
-    public static int ExtractMap(TileMap map, IsometricCamera camera, Span<ShapeVertex> vertices)
+    public static int ExtractMapSprites(TileMap map, IsometricCamera camera, Span<SpritePacket> sprites)
     {
+        const float border = 2f;
+        Vector4 white = new(1, 1, 1, 1);
+        Vector4 black = new(0, 0, 0, 1);
         int written = 0;
-        for (int y = 0; y < map.Height && written + 6 <= vertices.Length; y++)
-        for (int x = 0; x < map.Width && written + 6 <= vertices.Length; x++)
+        for (int y = 0; y < map.Height && written + 2 <= sprites.Length; y++)
+        for (int x = 0; x < map.Width && written + 2 <= sprites.Length; x++)
         {
             Vector2 screen = camera.WorldToScreen(map.TileToWorld(x, y), map);
-            Vector4 color = map.IsWalkable(x, y) ? ((x + y) & 1) == 0 ? new(0.25f, 0.42f, 0.3f, 1) : new(0.2f, 0.34f, 0.25f, 1) : new(0.12f, 0.12f, 0.15f, 1);
-            written += GeneratedGeometry.AppendDiamond(vertices[written..], screen, map.TileWidth, map.TileHeight, color);
+            int sortKey = y * map.Width + x;
+            sprites[written++] = new SpritePacket(screen, new(map.TileWidth + border * 2, map.TileHeight + border * 2), black, default, default, sortKey);
+            sprites[written++] = new SpritePacket(screen, new(map.TileWidth, map.TileHeight), white, default, default, sortKey);
         }
         return written;
     }

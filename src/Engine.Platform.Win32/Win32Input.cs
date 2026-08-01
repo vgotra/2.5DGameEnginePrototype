@@ -4,13 +4,17 @@ namespace Engine.Platform.Win32;
 
 public sealed class Win32Input : IInputState
 {
+    private readonly nint _window;
     private uint _current;
     private uint _previous;
+
+    public Win32Input(nint window) => _window = window;
 
     public void Update()
     {
         _previous = _current;
         _current = 0;
+        if (GetForegroundWindow() != _window) return;
         Set(GameKey.Up, IsDown(0x57) || IsDown(0x26));
         Set(GameKey.Down, IsDown(0x53) || IsDown(0x28));
         Set(GameKey.Left, IsDown(0x41) || IsDown(0x25));
@@ -25,6 +29,9 @@ public sealed class Win32Input : IInputState
 
     private void Set(GameKey key, bool down) { if (down) _current |= Mask(key); }
     private static uint Mask(GameKey key) => 1u << (int)key;
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int key);

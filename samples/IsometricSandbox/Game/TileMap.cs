@@ -26,7 +26,6 @@ public sealed class TileMap
     public bool IsInside(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
     public TileType Get(int x, int y) => IsInside(x, y) ? (TileType)_tiles[y * Width + x] : TileType.Blocked;
     public bool IsWalkable(int x, int y) => !IsInside(x, y) || _tiles[y * Width + x] != (byte)TileType.Blocked;
-    public Vector2 WorldToTile(Vector2 position) => new(MathF.Floor(position.X), MathF.Floor(position.Y));
     public Vector2 TileToWorld(int x, int y) => IsInside(x, y) ? _centers[y * Width + x] : new(x + 0.5f, y + 0.5f);
 
     public bool CanOccupy(Vector2 position, float radius)

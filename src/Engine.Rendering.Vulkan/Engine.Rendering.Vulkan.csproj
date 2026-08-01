@@ -4,4 +4,10 @@
     <ProjectReference Include="..\Engine.Rendering\Engine.Rendering.csproj" />
     <PackageReference Include="Vortice.Vulkan" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\shaders\*.spv">
+      <Link>shaders\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

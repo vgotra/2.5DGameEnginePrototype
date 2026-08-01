@@ -28,7 +28,8 @@ camera.Follow(new Vector2(10, 10), map);
 Assert(camera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(400, 300), "camera center");
 ShapeVertex[] geometry = new ShapeVertex[6];
 Assert(GeneratedGeometry.AppendDiamond(geometry, Vector2.Zero, 64, 32, Vector4.One) == 6, "diamond geometry");
-Assert(RenderExtractionSystem.ExtractMap(map, camera, new ShapeVertex[map.Width * map.Height * 6]) > 0, "map extraction");
+SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2];
+Assert(RenderExtractionSystem.ExtractMapSprites(map, camera, sprites) == map.Width * map.Height * 2, "map sprite extraction");
 Console.WriteLine("Smoke tests passed");
 
 static void Assert(bool condition, string name)

@@ -10,11 +10,11 @@
 | `Engine.Threading` | Worker-thread job scheduling foundation. |
 | `Engine.Platform` | Backend-neutral window and input contracts. |
 | `Engine.Platform.Win32` | Windows window creation, keyboard input, native close handling, and Win32 interop. |
-| `Engine.Rendering` | Backend-neutral render packets and generated geometry. |
-| `Engine.Rendering.Vulkan` | Vulkan loader, instance, surface, device, queue, swapchain, command buffers, and frame submission. |
+| `Engine.Rendering` | Backend-neutral `IRenderer` contract, render packets, and generated geometry. |
+| `Engine.Rendering.Vulkan` | Vulkan loader, instance, surface, device, queue, swapchain, command buffers, frame submission, and the batched shape renderer (pipeline, per-frame staging uploads, SPIR-V shaders). |
 | `Engine.Audio` | Backend-neutral audio device, clip, voice, and listener contracts. |
 | `Engine.Physics` | Backend-neutral physics body, raycast, and world contracts. |
-| `IsometricSandbox` | The playable MVP sample: tile map, movement, collision, jump, camera, and Win32 rendering. |
+| `IsometricSandbox` | The playable MVP sample: tile map, movement, collision, jump, camera, and both the Win32 (GDI) and Vulkan render paths. |
 | `Engine.Tests` | Fast executable checks for math, ECS, collision, camera, and geometry behavior. |
 
 ## NuGet dependencies
@@ -43,4 +43,7 @@ Add these packages only when their corresponding subsystem is implemented.
 - `SpriteVisual` — visual color, size, and sort data contract.
 - `PlayerTag` — identifies the player entity.
 - `IsometricCamera` — follows the player and converts world coordinates to screen coordinates.
-- `Win32TileRenderer` — cached double-buffered MVP renderer using generated diamonds.
+- `Win32TileRenderer` — cached double-buffered GDI reference renderer; draws white diamonds with black outlines.
+- `VulkanRenderer` — Vulkan `IRenderer` implementation: swapchain, render pass, framebuffers, command buffers, synchronization.
+- `BatchRenderer` — converts `SpritePacket`s into batched diamond geometry with per-frame staging uploads and one indexed draw.
+- shape shaders (`shape.vert.glsl`/`shape.frag.glsl`) — SPIR-V compiled with glslc; the vertex shader uses the NDC Y convention directly (no negation).

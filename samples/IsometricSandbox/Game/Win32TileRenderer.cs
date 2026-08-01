@@ -13,13 +13,11 @@ public sealed class Win32TileRenderer : IDisposable
     private nint _previousBitmap;
     private readonly POINT[] _points = new POINT[4];
     private readonly nint _backgroundBrush = CreateSolidBrush(ColorRef(18, 22, 32));
-    private readonly nint _floorBrushA = CreateSolidBrush(ColorRef(65, 105, 75));
-    private readonly nint _floorBrushB = CreateSolidBrush(ColorRef(52, 88, 65));
-    private readonly nint _blockedBrush = CreateSolidBrush(ColorRef(45, 45, 55));
-    private readonly nint _playerBrush = CreateSolidBrush(ColorRef(220, 90, 55));
+    private readonly nint _tileBrush = CreateSolidBrush(ColorRef(255, 255, 255));
+    private readonly nint _blackPen = CreatePen(0, 1, 0);
     private int _width, _height;
     public Win32TileRenderer(Win32Window window) { _window = window; _windowDc = GetDC(window.Handle); }
-    public void Draw(TileMap map, IsometricCamera camera, Vector2 player, float jumpHeight = 0, int fps = 0)
+    public void Draw(TileMap map, IsometricCamera camera, Vector2 player, float jumpHeight = 0)
     {
         RECT area = new(); GetClientRect(_window.Handle, ref area);
         int width = Math.Max(1, area.Right - area.Left), height = Math.Max(1, area.Bottom - area.Top);
@@ -29,18 +27,11 @@ public sealed class Win32TileRenderer : IDisposable
         for (int x = 0; x < map.Width; x++)
         {
             Vector2 center = camera.WorldToScreen(map.TileToWorld(x, y), map);
-            uint color = map.IsWalkable(x, y) ? ((x + y) & 1) == 0 ? ColorRef(65, 105, 75) : ColorRef(52, 88, 65) : ColorRef(45, 45, 55);
             if (center.X < -map.TileWidth || center.X > width + map.TileWidth || center.Y < -map.TileHeight || center.Y > height + map.TileHeight) continue;
-            DrawDiamond(_bufferDc, center, map.TileWidth * 0.5f, map.TileHeight * 0.5f, (x + y) & 1, color);
+            DrawDiamond(_bufferDc, center, map.TileWidth * 0.5f, map.TileHeight * 0.5f);
         }
-        DrawDiamond(_bufferDc, camera.WorldToScreen(player, map) - new Vector2(0, jumpHeight), 18, 11, 2, ColorRef(220, 90, 55));
-        if (fps > 0) DrawFps(width, height, fps);
+        DrawDiamond(_bufferDc, camera.WorldToScreen(player, map) - new Vector2(0, jumpHeight), 20, 10);
         BitBlt(_windowDc, 0, 0, width, height, _bufferDc, 0, 0, 0x00CC0020);
-    }
-    private void DrawFps(int width, int height, int fps)
-    {
-        SetBkMode(_bufferDc, 1); SetTextColor(_bufferDc, ColorRef(235, 235, 235));
-        string text = $"FPS: {fps}"; TextOut(_bufferDc, Math.Max(4, width - 70), Math.Max(4, height - 20), text, text.Length);
     }
     private void EnsureBackbuffer(int width, int height)
     {
@@ -50,14 +41,14 @@ public sealed class Win32TileRenderer : IDisposable
         if (_bufferDc != 0) { SelectObject(_bufferDc, _previousBitmap); DeleteObject(_bufferBitmap); DeleteDC(_bufferDc); }
         _bufferDc = CreateCompatibleDC(_windowDc); _bufferBitmap = CreateCompatibleBitmap(_windowDc, width, height); _previousBitmap = SelectObject(_bufferDc, _bufferBitmap); _width = width; _height = height;
     }
-    private void DrawDiamond(nint dc, Vector2 center, float halfWidth, float halfHeight, int brushIndex, uint color)
+    private void DrawDiamond(nint dc, Vector2 center, float halfWidth, float halfHeight)
     {
         _points[0] = new((int)center.X, (int)(center.Y - halfHeight)); _points[1] = new((int)(center.X + halfWidth), (int)center.Y); _points[2] = new((int)center.X, (int)(center.Y + halfHeight)); _points[3] = new((int)(center.X - halfWidth), (int)center.Y);
-        nint brush = brushIndex == 0 ? _floorBrushA : brushIndex == 1 ? _floorBrushB : _playerBrush;
-        if (brushIndex == 2 || color == ColorRef(45, 45, 55)) brush = brushIndex == 2 ? _playerBrush : _blockedBrush;
-        Polygon(dc, _points, 4, brush);
+        nint previousPen = SelectObject(dc, _blackPen);
+        Polygon(dc, _points, 4, _tileBrush);
+        SelectObject(dc, previousPen);
     }
-    public void Dispose() { if (_bufferDc != 0) { SelectObject(_bufferDc, _previousBitmap); DeleteObject(_bufferBitmap); DeleteDC(_bufferDc); } DeleteObject(_backgroundBrush); DeleteObject(_floorBrushA); DeleteObject(_floorBrushB); DeleteObject(_blockedBrush); DeleteObject(_playerBrush); ReleaseDC(_window.Handle, _windowDc); }
+    public void Dispose() { if (_bufferDc != 0) { SelectObject(_bufferDc, _previousBitmap); DeleteObject(_bufferBitmap); DeleteDC(_bufferDc); } DeleteObject(_backgroundBrush); DeleteObject(_tileBrush); DeleteObject(_blackPen); ReleaseDC(_window.Handle, _windowDc); }
     private static uint ColorRef(byte r, byte g, byte b) => (uint)(r | (g << 8) | (b << 16));
     [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; public POINT(int x, int y) { X = x; Y = y; } }
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
@@ -66,6 +57,7 @@ public sealed class Win32TileRenderer : IDisposable
     [DllImport("user32.dll")] private static extern bool GetClientRect(nint window, ref RECT rect);
     [DllImport("user32.dll")] private static extern int FillRect(nint dc, ref RECT rect, nint brush);
     [DllImport("gdi32.dll")] private static extern nint CreateSolidBrush(uint color);
+    [DllImport("gdi32.dll")] private static extern nint CreatePen(int style, int width, uint color);
     [DllImport("gdi32.dll")] private static extern nint CreateCompatibleDC(nint dc);
     [DllImport("gdi32.dll")] private static extern nint CreateCompatibleBitmap(nint dc, int width, int height);
     [DllImport("gdi32.dll")] private static extern nint SelectObject(nint dc, nint objectHandle);
@@ -73,7 +65,4 @@ public sealed class Win32TileRenderer : IDisposable
     [DllImport("gdi32.dll")] private static extern bool BitBlt(nint destination, int x, int y, int width, int height, nint source, int sourceX, int sourceY, uint operation);
     [DllImport("gdi32.dll")] private static extern bool DeleteObject(nint objectHandle);
     [DllImport("gdi32.dll")] private static extern bool Polygon(nint dc, POINT[] points, int count, nint brush);
-    [DllImport("gdi32.dll")] private static extern int SetBkMode(nint dc, int mode);
-    [DllImport("gdi32.dll")] private static extern uint SetTextColor(nint dc, uint color);
-    [DllImport("gdi32.dll", CharSet = CharSet.Unicode)] private static extern bool TextOut(nint dc, int x, int y, string text, int length);
 }

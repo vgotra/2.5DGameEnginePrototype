@@ -2,6 +2,8 @@
 
 The current MVP uses a 20x20 map, cached GDI backbuffer, cached brushes, reusable polygon storage, dirty rendering, and viewport culling. Runtime input uses a bitmask with no per-frame array copy.
 
+The Vulkan path (`--vulkan`) currently uploads all geometry per frame via a staging buffer and waits for queue idle, then issues a single indexed draw. This is correct but serializes the GPU queue; the staging-upload/arena path is a known follow-up (see `KnownIssues.md`).
+
 Multithreading policy:
 
 - Keep fixed-step player movement and collision on the main simulation thread for deterministic ordering.

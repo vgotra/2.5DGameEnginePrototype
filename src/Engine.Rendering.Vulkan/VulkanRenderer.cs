@@ -1,9 +1,11 @@
+using System.Numerics;
 using System.Runtime.InteropServices;
+using Engine.Rendering;
 using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
 
-public sealed unsafe class VulkanRenderer : IDisposable
+public sealed unsafe class VulkanRenderer : IRenderer
 {
     private VkInstance _instance;
     private VkInstanceApi _instanceApi = null!;
@@ -13,52 +15,28 @@ public sealed unsafe class VulkanRenderer : IDisposable
     private VkDeviceApi _deviceApi = null!;
     private VkQueue _graphicsQueue;
     private VkSwapchainKHR _swapchain;
+    private VkFormat _swapchainFormat;
+    private VkExtent2D _swapchainExtent;
     private VkImage[] _swapchainImages = Array.Empty<VkImage>();
     private VkImageView[] _swapchainViews = Array.Empty<VkImageView>();
+    private VkFramebuffer[] _framebuffers = Array.Empty<VkFramebuffer>();
+    private VkRenderPass _renderPass;
     private VkCommandPool _commandPool;
     private VkCommandBuffer[] _commandBuffers = Array.Empty<VkCommandBuffer>();
     private VkSemaphore _imageAvailable;
     private VkSemaphore _renderFinished;
     private VkFence _inFlight;
-    public uint SwapchainImageCount => (uint)_swapchainImages.Length;
+    private VkPhysicalDeviceMemoryProperties _memoryProperties;
+    private uint _imageIndex;
+    private bool _inFrame;
 
-    public VkResult RenderFrame()
-    {
-        if (_swapchain.IsNull) return VkResult.ErrorInitializationFailed;
-        VkResult result = _deviceApi.vkWaitForFences(_inFlight, true, ulong.MaxValue);
-        if (result != VkResult.Success) return result;
-        _deviceApi.vkResetFences(_inFlight);
-        result = _deviceApi.vkAcquireNextImageKHR(_swapchain, ulong.MaxValue, _imageAvailable, VkFence.Null, out uint imageIndex);
-        if (result is not (VkResult.Success or VkResult.SuboptimalKHR)) return result;
-        VkCommandBuffer commandBuffer = _commandBuffers[imageIndex];
-        _deviceApi.vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
-        result = _deviceApi.vkBeginCommandBuffer(commandBuffer, VkCommandBufferUsageFlags.OneTimeSubmit);
-        if (result != VkResult.Success) return result;
-        VkImageSubresourceRange range = new() { aspectMask = VkImageAspectFlags.Color, baseMipLevel = 0, levelCount = 1, baseArrayLayer = 0, layerCount = 1 };
-        VkImageMemoryBarrier toTransfer = new() { oldLayout = VkImageLayout.Undefined, newLayout = VkImageLayout.TransferDstOptimal, srcQueueFamilyIndex = uint.MaxValue, dstQueueFamilyIndex = uint.MaxValue, image = _swapchainImages[imageIndex], subresourceRange = range };
-        Span<VkMemoryBarrier> noMemory = stackalloc VkMemoryBarrier[0];
-        Span<VkBufferMemoryBarrier> noBuffers = stackalloc VkBufferMemoryBarrier[0];
-        Span<VkImageMemoryBarrier> transferBarrier = stackalloc VkImageMemoryBarrier[1]; transferBarrier[0] = toTransfer;
-        _deviceApi.vkCmdPipelineBarrier(commandBuffer, VkPipelineStageFlags.TopOfPipe, VkPipelineStageFlags.Transfer, VkDependencyFlags.None, noMemory, noBuffers, transferBarrier);
-        VkClearColorValue color = new(0.04f, 0.07f, 0.12f, 1f);
-        _deviceApi.vkCmdClearColorImage(commandBuffer, _swapchainImages[imageIndex], VkImageLayout.TransferDstOptimal, &color, 1, &range);
-        VkImageMemoryBarrier toPresent = new() { oldLayout = VkImageLayout.TransferDstOptimal, newLayout = VkImageLayout.PresentSrcKHR, srcQueueFamilyIndex = uint.MaxValue, dstQueueFamilyIndex = uint.MaxValue, image = _swapchainImages[imageIndex], subresourceRange = range };
-        transferBarrier[0] = toPresent;
-        _deviceApi.vkCmdPipelineBarrier(commandBuffer, VkPipelineStageFlags.Transfer, VkPipelineStageFlags.BottomOfPipe, VkDependencyFlags.None, noMemory, noBuffers, transferBarrier);
-        result = _deviceApi.vkEndCommandBuffer(commandBuffer);
-        if (result != VkResult.Success) return result;
-        VkSubmitInfo submit = new() { commandBufferCount = 1, waitSemaphoreCount = 1, signalSemaphoreCount = 1 };
-        VkPipelineStageFlags waitStage = VkPipelineStageFlags.Transfer;
-        VkSemaphore available = _imageAvailable;
-        VkSemaphore finished = _renderFinished;
-        submit.pCommandBuffers = &commandBuffer;
-        submit.pWaitSemaphores = &available;
-        submit.pSignalSemaphores = &finished;
-        submit.pWaitDstStageMask = &waitStage;
-        result = _deviceApi.vkQueueSubmit(_graphicsQueue, submit, _inFlight);
-        if (result != VkResult.Success) return result;
-        return _deviceApi.vkQueuePresentKHR(_graphicsQueue, _renderFinished, _swapchain, imageIndex);
-    }
+    private ShaderModuleLoader _shaderLoader = null!;
+    private VulkanPipeline _pipeline;
+    private DescriptorSetAllocator _descriptorAllocator = null!;
+    private TextureUploader _textureUploader = null!;
+    private BatchRenderer _batchRenderer = null!;
+
+    public uint SwapchainImageCount => (uint)_swapchainImages.Length;
     public uint GraphicsQueueFamily { get; private set; }
     private nint _appName;
     private nint _engineName;
@@ -94,6 +72,9 @@ public sealed unsafe class VulkanRenderer : IDisposable
         result = _instanceApi.vkEnumeratePhysicalDevices(devices);
         if (result != VkResult.Success || deviceCount == 0) throw new InvalidOperationException("No Vulkan physical device found.");
         _physicalDevice = devices[0];
+        VkPhysicalDeviceMemoryProperties memoryProperties;
+        _instanceApi.vkGetPhysicalDeviceMemoryProperties(_physicalDevice, &memoryProperties);
+        _memoryProperties = memoryProperties;
         Span<VkQueueFamilyProperties> families = stackalloc VkQueueFamilyProperties[16];
         uint familyCount = (uint)families.Length;
         _instanceApi.vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, families);
@@ -112,6 +93,135 @@ public sealed unsafe class VulkanRenderer : IDisposable
         _deviceApi = global::Vortice.Vulkan.Vulkan.GetApi(_instance, _device);
         _deviceApi.vkGetDeviceQueue(GraphicsQueueFamily, 0, out _graphicsQueue);
         CreateSwapchain(960, 640);
+        _renderPass = CreateRenderPass();
+        CreateFramebuffers();
+        _shaderLoader = new ShaderModuleLoader(_deviceApi);
+        VkShaderModule vertexModule = _shaderLoader.Load(ShaderPath("shape.vert.spv"));
+        VkShaderModule fragmentModule = _shaderLoader.Load(ShaderPath("shape.frag.spv"));
+        _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass);
+        _descriptorAllocator = new DescriptorSetAllocator(_device, _deviceApi);
+        _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, _commandPool, _descriptorAllocator);
+        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _graphicsQueue, _commandPool, 1);
+        _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
+    }
+
+    public void BeginFrame(Vector2 viewport)
+    {
+        if (_swapchain.IsNull) throw new InvalidOperationException("Swapchain is not ready.");
+        VkResult result = _deviceApi.vkWaitForFences(_inFlight, true, ulong.MaxValue);
+        if (result != VkResult.Success) throw new InvalidOperationException($"Fence wait failed: {result}");
+        _deviceApi.vkResetFences(_inFlight);
+        result = _deviceApi.vkAcquireNextImageKHR(_swapchain, ulong.MaxValue, _imageAvailable, VkFence.Null, out _imageIndex);
+        if (result is not (VkResult.Success or VkResult.SuboptimalKHR)) throw new InvalidOperationException($"Image acquire failed: {result}");
+        VkCommandBuffer commandBuffer = _commandBuffers[_imageIndex];
+        _deviceApi.vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
+        VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
+        result = _deviceApi.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer begin failed: {result}");
+        VkClearValue clear = new(0.04f, 0.07f, 0.12f, 1f);
+        VkRenderPassBeginInfo renderPassBegin = new()
+        {
+            renderPass = _renderPass,
+            framebuffer = _framebuffers[_imageIndex],
+            renderArea = new VkRect2D(0, 0, _swapchainExtent.width, _swapchainExtent.height),
+            clearValueCount = 1,
+            pClearValues = &clear
+        };
+        _deviceApi.vkCmdBeginRenderPass(commandBuffer, &renderPassBegin, VkSubpassContents.Inline);
+        _batchRenderer.BeginFrame(commandBuffer, viewport);
+        _inFrame = true;
+    }
+
+    public void Submit(ReadOnlySpan<SpritePacket> sprites)
+    {
+        if (!_inFrame) return;
+        _batchRenderer.Submit(sprites);
+    }
+
+    public void EndFrame()
+    {
+        if (!_inFrame) return;
+        VkCommandBuffer commandBuffer = _commandBuffers[_imageIndex];
+        _batchRenderer.EndFrame(commandBuffer);
+        _deviceApi.vkCmdEndRenderPass(commandBuffer);
+        VkResult result = _deviceApi.vkEndCommandBuffer(commandBuffer);
+        if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer end failed: {result}");
+        VkPipelineStageFlags waitStage = VkPipelineStageFlags.ColorAttachmentOutput;
+        VkSemaphore imageAvailable = _imageAvailable;
+        VkSemaphore renderFinished = _renderFinished;
+        VkSubmitInfo submit = new()
+        {
+            commandBufferCount = 1,
+            pCommandBuffers = &commandBuffer,
+            waitSemaphoreCount = 1,
+            pWaitSemaphores = &imageAvailable,
+            pWaitDstStageMask = &waitStage,
+            signalSemaphoreCount = 1,
+            pSignalSemaphores = &renderFinished
+        };
+        result = _deviceApi.vkQueueSubmit(_graphicsQueue, submit, _inFlight);
+        if (result != VkResult.Success) throw new InvalidOperationException($"Queue submit failed: {result}");
+        result = _deviceApi.vkQueuePresentKHR(_graphicsQueue, _renderFinished, _swapchain, _imageIndex);
+        if (result is not (VkResult.Success or VkResult.SuboptimalKHR)) throw new InvalidOperationException($"Present failed: {result}");
+        _inFrame = false;
+    }
+
+    private static string ShaderPath(string name) => Path.Combine(AppContext.BaseDirectory, "shaders", name);
+
+    private VkRenderPass CreateRenderPass()
+    {
+        VkAttachmentDescription colorAttachment = new()
+        {
+            format = _swapchainFormat,
+            samples = VkSampleCountFlags.Count1,
+            loadOp = VkAttachmentLoadOp.Clear,
+            storeOp = VkAttachmentStoreOp.Store,
+            stencilLoadOp = VkAttachmentLoadOp.DontCare,
+            stencilStoreOp = VkAttachmentStoreOp.DontCare,
+            initialLayout = VkImageLayout.Undefined,
+            finalLayout = VkImageLayout.PresentSrcKHR
+        };
+
+        VkAttachmentReference colorReference = new(0, VkImageLayout.ColorAttachmentOptimal);
+
+        VkSubpassDescription subpass = new()
+        {
+            pipelineBindPoint = VkPipelineBindPoint.Graphics,
+            colorAttachmentCount = 1,
+            pColorAttachments = &colorReference
+        };
+
+        VkRenderPassCreateInfo info = new()
+        {
+            attachmentCount = 1,
+            pAttachments = &colorAttachment,
+            subpassCount = 1,
+            pSubpasses = &subpass
+        };
+
+        VkResult result = _deviceApi.vkCreateRenderPass(&info, out VkRenderPass renderPass);
+        if (result != VkResult.Success) throw new InvalidOperationException($"Render pass creation failed: {result}");
+        return renderPass;
+    }
+
+    private void CreateFramebuffers()
+    {
+        _framebuffers = new VkFramebuffer[_swapchainViews.Length];
+        for (int i = 0; i < _swapchainViews.Length; i++)
+        {
+            VkImageView attachment = _swapchainViews[i];
+            VkFramebufferCreateInfo info = new()
+            {
+                renderPass = _renderPass,
+                attachmentCount = 1,
+                pAttachments = &attachment,
+                width = _swapchainExtent.width,
+                height = _swapchainExtent.height,
+                layers = 1
+            };
+            VkResult result = _deviceApi.vkCreateFramebuffer(&info, out _framebuffers[i]);
+            if (result != VkResult.Success) throw new InvalidOperationException($"Framebuffer creation failed: {result}");
+        }
     }
 
     private void CreateSwapchain(uint width, uint height)
@@ -148,6 +258,8 @@ public sealed unsafe class VulkanRenderer : IDisposable
         };
         result = _deviceApi.vkCreateSwapchainKHR(&info, out _swapchain);
         if (result != VkResult.Success) throw new InvalidOperationException($"Swapchain creation failed: {result}");
+        _swapchainFormat = format.format;
+        _swapchainExtent = extent;
         uint swapchainImageCount = 0;
         result = _deviceApi.vkGetSwapchainImagesKHR(_swapchain, out swapchainImageCount);
         if (result != VkResult.Success || swapchainImageCount == 0) throw new InvalidOperationException("Swapchain returned no images.");
@@ -197,6 +309,13 @@ public sealed unsafe class VulkanRenderer : IDisposable
     public void Dispose()
     {
         if (_device.IsNotNull) _deviceApi.vkDeviceWaitIdle();
+        _batchRenderer?.Dispose();
+        _textureUploader?.Dispose();
+        _descriptorAllocator?.Dispose();
+        if (_pipeline.Pipeline.IsNotNull) _pipeline.Dispose();
+        _shaderLoader?.Dispose();
+        for (int i = 0; i < _framebuffers.Length; i++) if (_framebuffers[i].IsNotNull) _deviceApi.vkDestroyFramebuffer(_framebuffers[i]);
+        if (_renderPass.IsNotNull) _deviceApi.vkDestroyRenderPass(_renderPass);
         if (_inFlight.IsNotNull) _deviceApi.vkDestroyFence(_inFlight);
         if (_renderFinished.IsNotNull) _deviceApi.vkDestroySemaphore(_renderFinished);
         if (_imageAvailable.IsNotNull) _deviceApi.vkDestroySemaphore(_imageAvailable);
