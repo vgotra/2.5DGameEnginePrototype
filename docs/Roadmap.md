@@ -32,7 +32,7 @@
 
 ## Next features, ordered by usefulness
 
-1. **Stable game loop and window lifecycle** — frame pacing (vsync/frame limits) and clean shutdown. Resize/swapchain rebuild is now handled by both backends.
+1. **Stable game loop and window lifecycle** — frame pacing and clean shutdown (see [`FramePacingPlan.md`](FramePacingPlan.md)): high-resolution dt + frame cap/vsync policy; prefer `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering; per-swapchain-image fences replacing the per-frame `vkQueueWaitIdle`; persistent dirty-gated vertex buffers; graceful ESC/window-close teardown. Root cause being fixed: Vulkan delivers 60 Hz sim steps through a FIFO-vsync, double-buffered, fully drained pipeline, so timing jitter shows as judder where GDI's immediate `BitBlt` does not. Resize/swapchain rebuild is already handled by both backends.
 2. **Texture sampling path** — sample textures in the fragment shader, bind descriptor sets per sprite batch, texture atlas support, and honor `SpritePacket.Texture`/`Material`.
 3. **Asset loading** — PNG decoding, texture upload, sprite handles, and a small `assets/` convention.
 4. **ECS queries and system scheduling** — replace sample-local state with ECS systems and explicit read/write access.

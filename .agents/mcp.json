@@ -1,9 +1,12 @@
 {
   "mcpServers": {
-    "context7": {
-      "type": "remote",
-      "url": "https://mcp.context7.com/mcp",
-      "enabled": true
+    "vulkan": {
+      "command": "node",
+      "args": ["C:\\Projects\\2.5DGameEnginePrototype\\tools\\mcp\\mcp-Vulkan\\vulkan\\build\\index.js"]
+    },
+    "renderdoc": {
+      "command": "uvx",
+      "args": ["--python", "3.13", "renderdoc-mcp"]
     }
   }
 }

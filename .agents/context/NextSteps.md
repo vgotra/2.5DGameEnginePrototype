@@ -4,7 +4,7 @@ Milestone completed: backend-neutral rendering contracts, ECS storage, the Vulka
 
 ## Current milestone follow-ups
 
-1. Stable game loop and window lifecycle: frame pacing and clean shutdown. Resize/swapchain rebuild and fullscreen switching are now handled.
+1. Stable game loop and window lifecycle: frame pacing and clean shutdown — see `docs/FramePacingPlan.md` for the diagnosis and full approach. Root cause: Vulkan delivers 60 Hz fixed-step motion through a FIFO-vsync, double-buffered, single-fence pipeline with a per-frame staging upload + `vkQueueWaitIdle` before present, so timing jitter shows as judder; GDI's immediate `BitBlt` (no vsync/waits) does not. Implement: high-res dt + frame cap/vsync policy; prefer `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering; per-swapchain-image fences dropping the per-frame `vkQueueWaitIdle`; persistent dirty-gated vertex buffers; graceful ESC/window-close teardown. Resize/swapchain rebuild and fullscreen switching are already handled.
 2. Texture path: sample textures in the fragment shader, bind descriptor sets per sprite batch, add texture atlas support, and honor `SpritePacket.Texture`/`Material`.
 3. Profiling: frame timings, draw calls, staging-buffer allocations, and Vulkan timestamps.
 4. Linux platform backend: SDL2 window/input (`Engine.Platform.Sdl2`), X11/Wayland Vulkan surface, CI on Linux (see `docs/LinuxSupportPlan.md`). Cross-platform seams (contracts, `GamePlatform` host, `NativeWindowSurface`, per-OS loader/surface selection) are already in place.

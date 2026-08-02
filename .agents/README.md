@@ -6,7 +6,7 @@ Tool discovery rules that shape this layout:
 
 - **Skills** are auto-discovered from `.agents/skills/*/SKILL.md` by opencode and OhMyPi (omp) with zero config. No registration needed.
 - **Instructions** must live at the repo-root `AGENTS.md` — the cross-tool AGENTS.md standard (Linux Foundation) is read by opencode, omp, GitHub Copilot, Codex, and 20+ other tools. omp explicitly skips AGENTS.md files inside dot-prefixed directories, so a `.agents/AGENTS.md` would be invisible to it. Root `AGENTS.md` is therefore the canonical instruction file.
-- **MCP** servers live in `opencode.json` (opencode reads only that), with this `mcp.json` as the neutral catalog. Keep them in sync.
+- **MCP** servers live in `opencode.json` (opencode reads only that), with this `mcp.json` as the neutral catalog. Keep them in sync. Current servers: `vulkan` (Vulkan registry lookup, built by `tools/Setup-McpServers.ps1` into gitignored `tools/mcp/`) and `renderdoc` (`.rdc` capture analysis via `uvx`, see `docs/RenderDocSetup.md`).
 - Config is loaded only at agent startup. After changing `opencode.json`, skills, or agents, restart the agent.
 
 ## Layout

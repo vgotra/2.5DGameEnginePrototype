@@ -1,8 +1,12 @@
 # Release Notes
 
 ## 2026-08-02
+- Diagnosed the Vulkan-vs-GDI smoothness gap (FIFO vsync + double buffering + single in-flight fence + per-frame staging upload/`vkQueueWaitIdle` before present → visible judder; GDI's immediate `BitBlt` does not) and added the planned fix as roadmap item 1 in `docs/FramePacingPlan.md` (Mailbox + triple buffering, per-swapchain-image fences, high-res dt, persistent dirty-gated buffers, clean shutdown). Docs-only; no code change.
+- Replaced the Grounded Docs MCP server (`@arabold/docs-mcp-server`) with a Vulkan-focused set in `opencode.json` and `.agents/mcp.json` (kept in sync): `vulkan` (`gpx1000/mcp-Vulkan`, Vulkan registry lookup, built by the new `tools/Setup-McpServers.ps1` into gitignored `tools/mcp/`) and `renderdoc` (`uvx --python 3.13 renderdoc-mcp`, GPU frame-capture analysis with a bundled RenderDoc replay module).
+- Added `docs/RenderDocSetup.md` (install RenderDoc, capture frames from the sample, analyze `.rdc` through opencode) and indexed it plus `docs/AgentTooling.md` under a new "Tooling" section in `docs/README.md`.
 - Added `AGENTS.md` with build, shader, and convention guidance for AI agents.
 - Consolidated AI-agent assets from `.codex/` into `.agents/` (resumable context, skills, MCP catalog); added `opencode.json` with Context7 MCP.
+- Replaced the Context7 MCP server with the open-source Grounded Docs MCP server (`@arabold/docs-mcp-server`, MIT, local) in `opencode.json` and `.agents/mcp.json`, and simplified `.agents/context/FilesMap.md` to folder-level functionality descriptions.
 - Updated agent-path references across docs and cleaned change-log/attribution noise from documentation.
 - Added `docs/LinuxSupportPlan.md` (Linux/SDL2, later macOS).
 - Added cross-platform platform seams: `Engine.Platform` contracts (`IGameWindow`/`IInputState` extended, `PlatformKind`, `NativeWindowSurface`), the `Engine.Platform.Desktop.GamePlatform` host, and per-OS Vulkan loader/surface selection in `VulkanRenderer`. Sample now talks only to contracts + host; Win32-only types stay in `Engine.Platform.Win32`.

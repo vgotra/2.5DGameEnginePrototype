@@ -21,11 +21,11 @@ The platform layer is cross-platform-ready (Windows only today): `Engine.Platfor
 
 ## Next three actions
 
-1. Stable game loop: frame pacing (vsync/frame limits) and clean shutdown; resize/swapchain rebuild is now handled.
+1. Stable game loop: frame pacing and clean shutdown — see `docs/FramePacingPlan.md` (Vulkan judder vs. GDI smoothness diagnosis + full approach); resize/swapchain rebuild is now handled.
 2. Texture sampling path: bind descriptor sets, texture-blended sprites, and texture atlas support.
 3. Profiling counters and allocation measurements for the draw path.
 4. Linux platform backend (SDL2 window/input + X11/Wayland Vulkan surface) per `docs/LinuxSupportPlan.md`.
 
 ## Risks
 
-The MVP renderer does one staging-buffer upload + `vkQueueWaitIdle` per frame, which serializes the queue; this is correct but not performance-optimal. The batch renderer draws shapes only; `SpritePacket` texture/material handles are currently ignored.
+The MVP renderer does one staging-buffer upload + `vkQueueWaitIdle` per frame, which serializes the queue; this is correct but not performance-optimal. Combined with a FIFO-vsync (vsync-on) swapchain that is double-buffered with a single in-flight fence, this delivers 60 Hz sim steps on an uneven cadence, so Vulkan visibly judders on camera pans where the GDI path's immediate `BitBlt` looks smooth — tracked as roadmap item 1 / `docs/FramePacingPlan.md`. The batch renderer draws shapes only; `SpritePacket` texture/material handles are currently ignored.

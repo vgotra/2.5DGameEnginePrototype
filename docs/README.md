@@ -19,6 +19,7 @@ Windows-first .NET 10 isometric game engine (Vulkan default, GDI reference fallb
 ## Rendering
 
 - [`RenderingDesign.md`](RenderingDesign.md) — backend-neutral rendering contracts, coordinate convention, Vulkan implementation, white/black tile style, current limitations.
+- [`FramePacingPlan.md`](FramePacingPlan.md) — diagnosis (Vulkan judder vs. GDI smoothness) and the planned frame-pacing/clean-shutdown work for roadmap item 1.
 - [`ShaderWorkflow.md`](ShaderWorkflow.md) — GLSL → glslc → committed `.spv`; when and how to recompile; NDC-Y rule.
 - [`Windowing.md`](Windowing.md) — window lifecycle and GDI rendering: `WM_SIZE`, borderless fullscreen, dirty-gated repaint, backbuffer.
 
@@ -32,6 +33,11 @@ Windows-first .NET 10 isometric game engine (Vulkan default, GDI reference fallb
 - [`Conventions.md`](Conventions.md) — coding/perf rules that differ from .NET defaults, package/build policy, commands.
 - [`Roadmap.md`](Roadmap.md) — milestones, ordered feature queue, platform milestones, deferred items.
 - [`RecoveryAndContext.md`](RecoveryAndContext.md) — the resumable-state convention every milestone must follow.
+
+## Tooling
+
+- [`AgentTooling.md`](AgentTooling.md) — AGENTS.md/skills/MCP/agents/commands/plugins reference for the repo.
+- [`RenderDocSetup.md`](RenderDocSetup.md) — install RenderDoc, capture frames from the sample, analyze `.rdc` via the `renderdoc` MCP server.
 
 ## History
 

@@ -39,5 +39,6 @@ Window-side details (client size via `WM_SIZE`, borderless fullscreen, dirty-gat
 ## Current limitations
 
 - One staging upload + `vkQueueWaitIdle` per frame serializes the graphics queue (correct, not optimal).
+- Frame delivery is vsync-gated: the swapchain uses `presentMode = modes[0]` (FIFO on Windows), double buffering, and a single in-flight fence, and presents only after the per-frame queue drain — so timing jitter shows as judder vs. GDI's immediate `BitBlt`. Planned fix: `docs/FramePacingPlan.md` (Mailbox + triple buffering, per-image fences, no per-frame `vkQueueWaitIdle`).
 - `SpritePacket.Texture`/`Material` are ignored by the shape pipeline; texture rendering is pending.
 - Tile border thickness differs slightly between backends (Vulkan ~2px, GDI 1px).

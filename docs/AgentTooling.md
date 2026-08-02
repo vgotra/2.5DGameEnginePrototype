@@ -21,7 +21,9 @@ Current reference for AI-agent features as used in this repo (opencode + OhMyPi)
 - Remote servers: `{ "type": "remote", "url": "...", "headers": {...}, "oauth": {...} }`; opencode auto-handles OAuth (`opencode mcp auth <name>`).
 - Config values support `{env:VAR}` and `{file:path}` interpolation — never commit secrets.
 - Disable a whole server's tools with `tools: { "<name>_*": false }` and re-enable per agent.
-- MCP servers add context tokens; enable only what you need. Context7 (current): on-demand library/framework docs via `https://mcp.context7.com/mcp`.
+- MCP servers add context tokens; enable only what you need.
+- `vulkan` (`gpx1000/mcp-Vulkan`, local): queries the Vulkan registry (`vk.xml`) — tools `search-vulkan-docs` / `get-vulkan-topic`. Built from source by `tools/Setup-McpServers.ps1` into the gitignored `tools/mcp/`; `opencode.json` points at the built `vulkan/build/index.js`. Endorsed by the Khronos Vulkan Tutorial.
+- `renderdoc` (`renderdoc-mcp` via `uvx --python 3.13`, local): GPU frame-capture analysis of `.rdc` files (draw calls, pipeline state, pixel history). The MCP package bundles its own RenderDoc replay module, so analysis needs no local RenderDoc install. Install RenderDoc and capture the sample — see `docs/RenderDocSetup.md`.
 
 ## Agents / subagents
 

@@ -5,61 +5,33 @@ Use this to orient quickly; open a file only when your task needs its details. D
 ```
 2.5DGameEnginePrototype/
 ├── AGENTS.md                     # AI-agent instructions: commands, shaders, architecture, conventions, principles, platforms
-├── opencode.json                 # opencode config: instructions (context + FilesMap), Context7 MCP
+├── opencode.json                 # opencode config: instructions (context + FilesMap), MCP (vulkan + renderdoc servers)
 ├── README.md                     # project readme (links docs/README.md, release notes, platform status)
-├── RELEASE_NOTES.md              # dated change log (simple format)
+├── RELEASE_NOTES.md              # dated change log
 ├── LICENSE                       # license
 ├── Engine.sln                    # solution: 13 projects
 ├── Directory.Build.props         # net10.0, LangVersion preview, warnings-as-errors, nullable, unsafe
 ├── Directory.Packages.props      # central packages: Vortice.Vulkan 3.2.3
 ├── global.json                   # SDK 10.0.100 (prerelease allowed)
 │
-├── .agents/                      # AI-agent assets (skills, context, MCP catalog)
-│   ├── README.md                 # folder guide (reference section lives in docs/AgentTooling.md)
-│   ├── mcp.json                  # neutral MCP catalog: context7
-│   ├── context/                  # resumable milestone state (auto-loaded via opencode.json instructions)
-│   │   ├── CurrentState.md       # current implementation status + verification + risks
-│   │   ├── NextSteps.md          # ordered follow-ups + roadmap status
-│   │   ├── Decisions.md          # architecture/design decisions log
-│   │   ├── KnownIssues.md        # known issues / intentional MVP tradeoffs
-│   │   └── FilesMap.md           # this file
-│   └── skills/
-│       └── engine-development/SKILL.md   # engine-dev skill (platform-neutrality + conventions)
-│
-├── assets/shaders/               # GLSL sources + committed .spv (shape.vert/frag)
-│
-├── docs/                         # documentation (see docs/README.md index)
+├── .agents/                      # AI-agent assets: skills (engine-development), resumable context (context/), MCP catalog (mcp.json)
+├── assets/shaders/               # GLSL sources + committed .spv (recompile via tools/CompileShaders.ps1)
+├── docs/                         # documentation: index + topic files (see docs/README.md), agent tooling reference
 │
 ├── src/
-│   ├── Engine.Core/              # GameClock, EntityId, DebugMetrics (no deps)
-│   ├── Engine.Mathematics/       # IsometricMath (world<->screen conversion)
-│   ├── Engine.Ecs/               # World, SparseSet, ComponentTypeId (deps: Core)
-│   ├── Engine.Threading/         # JobSystem (deps: Core)
-│   ├── Engine.Platform/          # contracts: IGameWindow, IInputState, GameKey, PlatformKind, NativeWindowSurface
-│   ├── Engine.Platform.Win32/    # Win32Window, Win32Input (deps: Platform)
-│   ├── Engine.Platform.Desktop/  # GamePlatform.CreateWindow host/factory (deps: Platform, Platform.Win32)
-│   ├── Engine.Rendering/         # IRenderer, SpritePacket/ShapePacket/ShapeVertex, GeneratedGeometry (deps: Core)
-│   ├── Engine.Rendering.Vulkan/  # Vulkan backend (deps: Platform, Rendering, Vortice.Vulkan)
-│   │   ├── VulkanRenderer.cs     # instance/surface/swapchain/device; consumes NativeWindowSurface
-│   │   ├── BatchRenderer.cs      # batched shape draw: staging upload + single indexed draw
-│   │   ├── VulkanPipeline.cs / PipelineConfiguration.cs / ShapePipelineDescription.cs
-│   │   ├── ShaderModuleLoader.cs # loads committed .spv from output shaders/
-│   │   ├── DescriptorSetAllocator.cs / VulkanBuffer.cs / TextureUploader.cs  # texture-path infrastructure (unused yet)
+│   ├── Engine.Core/              # clock, entity ids, debug metrics — no deps
+│   ├── Engine.Mathematics/       # isometric world<->screen math (IsometricMath)
+│   ├── Engine.Ecs/               # ECS storage: World, SparseSet, component ids
+│   ├── Engine.Threading/         # job system / worker scheduler
+│   ├── Engine.Platform/          # platform contracts: IGameWindow, IInputState, PlatformKind, NativeWindowSurface
+│   ├── Engine.Platform.Win32/    # Win32 window + input backend
+│   ├── Engine.Platform.Desktop/  # GamePlatform host/factory (CreateWindow)
+│   ├── Engine.Rendering/         # rendering contracts: IRenderer, sprite/shape packets, generated geometry
+│   ├── Engine.Rendering.Vulkan/  # Vulkan backend: renderer, batch draw, pipeline, shader loading, texture infra
 │   ├── Engine.Audio/             # audio contracts only (no backend yet)
 │   └── Engine.Physics/           # physics contracts only (no backend yet)
 │
-├── samples/IsometricSandbox/     # executable vertical slice (deps: Core, Math, Ecs, Platform.Desktop, Rendering.Vulkan)
-│   ├── Program.cs                # top-level statements; two loops: Vulkan (default) + GDI fallback
-│   └── Game/
-│       ├── TileMap.cs            # deterministic tile map, walkability, occupancy
-│       ├── MovementSystem.cs     # fixed-step movement + collision
-│       ├── CameraSystem.cs       # IsometricCamera: follow, clamp, world<->screen, iso/flat
-│       ├── RenderExtractionSystem.cs  # map -> SpritePacket[] extraction
-│       └── Win32TileRenderer.cs  # GDI reference renderer (Windows-only)
-│
-├── tests/Engine.Tests/           # console smoke tests (NOT a test framework): math, ECS, movement, camera, geometry
-│   └── Program.cs                # prints "Smoke tests passed" on success
-│
-└── tools/
-    └── CompileShaders.ps1        # recompiles GLSL -> .spv via glslc (Vulkan SDK Bin on PATH)
+├── samples/IsometricSandbox/     # executable vertical slice: game loop, tile map, movement/collision, camera, render extraction, GDI fallback renderer
+├── tests/Engine.Tests/           # console smoke tests (NOT a framework): math, ECS, movement, camera, geometry
+└── tools/                        # dev scripts: CompileShaders.ps1 (GLSL -> .spv via glslc), Setup-McpServers.ps1 (clone+build mcp-Vulkan; gitignored tools/mcp/)
 ```

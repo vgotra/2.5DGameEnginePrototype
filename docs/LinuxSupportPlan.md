@@ -53,4 +53,4 @@ Windows is the current supported platform. This document records the plan and th
 - Wayland differs from X11 at the surface level; SDL2 abstracts most of it, but fullscreen and swapchain behavior must be verified on each display server.
 - No GDI fallback on Linux — Vulkan is the only renderer until/unless an offscreen CPU fallback is added.
 - Validation layers and SDK paths differ per distro; CI must pin the Vulkan SDK/loader versions.
-- `Thread.Sleep(2)` frame pacing in the sample is a stopgap (see roadmap: "stable game loop and frame pacing").
+- `Thread.Sleep(2)` frame pacing in the sample is a stopgap (see roadmap item 1 and `docs/FramePacingPlan.md`); the present-mode/buffering work there will also matter on Linux swapchains.
