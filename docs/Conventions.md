@@ -20,8 +20,8 @@ Coding, performance, packaging, and build conventions that differ from plain .NE
 ```powershell
 dotnet build Engine.sln --nologo                    # must be 0 warnings
 dotnet run --project tests\Engine.Tests\Engine.Tests.csproj   # prints "Smoke tests passed"; NOT dotnet test
-dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --vulkan   # opens a window
-# flags: --vulkan (default), --gdi, --2d, --fullscreen; F11 fullscreen, Escape exits
+dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj   # opens a window
+# flags: --2d (flat top-down), --fullscreen; F11 fullscreen, Escape exits
 tools\CompileShaders.ps1                            # recompile GLSL after edits
 ```
 

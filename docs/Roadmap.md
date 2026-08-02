@@ -7,18 +7,17 @@
 - Arrow keys/WASD movement.
 - Space jump two tiles in the last movement direction.
 - Camera follow and isometric projection.
-- Batched Vulkan shape renderer implementing `IRenderer` (`--vulkan`): render pass, per-swapchain framebuffers, SPIR-V shape shaders (compiled with glslc), graphics pipeline, per-frame staging uploads, acquire/present synchronization.
-- GDI reference/fallback renderer (`--gdi`).
-- Visual parity: tiles and player drawn as white diamonds with black borders in both backends; Vulkan NDC-Y orientation matches GDI.
-- Fullscreen switching: `F11` toggles borderless fullscreen in both backends; window drag-resize and fullscreen trigger a Vulkan swapchain rebuild (`VulkanRenderer.Resize`). `--fullscreen` starts fullscreen.
-- `--2d` mode: flat top-down projection (white squares with black borders) in both backends via `ShapeKind` + a cartesian camera path.
-- Vulkan is the default backend (no backend flag runs `--vulkan`); the window opens centered on the screen at 800x600.
+- Batched Vulkan shape renderer implementing `IRenderer`: render pass, per-swapchain framebuffers, SPIR-V shape shaders (compiled with glslc), graphics pipeline, per-frame staging uploads, acquire/present synchronization.
+- White/black tile style: tiles and player drawn as white diamonds with black borders; the Vulkan NDC-Y orientation follows the y-down screen convention.
+- Fullscreen switching: `F11` toggles borderless fullscreen; window drag-resize and fullscreen trigger a Vulkan swapchain rebuild (`VulkanRenderer.Resize`). `--fullscreen` starts fullscreen.
+- `--2d` mode: flat top-down projection (white squares with black borders) via `ShapeKind` + a cartesian camera path.
+- Vulkan is the only renderer; the window opens centered on the screen at 800x600.
 - Map-bounds camera centering: the camera clamps to the map bounds so the map is centered on screen when it fits the viewport (fullscreen) and follows the player otherwise.
 - Brief tests and resumable `.agents` context.
 
 ## Milestones
 
-- **Milestone 1 — Win32 + GDI reference.** SDK/build policy, core entity/clock types, isometric math, ECS storage, deterministic tile map, movement/collision/jump, camera follow, Win32 window/input, and the initial GDI reference renderer.
+- **Milestone 1 — Win32 windowing + core gameplay.** SDK/build policy, core entity/clock types, isometric math, ECS storage, deterministic tile map, movement/collision/jump, camera follow, and Win32 window/input.
 - **Milestone 2 — Vulkan + `IRenderer` + windowing.** Backend-neutral rendering contracts, the batched Vulkan renderer (`Engine.Rendering.Vulkan`), fullscreen switching with swapchain rebuild, `--2d` mode, Vulkan as the default backend, the centered 800x600 window, and map-bounds camera centering in fullscreen.
 - **Milestone 3 — Cross-platform platform seams.** Backend-neutral `IGameWindow`/`IInputState` contracts, `PlatformKind` + `NativeWindowSurface`, the `Engine.Platform.Desktop.GamePlatform` host, and per-OS Vulkan loader/surface selection. The Linux/SDL2 and macOS backends are planned follow-ups (see `docs/LinuxSupportPlan.md`).
 
@@ -32,7 +31,7 @@
 
 ## Next features, ordered by usefulness
 
-1. **Stable game loop and window lifecycle** — frame pacing and clean shutdown (see [`FramePacingPlan.md`](FramePacingPlan.md)): high-resolution dt + frame cap/vsync policy; prefer `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering; per-swapchain-image fences replacing the per-frame `vkQueueWaitIdle`; persistent dirty-gated vertex buffers; graceful ESC/window-close teardown. Root cause being fixed: Vulkan delivers 60 Hz sim steps through a FIFO-vsync, double-buffered, fully drained pipeline, so timing jitter shows as judder where GDI's immediate `BitBlt` does not. Resize/swapchain rebuild is already handled by both backends.
+1. **Stable game loop and window lifecycle** — frame pacing and clean shutdown (see [`FramePacingPlan.md`](FramePacingPlan.md)): high-resolution dt + frame cap/vsync policy; prefer `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering; per-swapchain-image fences replacing the per-frame `vkQueueWaitIdle`; persistent dirty-gated vertex buffers; graceful ESC/window-close teardown. Root cause being fixed: Vulkan delivers 60 Hz sim steps through a FIFO-vsync, double-buffered, fully drained pipeline, so timing jitter shows as visible judder. Resize/swapchain rebuild is already handled.
 2. **Texture sampling path** — sample textures in the fragment shader, bind descriptor sets per sprite batch, texture atlas support, and honor `SpritePacket.Texture`/`Material`.
 3. **Asset loading** — PNG decoding, texture upload, sprite handles, and a small `assets/` convention.
 4. **ECS queries and system scheduling** — replace sample-local state with ECS systems and explicit read/write access.

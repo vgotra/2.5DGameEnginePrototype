@@ -31,7 +31,7 @@ Use this to orient quickly; open a file only when your task needs its details. D
 │   ├── Engine.Audio/             # audio contracts only (no backend yet)
 │   └── Engine.Physics/           # physics contracts only (no backend yet)
 │
-├── samples/IsometricSandbox/     # executable vertical slice: game loop, tile map, movement/collision, camera, render extraction, GDI fallback renderer
+├── samples/IsometricSandbox/     # executable vertical slice: game loop, tile map, movement/collision, camera, render extraction
 ├── tests/Engine.Tests/           # console smoke tests (NOT a framework): math, ECS, movement, camera, geometry
 └── tools/                        # dev scripts: CompileShaders.ps1 (GLSL -> .spv via glslc), Setup-McpServers.ps1 (clone+build mcp-Vulkan; gitignored tools/mcp/)
 ```

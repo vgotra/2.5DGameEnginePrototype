@@ -21,7 +21,7 @@ Capturing and analyzing are independent: you can capture on one machine (or with
 
 ## 2. Capture a frame from the sample
 
-The sample renders on the GPU only in Vulkan mode (`--vulkan`, the default). `--gdi` is a CPU rasterizer and produces **no** GPU frame.
+The sample renders on the GPU through the Vulkan `IRenderer` path (the only render path).
 
 1. Build the sample (warnings must stay at zero):
    ```
@@ -29,7 +29,7 @@ The sample renders on the GPU only in Vulkan mode (`--vulkan`, the default). `--
    ```
 2. Open RenderDoc → **Launch Application**.
    - **Executable:** `samples\IsometricSandbox\bin\Debug\net10.0\IsometricSandbox.exe` (or `bin\Release\net10.0\`). Launch the apphost exe directly, not via `dotnet run`, so RenderDoc sees the Vulkan calls in-process.
-   - **Arguments:** `--vulkan` (optional `--2d`, `--fullscreen` also capture fine).
+   - **Arguments:** optional `--2d`, `--fullscreen` also capture fine.
    - **Working directory:** any directory — shaders load from `AppContext.BaseDirectory\shaders`, not the working directory.
    - **Environment / layer injection:** leave defaults; RenderDoc injects `VK_LAYER_RENDERDOC_Capture` automatically for the launched process.
 3. Click **Launch**, then press **Ctrl+F11** in the sample window to capture a frame. Capture a few frames to a file (**File → Save capture**) as e.g. `frame.rdc`.
@@ -48,7 +48,7 @@ The sample renders on the GPU only in Vulkan mode (`--vulkan`, the default). `--
 
 - **`uvx` not found** — install [uv](https://docs.astral.sh/uv/getting-started/installation/). The `--python 3.13` flag is required: the bundled RenderDoc module is compiled only for Python 3.13.
 - **`renderdoc` MCP fails to start (`server unavailable`)** — `renderdoc-mcp` requires `mcp>=1.0.0` but breaks on `mcp` 2.x (`mcp.server.fastmcp` was removed), so the launch pins `--with "mcp>=1.0,<2"`. Keep that pin in both `opencode.json` and `.agents/mcp.json`; if it regresses, run `uvx --python 3.13 --with "mcp>=1.0,<2" renderdoc-mcp` and send an MCP `initialize` line to see the error.
-- **Frame capture produces nothing / black frame** — the sample must run in `--vulkan` (default) on a Vulkan-capable driver; `--gdi` has no GPU frame. Rebuild after editing `assets/shaders/*.glsl` (see `docs/ShaderWorkflow.md`).
+- **Frame capture produces nothing / black frame** — the sample must run on a Vulkan-capable driver. Rebuild after editing `assets/shaders/*.glsl` (see `docs/ShaderWorkflow.md`).
 - **Capture layer not injected** — prefer **Launch Application** over attaching; RenderDoc can only capture a process it launched (or one that enabled the layer itself).
 - **Analysis errors on an `.rdc` from another machine** — the bundled replay module replays captures locally on the GPU; make sure a compatible Vulkan driver is present. CPU-based replay is not used.
 - **Analysis needs a RenderDoc install?** No — only *capture* does. If you never capture locally, skip step 1 entirely.

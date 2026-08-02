@@ -15,7 +15,7 @@
 | `Engine.Rendering.Vulkan` | Vulkan loader, instance, surface, device, queue, swapchain, command buffers, frame submission, and the batched shape renderer (pipeline, per-frame staging uploads, SPIR-V shaders). Consumes a `NativeWindowSurface`. |
 | `Engine.Audio` | Backend-neutral audio device, clip, voice, and listener contracts. |
 | `Engine.Physics` | Backend-neutral physics body, raycast, and world contracts. |
-| `IsometricSandbox` | The playable MVP sample: tile map, movement, collision, jump, camera, and both the Win32 (GDI) and Vulkan render paths. |
+| `IsometricSandbox` | The playable MVP sample: tile map, movement, collision, jump, camera, and the Vulkan render path. |
 | `Engine.Tests` | Fast executable checks for math, ECS, collision, camera, and geometry behavior. |
 
 ## NuGet dependencies
@@ -37,7 +37,6 @@ Used by `Engine.Rendering.Vulkan` for Vulkan types, function loading, instance/d
 - `SpriteVisual` — visual color, size, and sort data contract.
 - `PlayerTag` — identifies the player entity.
 - `IsometricCamera` — follows the player and converts world coordinates to screen coordinates.
-- `Win32TileRenderer` — cached double-buffered GDI reference renderer; draws white diamonds with black outlines.
 - `VulkanRenderer` — Vulkan `IRenderer` implementation: swapchain, render pass, framebuffers, command buffers, synchronization.
 - `BatchRenderer` — converts `SpritePacket`s into batched diamond geometry with per-frame staging uploads and one indexed draw.
 - shape shaders (`shape.vert.glsl`/`shape.frag.glsl`) — SPIR-V compiled with glslc; the vertex shader uses the NDC Y convention directly (no negation).

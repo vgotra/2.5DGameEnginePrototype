@@ -25,20 +25,17 @@ Rendering is split into backend-neutral extraction and a Vortice.Vulkan implemen
 
 ## White/black tile style
 
-Both backends draw the tile map and the player as white diamonds with black borders:
+The renderer draws the tile map and the player as white diamonds with black borders by overdrawing a slightly larger black diamond (size + 2 x 2 px border) behind each white diamond. Row-major submission makes shared tile edges read as uniform black grid lines.
 
-- Vulkan overdraws a slightly larger black diamond (size + 2 x 2 px border) behind each white diamond. Row-major submission makes shared tile edges read as uniform black grid lines.
-- GDI fills each diamond with a white brush and outlines it with an explicit 1px black pen.
-
-In `--2d` mode the projection is cartesian instead of isometric and the same border technique is applied to axis-aligned squares (64x64 tiles, 40x40 player): `SpritePacket.Shape` is `ShapeKind.Box`, so Vulkan emits axis-aligned corner geometry and GDI draws `Rectangle` fills with the same black pen.
+In `--2d` mode the projection is cartesian instead of isometric and the same border technique is applied to axis-aligned squares (64x64 tiles, 40x40 player): `SpritePacket.Shape` is `ShapeKind.Box`, so the renderer emits axis-aligned corner geometry.
 
 ## Window resize and fullscreen
 
-Window-side details (client size via `WM_SIZE`, borderless fullscreen, dirty-gated GDI repaint) are in [`Windowing.md`](Windowing.md). On a size change the Vulkan loop calls `VulkanRenderer.Resize`, which recreates the swapchain, image views, and framebuffers; the command pool, command buffers, semaphores, and fence are created once and survive. `IsometricCamera.Follow` clamps the camera to the map bounds (iso clamps the `(x+y)`/`(x-y)` axes, flat mode clamps `x`/`y`), so the map is centered on screen when it fits the viewport (fullscreen) and follows the player when it is larger than the viewport (windowed).
+Window-side details (client size via `WM_SIZE`, borderless fullscreen) are in [`Windowing.md`](Windowing.md). On a size change the Vulkan loop calls `VulkanRenderer.Resize`, which recreates the swapchain, image views, and framebuffers; the command pool, command buffers, semaphores, and fence are created once and survive. `IsometricCamera.Follow` clamps the camera to the map bounds (iso clamps the `(x+y)`/`(x-y)` axes, flat mode clamps `x`/`y`), so the map is centered on screen when it fits the viewport (fullscreen) and follows the player when it is larger than the viewport (windowed).
 
 ## Current limitations
 
 - One staging upload + `vkQueueWaitIdle` per frame serializes the graphics queue (correct, not optimal).
-- Frame delivery is vsync-gated: the swapchain uses `presentMode = modes[0]` (FIFO on Windows), double buffering, and a single in-flight fence, and presents only after the per-frame queue drain — so timing jitter shows as judder vs. GDI's immediate `BitBlt`. Planned fix: `docs/FramePacingPlan.md` (Mailbox + triple buffering, per-image fences, no per-frame `vkQueueWaitIdle`).
+- Frame delivery is vsync-gated: the swapchain uses `presentMode = modes[0]` (FIFO on Windows), double buffering, and a single in-flight fence, and presents only after the per-frame queue drain — so timing jitter shows as visible judder on camera pans. Planned fix: `docs/FramePacingPlan.md` (Mailbox + triple buffering, per-image fences, no per-frame `vkQueueWaitIdle`).
 - `SpritePacket.Texture`/`Material` are ignored by the shape pipeline; texture rendering is pending.
-- Tile border thickness differs slightly between backends (Vulkan ~2px, GDI 1px).
+- Tile borders are drawn by overdraw (~2px black behind each white tile), so border thickness is fixed by the geometry rather than a separate stroke.

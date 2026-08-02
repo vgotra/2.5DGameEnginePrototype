@@ -12,4 +12,4 @@ How shaders are authored, compiled, shipped, and loaded.
 
 - Screen space is y-down: `y = 0` is the top of the window (`IsometricMath.WorldToScreen`).
 - The vertex shader converts screen coordinates to NDC and stores `gl_Position` with **`ndc.y` unchanged**: Vulkan NDC `y = -1` already maps to the top of the framebuffer, so no negation is applied.
-- **Do NOT add a Y negation to `shape.vert.glsl`.** A previous negation mirrored the image and broke Vulkan/GDI parity; it was removed and verified in the deployed SPIR-V (no `OpFNegate`).
+- **Do NOT add a Y negation to `shape.vert.glsl`.** A previous negation mirrored the image and broke the coordinate convention; it was removed and verified in the deployed SPIR-V (no `OpFNegate`).

@@ -4,7 +4,7 @@ Windows-first (at current moment) .NET 10 prototype using Vortice.Vulkan. The fi
 
 See [docs/GameEngineDesign.md](docs/GameEngineDesign.md) for the architecture and [.agents/context/CurrentState.md](.agents/context/CurrentState.md) for resumable implementation state.
 
-Platforms: Windows is supported today (Vulkan default, GDI fallback). Linux (X11/Wayland via SDL2) and macOS are planned — see [docs/LinuxSupportPlan.md](docs/LinuxSupportPlan.md). The docs index is [docs/README.md](docs/README.md).
+Platforms: Windows is supported today (Vulkan renderer). Linux (X11/Wayland via SDL2) and macOS are planned — see [docs/LinuxSupportPlan.md](docs/LinuxSupportPlan.md). The docs index is [docs/README.md](docs/README.md).
 
 ## How to run application
 
@@ -14,15 +14,13 @@ From the repository root:
 
 Run flags:
 
-- `--gdi` — GDI reference/fallback renderer.
-- `--vulkan` — batched Vulkan `IRenderer` backend (default when no backend flag is given).
-- `--2d` — top-down 2D mode (flat white squares with black borders) instead of the isometric diamond view. Combines with a backend flag; `--2d` alone uses Vulkan.
+- `--2d` — top-down 2D mode (flat white squares with black borders) instead of the isometric diamond view.
 - `--fullscreen` — start the window in borderless fullscreen.
 
 Examples:
 
 ```powershell
-dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --vulkan --2d
+dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --2d
 ```
 
 Controls:
@@ -44,13 +42,13 @@ Run the smoke tests:
 dotnet run --project tests\Engine.Tests\Engine.Tests.csproj
 ```
 
-Run the Vulkan renderer, which draws the full isometric scene through the batched `IRenderer` implementation:
+Run the sample, which draws the full isometric scene through the batched Vulkan `IRenderer` implementation:
 
 ```powershell
-dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --vulkan
+dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj
 ```
 
-Both backends render the same scene: an isometric tile map and a jumping player drawn as white diamonds with black borders. `--vulkan` runs through the batched `IRenderer` path (SPIR-V shape shaders, per-frame staging uploads, a single indexed draw) and is the default backend; `--gdi` is the GDI reference/fallback renderer. The two windows match in orientation and layout. The window opens centered at 800x600. `F11` toggles borderless fullscreen (Vulkan rebuilds its swapchain on the size change), and window drag-resizing is handled the same way. The camera clamps to the map bounds and centers the map on screen when it fits the viewport (fullscreen); in windowed mode it follows the player. `--2d` switches the projection to a flat top-down grid of white squares with black borders using the same `IRenderer` submission. Texture sampling and frame pacing remain later steps.
+The sample renders an isometric tile map and a jumping player drawn as white diamonds with black borders through the batched `IRenderer` path (SPIR-V shape shaders, per-frame staging uploads, a single indexed draw). The window opens centered at 800x600. `F11` toggles borderless fullscreen (the swapchain is rebuilt on the size change), and window drag-resizing is handled the same way. The camera clamps to the map bounds and centers the map on screen when it fits the viewport (fullscreen); in windowed mode it follows the player. `--2d` switches the projection to a flat top-down grid of white squares with black borders using the same `IRenderer` submission. Texture sampling and frame pacing remain later steps.
 
 ## What to implement next
 

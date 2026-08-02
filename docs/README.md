@@ -1,6 +1,6 @@
 # Documentation Index
 
-Windows-first .NET 10 isometric game engine (Vulkan default, GDI reference fallback; Linux/macOS planned). This file is the entry point for all documentation — read the relevant topic file instead of the whole tree to keep token use low. The repo structure map is `.agents/context/FilesMap.md`.
+Windows-first .NET 10 isometric game engine (Vulkan renderer; Linux/macOS planned). This file is the entry point for all documentation — read the relevant topic file instead of the whole tree to keep token use low. The repo structure map is `.agents/context/FilesMap.md`.
 
 ## For AI agents — recommended read order
 
@@ -19,9 +19,9 @@ Windows-first .NET 10 isometric game engine (Vulkan default, GDI reference fallb
 ## Rendering
 
 - [`RenderingDesign.md`](RenderingDesign.md) — backend-neutral rendering contracts, coordinate convention, Vulkan implementation, white/black tile style, current limitations.
-- [`FramePacingPlan.md`](FramePacingPlan.md) — diagnosis (Vulkan judder vs. GDI smoothness) and the planned frame-pacing/clean-shutdown work for roadmap item 1.
+- [`FramePacingPlan.md`](FramePacingPlan.md) — diagnosis (Vulkan judder on camera pans) and the planned frame-pacing/clean-shutdown work for roadmap item 1.
 - [`ShaderWorkflow.md`](ShaderWorkflow.md) — GLSL → glslc → committed `.spv`; when and how to recompile; NDC-Y rule.
-- [`Windowing.md`](Windowing.md) — window lifecycle and GDI rendering: `WM_SIZE`, borderless fullscreen, dirty-gated repaint, backbuffer.
+- [`Windowing.md`](Windowing.md) — window lifecycle: `WM_SIZE`, borderless fullscreen, swapchain resize.
 
 ## Platforms
 

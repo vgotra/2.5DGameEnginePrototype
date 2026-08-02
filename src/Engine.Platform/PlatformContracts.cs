@@ -48,8 +48,6 @@ public interface IGameWindow : IDisposable
     NativeWindowSurface NativeSurface { get; }
     void PumpEvents();
     void SetFullscreen(bool fullscreen);
-    /// <summary>True when the platform invalidated the client area and a dirty-gated (non-Vulkan) renderer should repaint.</summary>
-    bool ConsumeRepaint();
     void SetTitle(string title);
     void Close();
 }

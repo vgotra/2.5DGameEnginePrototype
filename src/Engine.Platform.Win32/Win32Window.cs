@@ -10,8 +10,6 @@ public sealed class Win32Window : IGameWindow
     private const int WM_QUIT = 0x0012;
     private const int WM_SYSCOMMAND = 0x0112;
     private const int WM_SIZE = 0x0005;
-    private const int WM_PAINT = 0x000F;
-    private const int WM_ERASEBKGND = 0x0014;
     private const int SC_CLOSE = 0xF060;
     private const int GWL_STYLE = -16;
     private const uint WS_VISIBLE = 0x10000000;
@@ -24,7 +22,6 @@ public sealed class Win32Window : IGameWindow
     private nint _previousProcedure;
     private bool _closed;
     private bool _fullscreen;
-    private bool _needsRepaint;
     private RECT _windowedRect;
     private long _windowedStyle;
 
@@ -32,7 +29,6 @@ public sealed class Win32Window : IGameWindow
     public NativeWindowSurface NativeSurface => new(PlatformKind.Win32, _handle, 0, _moduleHandle);
     public bool ShouldClose => _closed;
     public bool Fullscreen => _fullscreen;
-    public bool ConsumeRepaint() { bool repaint = _needsRepaint; _needsRepaint = false; return repaint; }
     public void SetTitle(string title) => SetWindowText(_handle, title);
     public void Close() { _closed = true; if (_handle != 0) DestroyWindow(_handle); }
 
@@ -103,11 +99,6 @@ public sealed class Win32Window : IGameWindow
             int height = (int)((lParam >> 16) & 0xFFFF);
             if (width > 0 && height > 0) Size = new(width, height);
         }
-        // The renderer draws the full client area outside WM_PAINT (dirty-gated).
-        // Suppress the system background erase so a resize/repaint can't wipe the
-        // last frame, and flag WM_PAINT so the loop repaints after any invalidation.
-        if (message == WM_ERASEBKGND) return 1;
-        if (message == WM_PAINT) _needsRepaint = true;
         return CallWindowProc(_previousProcedure, handle, message, wParam, lParam);
     }
 
