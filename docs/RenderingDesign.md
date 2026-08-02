@@ -31,7 +31,7 @@ In `--2d` mode the projection is cartesian instead of isometric and the same bor
 
 ## Window resize and fullscreen
 
-Window-side details (client size via `WM_SIZE`, borderless fullscreen) are in [`Windowing.md`](Windowing.md). On a size change the Vulkan loop calls `VulkanRenderer.Resize`, which recreates the swapchain, image views, and framebuffers; the command pool, command buffers, semaphores, and fence are created once and survive. `IsometricCamera.Follow` clamps the camera to the map bounds (iso clamps the `(x+y)`/`(x-y)` axes, flat mode clamps `x`/`y`), so the map is centered on screen when it fits the viewport (fullscreen) and follows the player when it is larger than the viewport (windowed).
+Window-side details (client size via `WM_SIZE`, borderless fullscreen) are in [`Windowing.md`](Windowing.md). On a size change the Vulkan loop calls `VulkanRenderer.Resize`, which recreates the swapchain, image views, and framebuffers; the command pool, command buffers, semaphores, and frame-in-flight fences are recreated together on resize. `IsometricCamera.Follow` clamps the camera to the map bounds (iso clamps the `(x+y)`/`(x-y)` axes, flat mode clamps `x`/`y`), so the map is centered on screen when it fits the viewport (fullscreen) and follows the player when it is larger than the viewport (windowed).
 
 ## Current limitations
 

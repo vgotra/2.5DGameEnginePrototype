@@ -1,6 +1,6 @@
 # Next Steps
 
-Milestone completed: backend-neutral rendering contracts, ECS storage, the Vulkan `IRenderer` draw path for the full scene, fullscreen switching with swapchain rebuild, a flat `--2d` projection mode, Vulkan as the default backend, the centered 800x600 window, map-bounds camera centering in fullscreen, and frame pacing / clean shutdown (roadmap item 1). The next actions below are in order.
+Milestone completed: backend-neutral rendering contracts, ECS storage, the Vulkan `IRenderer` draw path for the full scene, fullscreen switching with swapchain rebuild, a flat `--2d` projection mode, Vulkan as the default backend, the centered 800x600 window, map-bounds camera centering in fullscreen, and frame pacing / clean shutdown (roadmap item 1). An improvement-set recheck (2026-08-03) is also complete: ECS purge semantics (`World.Destroy` generation bump + `ISparseSet.Remove` swap-with-last), `.editorconfig`, Release build mappings for all 13 projects, pinned UTF-8 shader/instance name strings, Debug-only Vulkan validation layers, the `FrameTimer` sleep+spin residual, and doc corrections (docs D1-D10). The next actions below are in order.
 
 ## Current milestone follow-ups
 

@@ -15,7 +15,7 @@ for (int i = 0; i < args.Length - 1; i++)
 }
 
 const float jumpDuration = 0.24f;
-const float playerBorder = 2f;
+const float playerBorder = RenderExtractionSystem.BorderWidth;
 Vector2 playerSize = flatMode ? new(40, 40) : new(40, 20);
 Vector2 playerBorderSize = playerSize + new Vector2(playerBorder * 2, playerBorder * 2);
 ShapeKind playerShape = flatMode ? ShapeKind.Box : ShapeKind.Diamond;

@@ -32,7 +32,7 @@ public sealed class FrameTimer
     }
 
     /// <summary>
-    /// Call once per frame at the end of the loop. When a target frame rate is configured, sleeps
+    /// Call once per frame at the end of the loop. When a target frame rate is configured, waits
     /// until the frame deadline so presentations land on a steady cadence; otherwise returns
     /// immediately so the loop runs as fast as the CPU/GPU allow (with MAILBOX present this still
     /// delivers exactly one non-blocking present per iteration).
@@ -43,6 +43,15 @@ public sealed class FrameTimer
         long now = Stopwatch.GetTimestamp();
         double elapsed = (now - _previousTick) / (double)Stopwatch.Frequency;
         double remaining = _targetFrameSeconds - elapsed;
-        if (remaining > 0.001) Thread.Sleep((int)(remaining * 1000.0));
+        if (remaining <= 0) return;
+        // Coarse sleep on the whole-millisecond part, then spin-wait the residual so the frame
+        // deadline is actually reached; Thread.Sleep alone would drop the sub-millisecond tail.
+        int wholeMilliseconds = (int)(remaining * 1000.0);
+        if (wholeMilliseconds > 0) Thread.Sleep(wholeMilliseconds);
+        long deadline = _previousTick + (long)(_targetFrameSeconds * Stopwatch.Frequency);
+        while (Stopwatch.GetTimestamp() < deadline)
+        {
+            Thread.Yield();
+        }
     }
 }

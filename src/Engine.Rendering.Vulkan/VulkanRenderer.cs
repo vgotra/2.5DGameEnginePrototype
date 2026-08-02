@@ -46,11 +46,12 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private DescriptorSetAllocator _descriptorAllocator = null!;
     private TextureUploader _textureUploader = null!;
     private BatchRenderer _batchRenderer = null!;
+#if DEBUG
+    private VkDebugUtilsMessengerEXT _debugMessenger;
+#endif
 
     public uint SwapchainImageCount => (uint)_swapchainImages.Length;
     public uint GraphicsQueueFamily { get; private set; }
-    private nint _appName;
-    private nint _engineName;
 
     public VulkanRenderer(in NativeWindowSurface surface)
     {
@@ -59,27 +60,75 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
         VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize(LoaderName());
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
-        _appName = Marshal.StringToCoTaskMemUTF8("IsometricSandbox");
-        _engineName = Marshal.StringToCoTaskMemUTF8("2D2.5D Game Engine");
-        VkApplicationInfo application = new()
+        // App/engine/extension name strings are pinned in-place (u8 literals) so nothing needs a
+        // CoTaskMem free and nothing leaks if a creation call throws mid-construction.
+        ReadOnlySpan<byte> appName = "IsometricSandbox\0"u8;
+        ReadOnlySpan<byte> engineName = "2D2.5D Game Engine\0"u8;
+        ReadOnlySpan<byte> surfaceExtension = "VK_KHR_surface\0"u8;
+        ReadOnlySpan<byte> win32Extension = "VK_KHR_win32_surface\0"u8;
+        void* createInfoNext = null;
+#if DEBUG
+        VkDebugUtilsMessengerCreateInfoEXT messengerInfo = default;
+        ReadOnlySpan<byte> debugUtilsExtension = "VK_EXT_debug_utils\0"u8;
+        ReadOnlySpan<byte> validationLayer = "VK_LAYER_KHRONOS_validation\0"u8;
+#endif
+        fixed (byte* appPointer = appName, enginePointer = engineName, surfacePointer = surfaceExtension, win32Pointer = win32Extension)
         {
-            pApplicationName = (byte*)_appName,
-            applicationVersion = global::Vortice.Vulkan.Vulkan.VK_API_VERSION_1_0,
-            pEngineName = (byte*)_engineName,
-            engineVersion = global::Vortice.Vulkan.Vulkan.VK_API_VERSION_1_0,
-            apiVersion = global::Vortice.Vulkan.Vulkan.VK_API_VERSION_1_0
-        };
-        nint surfaceExtension = Marshal.StringToCoTaskMemUTF8("VK_KHR_surface");
-        nint win32Extension = Marshal.StringToCoTaskMemUTF8("VK_KHR_win32_surface");
-        nint* extensions = stackalloc nint[2] { surfaceExtension, win32Extension };
-        VkInstanceCreateInfo createInfo = new() { pApplicationInfo = &application, enabledExtensionCount = 2, ppEnabledExtensionNames = (byte**)extensions };
-        VkResult result = global::Vortice.Vulkan.Vulkan.vkCreateInstance(&createInfo, out _instance);
-        if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan instance creation failed: {result}");
-        Marshal.FreeCoTaskMem(surfaceExtension);
-        Marshal.FreeCoTaskMem(win32Extension);
+#if DEBUG
+            fixed (byte* debugUtilsPointer = debugUtilsExtension, layerPointer = validationLayer)
+#endif
+            {
+                nint* extensions = stackalloc nint[3];
+                uint extensionCount = 2;
+                extensions[0] = (nint)surfacePointer;
+                extensions[1] = (nint)win32Pointer;
+                byte** layerNames = stackalloc byte*[1];
+                uint layerCount = 0;
+#if DEBUG
+                if (ValidationLayerAvailable())
+                {
+                    extensions[2] = (nint)debugUtilsPointer;
+                    extensionCount = 3;
+                    layerNames[0] = layerPointer;
+                    layerCount = 1;
+                    messengerInfo.sType = VkStructureType.DebugUtilsMessengerCreateInfoEXT;
+                    messengerInfo.messageSeverity = VkDebugUtilsMessageSeverityFlagsEXT.Warning | VkDebugUtilsMessageSeverityFlagsEXT.Error;
+                    messengerInfo.messageType = VkDebugUtilsMessageTypeFlagsEXT.General | VkDebugUtilsMessageTypeFlagsEXT.Validation | VkDebugUtilsMessageTypeFlagsEXT.Performance;
+                    messengerInfo.pfnUserCallback = &ValidationCallback;
+                    createInfoNext = &messengerInfo;
+                }
+#endif
+                VkApplicationInfo application = new()
+                {
+                    pApplicationName = appPointer,
+                    applicationVersion = global::Vortice.Vulkan.Vulkan.VK_API_VERSION_1_0,
+                    pEngineName = enginePointer,
+                    engineVersion = global::Vortice.Vulkan.Vulkan.VK_API_VERSION_1_0,
+                    apiVersion = global::Vortice.Vulkan.Vulkan.VK_API_VERSION_1_0
+                };
+                VkInstanceCreateInfo createInfo = new()
+                {
+                    pApplicationInfo = &application,
+                    enabledExtensionCount = extensionCount,
+                    ppEnabledExtensionNames = (byte**)extensions,
+                    enabledLayerCount = layerCount,
+                    ppEnabledLayerNames = layerNames,
+                    pNext = createInfoNext
+                };
+                VkResult instanceResult = global::Vortice.Vulkan.Vulkan.vkCreateInstance(&createInfo, out _instance);
+                if (instanceResult != VkResult.Success) throw new InvalidOperationException($"Vulkan instance creation failed: {instanceResult}");
+            }
+        }
         _instanceApi = global::Vortice.Vulkan.Vulkan.GetApi(_instance);
+#if DEBUG
+        if (createInfoNext != null)
+        {
+            VkResult messengerResult = _instanceApi.vkCreateDebugUtilsMessengerEXT(&messengerInfo, out _debugMessenger);
+            if (messengerResult != VkResult.Success) throw new InvalidOperationException($"Debug messenger creation failed: {messengerResult}");
+        }
+#endif
         VkWin32SurfaceCreateInfoKHR surfaceInfo = new() { hinstance = surface.ModuleHandle, hwnd = surface.WindowHandle };
-        result = _instanceApi.vkCreateWin32SurfaceKHR(&surfaceInfo, out _surface);
+        VkResult result = _instanceApi.vkCreateWin32SurfaceKHR(&surfaceInfo, out _surface);
         if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan surface creation failed: {result}");
         Span<VkPhysicalDevice> devices = stackalloc VkPhysicalDevice[8];
         uint deviceCount = (uint)devices.Length;
@@ -98,12 +147,14 @@ public sealed unsafe class VulkanRenderer : IRenderer
         }
         float priority = 1f;
         VkDeviceQueueCreateInfo queueInfo = new() { queueFamilyIndex = GraphicsQueueFamily, queueCount = 1, pQueuePriorities = &priority };
-        nint swapchainExtension = Marshal.StringToCoTaskMemUTF8("VK_KHR_swapchain");
-        nint* deviceExtensions = stackalloc nint[1] { swapchainExtension };
-        VkDeviceCreateInfo deviceInfo = new() { queueCreateInfoCount = 1, pQueueCreateInfos = &queueInfo, enabledExtensionCount = 1, ppEnabledExtensionNames = (byte**)deviceExtensions };
-        result = _instanceApi.vkCreateDevice(_physicalDevice, &deviceInfo, out _device);
-        Marshal.FreeCoTaskMem(swapchainExtension);
-        if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan device creation failed: {result}");
+        ReadOnlySpan<byte> swapchainExtension = "VK_KHR_swapchain\0"u8;
+        fixed (byte* swapchainPointer = swapchainExtension)
+        {
+            nint* deviceExtensions = stackalloc nint[1] { (nint)swapchainPointer };
+            VkDeviceCreateInfo deviceInfo = new() { queueCreateInfoCount = 1, pQueueCreateInfos = &queueInfo, enabledExtensionCount = 1, ppEnabledExtensionNames = (byte**)deviceExtensions };
+            result = _instanceApi.vkCreateDevice(_physicalDevice, &deviceInfo, out _device);
+            if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan device creation failed: {result}");
+        }
         _deviceApi = global::Vortice.Vulkan.Vulkan.GetApi(_instance, _device);
         _deviceApi.vkGetDeviceQueue(GraphicsQueueFamily, 0, out _graphicsQueue);
         CreateSwapchain(800, 600);
@@ -446,9 +497,54 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (_swapchain.IsNotNull && _device.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
         if (_device.IsNotNull) _deviceApi.vkDestroyDevice();
         if (_surface.IsNotNull) _instanceApi.vkDestroySurfaceKHR(_surface);
+#if DEBUG
+        if (_debugMessenger.IsNotNull) _instanceApi.vkDestroyDebugUtilsMessengerEXT(_debugMessenger);
+#endif
         if (_instance.IsNotNull) _instanceApi.vkDestroyInstance();
-        Marshal.FreeCoTaskMem(_appName);
-        Marshal.FreeCoTaskMem(_engineName);
         global::Vortice.Vulkan.Vulkan.vkShutdown();
     }
+
+#if DEBUG
+    private static bool ValidationLayerAvailable()
+    {
+        uint count = 0;
+        if (global::Vortice.Vulkan.Vulkan.vkEnumerateInstanceLayerProperties(&count, null) != VkResult.Success || count == 0) return false;
+        VkLayerProperties[] properties = new VkLayerProperties[count];
+        fixed (VkLayerProperties* propertiesPointer = properties)
+        {
+            if (global::Vortice.Vulkan.Vulkan.vkEnumerateInstanceLayerProperties(&count, propertiesPointer) != VkResult.Success) return false;
+            for (int i = 0; i < properties.Length; i++)
+            {
+                byte* name = propertiesPointer[i].layerName;
+                if (NameEquals(name, "VK_LAYER_KHRONOS_validation")) return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool NameEquals(byte* name, string expected)
+    {
+        int i = 0;
+        foreach (char c in expected)
+        {
+            if (name[i] != (byte)c) return false;
+            i++;
+        }
+        return name[i] == 0;
+    }
+
+    [UnmanagedCallersOnly]
+    private static uint ValidationCallback(
+        VkDebugUtilsMessageSeverityFlagsEXT severity,
+        VkDebugUtilsMessageTypeFlagsEXT type,
+        VkDebugUtilsMessengerCallbackDataEXT* data,
+        void* userData)
+    {
+        string message = data == null || data->pMessage == null
+            ? "<null>"
+            : Marshal.PtrToStringUTF8((nint)data->pMessage) ?? "<unreadable>";
+        System.Diagnostics.Debug.WriteLine("[Vulkan validation] " + message);
+        return 0;
+    }
+#endif
 }

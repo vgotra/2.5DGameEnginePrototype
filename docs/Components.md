@@ -30,13 +30,11 @@ Used by `Engine.Rendering.Vulkan` for Vulkan types, function loading, instance/d
 
 ## MVP components
 
-- `TileMap` — compact tile storage, walkability, tile centers, and occupancy checks.
-- `WorldPosition` — continuous player world position.
-- `Movement` — velocity and movement speed data contract.
-- `TileCollider` — player collision radius.
-- `SpriteVisual` — visual color, size, and sort data contract.
-- `PlayerTag` — identifies the player entity.
-- `IsometricCamera` — follows the player and converts world coordinates to screen coordinates.
+- `TileMap` — deterministic tile map: compact tile storage, walkability, tile centers, and occupancy checks.
+- `MovementSystem` — continuous player movement with collision and jump.
+- `IsometricCamera` — follows the player and clamps to the map bounds; converts world coordinates to screen coordinates (isometric or cartesian `--2d`).
+- `FrameTimer` — high-resolution loop timing and the optional `--cap <fps>` frame pacing.
+- `RenderExtractionSystem` — converts the simulation state into `SpritePacket`s for the renderer.
 - `VulkanRenderer` — Vulkan `IRenderer` implementation: swapchain, render pass, framebuffers, command buffers, synchronization.
-- `BatchRenderer` — converts `SpritePacket`s into batched diamond geometry with per-frame staging uploads and one indexed draw.
+- `BatchRenderer` — converts `SpritePacket`s into batched geometry with per-frame staging uploads and one indexed draw.
 - shape shaders (`shape.vert.glsl`/`shape.frag.glsl`) — SPIR-V compiled with glslc; the vertex shader uses the NDC Y convention directly (no negation).

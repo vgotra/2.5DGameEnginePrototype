@@ -58,89 +58,92 @@ public unsafe struct VulkanPipeline : IDisposable
         VkPipelineLayout layout,
         VkPipeline* pipeline)
     {
-        VkPipelineShaderStageCreateInfo vertStage = new()
+        // "main\0" pinned in-place: no per-call CoTaskMem allocation, so nothing leaks if
+        // vkCreateGraphicsPipelines throws mid-construction.
+        ReadOnlySpan<byte> entryPoint = "main\0"u8;
+        fixed (byte* entryPointPointer = entryPoint)
         {
-            stage = VkShaderStageFlags.Vertex,
-            module = vertModule,
-            pName = (byte*)Marshal.StringToCoTaskMemUTF8("main")
-        };
-
-        VkPipelineShaderStageCreateInfo fragStage = new()
-        {
-            stage = VkShaderStageFlags.Fragment,
-            module = fragModule,
-            pName = (byte*)Marshal.StringToCoTaskMemUTF8("main")
-        };
-
-        VkPipelineShaderStageCreateInfo[] stages = { vertStage, fragStage };
-
-        VkVertexInputBindingDescription binding = ShapePipelineDescription.Binding;
-        VkVertexInputAttributeDescription[] attributes = ShapePipelineDescription.Attributes;
-
-        VkPipelineVertexInputStateCreateInfo vertexInput = new()
-        {
-            vertexBindingDescriptionCount = 1,
-            pVertexBindingDescriptions = &binding,
-            vertexAttributeDescriptionCount = (uint)attributes.Length,
-            pVertexAttributeDescriptions = (VkVertexInputAttributeDescription*)Unsafe.AsPointer(ref attributes[0])
-        };
-
-        VkPipelineInputAssemblyStateCreateInfo inputAssembly = ShapePipelineDescription.InputAssembly;
-
-        VkPipelineViewportStateCreateInfo viewport = new()
-        {
-            viewportCount = 1,
-            scissorCount = 1
-        };
-
-        VkPipelineRasterizationStateCreateInfo rasterization = ShapePipelineDescription.Rasterization;
-
-        VkPipelineMultisampleStateCreateInfo multisample = new()
-        {
-            rasterizationSamples = VkSampleCountFlags.Count1
-        };
-
-        VkPipelineColorBlendAttachmentState blendAttachment = PipelineConfiguration.AlphaBlendAttachment;
-
-        VkPipelineColorBlendStateCreateInfo colorBlend = new()
-        {
-            logicOpEnable = false,
-            attachmentCount = 1,
-            pAttachments = &blendAttachment
-        };
-
-        VkDynamicState[] dynamicStates = { VkDynamicState.Viewport, VkDynamicState.Scissor };
-        fixed (VkDynamicState* dynStates = dynamicStates)
-        {
-            VkPipelineDynamicStateCreateInfo dynamicState = new()
+            VkPipelineShaderStageCreateInfo vertStage = new()
             {
-                dynamicStateCount = (uint)dynamicStates.Length,
-                pDynamicStates = dynStates
+                stage = VkShaderStageFlags.Vertex,
+                module = vertModule,
+                pName = entryPointPointer
             };
 
-            VkGraphicsPipelineCreateInfo pipelineInfo = new()
+            VkPipelineShaderStageCreateInfo fragStage = new()
             {
-                stageCount = 2,
-                pStages = (VkPipelineShaderStageCreateInfo*)Unsafe.AsPointer(ref stages[0]),
-                pVertexInputState = &vertexInput,
-                pInputAssemblyState = &inputAssembly,
-                pViewportState = &viewport,
-                pRasterizationState = &rasterization,
-                pMultisampleState = &multisample,
-                pColorBlendState = &colorBlend,
-                pDynamicState = &dynamicState,
-                layout = layout,
-                renderPass = renderPass,
-                subpass = 0
+                stage = VkShaderStageFlags.Fragment,
+                module = fragModule,
+                pName = entryPointPointer
             };
 
-            VkResult result = api.vkCreateGraphicsPipelines(VkPipelineCache.Null, 1, &pipelineInfo, null, pipeline);
-            if (result != VkResult.Success)
-                throw new InvalidOperationException($"Graphics pipeline creation failed: {result}");
+            VkPipelineShaderStageCreateInfo[] stages = { vertStage, fragStage };
+
+            VkVertexInputBindingDescription binding = ShapePipelineDescription.Binding;
+            VkVertexInputAttributeDescription[] attributes = ShapePipelineDescription.Attributes;
+
+            VkPipelineVertexInputStateCreateInfo vertexInput = new()
+            {
+                vertexBindingDescriptionCount = 1,
+                pVertexBindingDescriptions = &binding,
+                vertexAttributeDescriptionCount = (uint)attributes.Length,
+                pVertexAttributeDescriptions = (VkVertexInputAttributeDescription*)Unsafe.AsPointer(ref attributes[0])
+            };
+
+            VkPipelineInputAssemblyStateCreateInfo inputAssembly = ShapePipelineDescription.InputAssembly;
+
+            VkPipelineViewportStateCreateInfo viewport = new()
+            {
+                viewportCount = 1,
+                scissorCount = 1
+            };
+
+            VkPipelineRasterizationStateCreateInfo rasterization = ShapePipelineDescription.Rasterization;
+
+            VkPipelineMultisampleStateCreateInfo multisample = new()
+            {
+                rasterizationSamples = VkSampleCountFlags.Count1
+            };
+
+            VkPipelineColorBlendAttachmentState blendAttachment = PipelineConfiguration.AlphaBlendAttachment;
+
+            VkPipelineColorBlendStateCreateInfo colorBlend = new()
+            {
+                logicOpEnable = false,
+                attachmentCount = 1,
+                pAttachments = &blendAttachment
+            };
+
+            VkDynamicState[] dynamicStates = { VkDynamicState.Viewport, VkDynamicState.Scissor };
+            fixed (VkDynamicState* dynStates = dynamicStates)
+            {
+                VkPipelineDynamicStateCreateInfo dynamicState = new()
+                {
+                    dynamicStateCount = (uint)dynamicStates.Length,
+                    pDynamicStates = dynStates
+                };
+
+                VkGraphicsPipelineCreateInfo pipelineInfo = new()
+                {
+                    stageCount = 2,
+                    pStages = (VkPipelineShaderStageCreateInfo*)Unsafe.AsPointer(ref stages[0]),
+                    pVertexInputState = &vertexInput,
+                    pInputAssemblyState = &inputAssembly,
+                    pViewportState = &viewport,
+                    pRasterizationState = &rasterization,
+                    pMultisampleState = &multisample,
+                    pColorBlendState = &colorBlend,
+                    pDynamicState = &dynamicState,
+                    layout = layout,
+                    renderPass = renderPass,
+                    subpass = 0
+                };
+
+                VkResult result = api.vkCreateGraphicsPipelines(VkPipelineCache.Null, 1, &pipelineInfo, null, pipeline);
+                if (result != VkResult.Success)
+                    throw new InvalidOperationException($"Graphics pipeline creation failed: {result}");
+            }
         }
-
-        Marshal.FreeCoTaskMem((nint)vertStage.pName);
-        Marshal.FreeCoTaskMem((nint)fragStage.pName);
     }
 
     public void Dispose()

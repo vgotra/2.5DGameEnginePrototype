@@ -8,10 +8,12 @@ The sample runs a 60 Hz fixed-step simulation (`GameClock.FixedStep = 1/60`, `sr
 
 ## Root causes
 
-1. **FIFO vsync on the swapchain.** `VulkanRenderer.CreateSwapchain` picks `presentMode = modes[0]` (`src/Engine.Rendering.Vulkan/VulkanRenderer.cs:275`). On Windows drivers the first present mode is `VK_PRESENT_MODE_FIFO_KHR` (vsync on), so `vkQueuePresentKHR` is gated to vblank boundaries.
-2. **Double buffering with a single in-flight fence.** `minImageCount = max(capabilities.minImageCount, 2)` (`VulkanRenderer.cs:261`) and `BeginFrame` waits the one `_inFlight` fence *before* acquiring (`VulkanRenderer.cs:116-119`). CPU and GPU never overlap, and the pipeline has no extra image to absorb timing jitter.
-3. **Per-frame staging upload + `vkQueueWaitIdle` before present.** `BatchRenderer.EndFrame` copies the whole vertex/index set through a staging buffer, submits, then `vkQueueWaitIdle` (`src/Engine.Rendering.Vulkan/BatchRenderer.cs:214-215`). The CPU drains the entire queue before presenting, so per-frame cost is `upload + draw -> drain -> vblank wait -> Thread.Sleep(2)`; any jitter lands on the visible frame as a skipped/delayed beat.
-4. **Coarse delta-time source.** The sample loop uses `Environment.TickCount64` (≈15.6 ms granularity on Windows) for dt (`samples/IsometricSandbox/Program.cs:51-52`). The `GameClock` accumulator absorbs the jitter into 0-2 fixed steps, but that jitter is then gated by the vsync+drain, compounding the irregularity.
+The root causes below describe the **original** (pre-fix) implementation; the line numbers they referenced moved during the rework and are omitted.
+
+1. **FIFO vsync on the swapchain.** The original `VulkanRenderer.CreateSwapchain` picked `presentMode = modes[0]`. On Windows drivers the first present mode is `VK_PRESENT_MODE_FIFO_KHR` (vsync on), so `vkQueuePresentKHR` is gated to vblank boundaries.
+2. **Double buffering with a single in-flight fence.** The original swapchain used `minImageCount = max(capabilities.minImageCount, 2)` and `BeginFrame` waited the one `_inFlight` fence *before* acquiring. CPU and GPU never overlap, and the pipeline has no extra image to absorb timing jitter.
+3. **Per-frame staging upload + `vkQueueWaitIdle` before present.** The original `BatchRenderer.EndFrame` copied the whole vertex/index set through a staging buffer, submitted, then called `vkQueueWaitIdle`. The CPU drained the entire queue before presenting, so per-frame cost was `upload + draw -> drain -> vblank wait -> Thread.Sleep(2)`; any jitter landed on the visible frame as a skipped/delayed beat.
+4. **Coarse delta-time source.** The original sample loop used `Environment.TickCount64` (≈15.6 ms granularity on Windows) for dt. The `GameClock` accumulator absorbs the jitter into 0-2 fixed steps, but that jitter is then gated by the vsync+drain, compounding the irregularity.
 
 ## Planned approach
 

@@ -6,7 +6,7 @@ The engine is a Windows-first .NET 10 runtime for 2D/2.5D isometric games. It us
 
 ## Frame lifecycle
 
-Input sampling -> fixed-step simulation -> physics -> deferred ECS changes -> render extraction -> asset uploads -> Vulkan submission -> audio submission -> presentation. Each phase has an explicit synchronization boundary. The fixed simulation step is 60 Hz with bounded catch-up. Presentation pacing and vsync policy are a planned phase (see [`FramePacingPlan.md`](FramePacingPlan.md)): the current Vulkan path is vsync-gated and drains the queue per frame, which makes delivery visibly uneven on camera pans.
+Input sampling -> fixed-step simulation -> physics -> deferred ECS changes -> render extraction -> asset uploads -> Vulkan submission -> audio submission -> presentation. Each phase has an explicit synchronization boundary. The fixed simulation step is 60 Hz with bounded catch-up. Frame delivery uses `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering, a 3-slot frame-in-flight pool, and per-swapchain-image fences, so the CPU overlaps frames instead of draining the queue (details in [`FramePacingPlan.md`](FramePacingPlan.md)). The loop is unpaced by default with an optional `--cap <fps>` frame cap.
 
 ## Ownership and performance
 

@@ -6,5 +6,6 @@
     <ProjectReference Include="..\..\src\Engine.Ecs\Engine.Ecs.csproj" />
     <ProjectReference Include="..\..\samples\IsometricSandbox\IsometricSandbox.csproj" />
     <ProjectReference Include="..\..\src\Engine.Rendering\Engine.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\Engine.Threading\Engine.Threading.csproj" />
   </ItemGroup>
 </Project>

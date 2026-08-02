@@ -2,6 +2,7 @@ using System.Numerics;
 using Engine.Core;
 using Engine.Ecs;
 using Engine.Mathematics;
+using Engine.Threading;
 using IsometricSandbox.Game;
 using Engine.Rendering;
 
@@ -17,6 +18,12 @@ Assert(world.IsAlive(entity), "entity alive");
 Assert(world.Storage<TestComponent>().TryGet(entity, out TestComponent value) && value.Value == 42, "component storage");
 world.Destroy(entity);
 Assert(!world.IsAlive(entity), "stale entity rejected");
+Assert(world.Storage<TestComponent>().Count == 0, "destroy purges component storage");
+EntityId recycled = world.Create();
+Assert(recycled.Index == entity.Index, "entity index recycled");
+world.Storage<TestComponent>().Add(recycled, new TestComponent(7));
+Assert(world.Storage<TestComponent>().TryGet(recycled, out TestComponent reread) && reread.Value == 7, "component visible after index recycle");
+Assert(!world.Storage<TestComponent>().TryGet(entity, out _), "stale generation rejected after recycle");
 TileMap map = new();
 Assert(map.IsInside(1, 1) && !map.IsInside(-1, 1), "tile bounds");
 Assert(map.IsWalkable(0, 0), "open map");
@@ -29,8 +36,6 @@ Assert(camera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(400, 300), 
 IsometricCamera fullscreenCamera = new(new Vector2(1920, 1080));
 fullscreenCamera.Follow(new Vector2(2, 2), map);
 Assert(fullscreenCamera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(960, 540), "iso map centered in fullscreen viewport");
-ShapeVertex[] geometry = new ShapeVertex[6];
-Assert(GeneratedGeometry.AppendDiamond(geometry, Vector2.Zero, 64, 32, Vector4.One) == 6, "diamond geometry");
 SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2];
 Assert(RenderExtractionSystem.ExtractMapSprites(map, camera, sprites) == map.Width * map.Height * 2, "map sprite extraction");
 Assert(sprites[0].Shape == ShapeKind.Diamond && sprites[1].Shape == ShapeKind.Diamond, "iso sprites are diamonds");
@@ -44,6 +49,13 @@ Assert(fullscreenFlat.WorldToScreen(new Vector2(10, 10), map).X == 960, "flat ma
 SpritePacket[] flatSprites = new SpritePacket[map.Width * map.Height * 2];
 Assert(RenderExtractionSystem.ExtractMapSprites(map, flatCamera, flatSprites) == map.Width * map.Height * 2, "flat map sprite extraction");
 Assert(flatSprites[0].Shape == ShapeKind.Box && flatSprites[1].Shape == ShapeKind.Box && flatSprites[1].Size == new Vector2(map.TileWidth, map.TileWidth), "flat sprites are boxes");
+int completed = 0;
+using (JobSystem jobs = new(4))
+{
+    for (int i = 0; i < 100; i++) _ = jobs.Schedule(() => Interlocked.Increment(ref completed));
+    await jobs.DrainAsync();
+}
+Assert(completed == 100, "job system drains all scheduled jobs");
 Console.WriteLine("Smoke tests passed");
 
 static void Assert(bool condition, string name)

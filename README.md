@@ -16,6 +16,7 @@ Run flags:
 
 - `--2d` — top-down 2D mode (flat white squares with black borders) instead of the isometric diamond view.
 - `--fullscreen` — start the window in borderless fullscreen.
+- `--cap <fps>` — cap the frame rate (e.g. `--cap 60`); default is unpaced.
 
 Examples:
 
@@ -48,7 +49,7 @@ Run the sample, which draws the full isometric scene through the batched Vulkan 
 dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj
 ```
 
-The sample renders an isometric tile map and a jumping player drawn as white diamonds with black borders through the batched `IRenderer` path (SPIR-V shape shaders, per-frame staging uploads, a single indexed draw). The window opens centered at 800x600. `F11` toggles borderless fullscreen (the swapchain is rebuilt on the size change), and window drag-resizing is handled the same way. The camera clamps to the map bounds and centers the map on screen when it fits the viewport (fullscreen); in windowed mode it follows the player. `--2d` switches the projection to a flat top-down grid of white squares with black borders using the same `IRenderer` submission. Texture sampling and frame pacing remain later steps.
+The sample renders an isometric tile map and a jumping player drawn as white diamonds with black borders through the batched `IRenderer` path (SPIR-V shape shaders, per-frame staging uploads, a single indexed draw). The window opens centered at 800x600. `F11` toggles borderless fullscreen (the swapchain is rebuilt on the size change), and window drag-resizing is handled the same way. The camera clamps to the map bounds and centers the map on screen when it fits the viewport (fullscreen); in windowed mode it follows the player. `--2d` switches the projection to a flat top-down grid of white squares with black borders using the same `IRenderer` submission. Frame pacing is implemented (`--cap <fps>`, Mailbox/triple buffering); texture sampling remains a later step.
 
 ## What to implement next
 

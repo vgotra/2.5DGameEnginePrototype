@@ -21,6 +21,7 @@ public sealed class World
         if (!IsAlive(entity)) return;
         _generations[(int)entity.Index]++;
         _free.Push(entity.Index);
+        foreach (object store in _stores.Values) ((ISparseSet)store).Remove(entity);
     }
 
     public bool IsAlive(EntityId entity)

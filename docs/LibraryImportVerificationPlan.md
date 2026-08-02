@@ -4,7 +4,7 @@ Optional, non-blocking verification for roadmap item #14 (`[DllImport]` → sour
 
 ## Purpose and reality check
 
-The migration's payoff is **non-functional**: AOT/trim-readiness and build-time marshalling validation. It is **not** a runtime speedup. The Win32 backend P/Invokes ~10–15 times per frame (the `PeekMessageA` drain loop, 7× `GetAsyncKeyState`, `IsWindow`, plus close/destroy on exit). Marshalling overhead per blittable call is low-nanoseconds; the four string-bearing APIs (`CreateWindowExW`/`SetWindowTextW`/`GetMonitorInfoW`/`GetModuleHandleW`) are ~50–100 ns but fire only on startup/title-set/fullscreen-toggle, not per frame. Total per-frame P/Invoke cost is ~1–5 µs. `[LibraryImport]` saves a fraction of that — ~0.5–2 µs per frame — versus `vkQueueSubmit`/`vkAcquireNextImageKHR` measuring in the hundreds of µs.
+The migration's payoff is **non-functional**: AOT/trim-readiness and build-time marshalling validation. It is **not** a runtime speedup. The Win32 backend P/Invokes ~12–20 times per frame (the `PeekMessageA` drain loop, 11× `GetAsyncKeyState`, `IsWindow`, plus close/destroy on exit). Marshalling overhead per blittable call is low-nanoseconds; the four string-bearing APIs (`CreateWindowExW`/`SetWindowTextW`/`GetMonitorInfoW`/`GetModuleHandleW`) are ~50–100 ns but fire only on startup/title-set/fullscreen-toggle, not per frame. Total per-frame P/Invoke cost is ~1–5 µs. `[LibraryImport]` saves a fraction of that — ~0.5–2 µs per frame — versus `vkQueueSubmit`/`vkAcquireNextImageKHR` measuring in the hundreds of µs.
 
 **Expected outcome for every tier**: "no measurable runtime regression; AOT/trim claim holds." Documenting that null result is itself the verification product.
 
@@ -12,7 +12,7 @@ The migration's payoff is **non-functional**: AOT/trim-readiness and build-time 
 
 **Scope**: documents no-runtime-regression baseline. No code/repo changes.
 **Prereq**: `dotnet tool install -g dotnet-counters dotnet-trace` (one-time, system-level install to `%USERPROFILE%\.dotnet\tools`). Approved on execution.
-**归属**: roadmap item #14 follow-up.
+**Ownership**: roadmap item #14 follow-up.
 
 Steps:
 1. Build two binaries for comparison:
@@ -30,7 +30,7 @@ Steps:
 
 **Scope**: proves the migration's AOT/trim claim — the actual non-functional payoff. The real point of item #14.
 **Prereq**: none (uses shipped .NET 10 SDK).
-**归属**: roadmap item #14 follow-up.
+**Ownership**: roadmap item #14 follow-up.
 
 Steps:
 1. Verify csproj readiness. `Engine.Platform.Win32.csproj` may need `<IsAotCompatible>true</IsAotCompatible>`; the sample needs `<PublishAot>true</PublishAot>` (or pass `/p:PublishAot=true` on the CLI). Read first; do not assume.
@@ -46,7 +46,7 @@ Steps:
 
 **Scope**: quantifies per-call marshalling overhead. Overkill for one migration; really the scope of roadmap item #5.
 **Prereq**: add `BenchmarkDotNet` to `Directory.Packages.props`; new `tests/Engine.Benchmarks` project.
-**归属**: roadmap item #5 (forward-linked here for completeness).
+**Ownership**: roadmap item #5 (forward-linked here for completeness).
 
 Steps:
 1. `dotnet new classlib -o tests/Engine.Benchmarks` (or console app — BenchmarkDotNet needs a runnable project).
@@ -62,7 +62,7 @@ Steps:
 
 **Scope**: lightweight in-engine perf instrumentation. Properly the scope of roadmap item #5.
 **Prereq**: code changes to `FrameTimer` and `Program.cs`.
-**归属**: roadmap item #5 (forward-linked here for completeness).
+**Ownership**: roadmap item #5 (forward-linked here for completeness).
 
 Steps:
 1. Extend `Engine.Core.FrameTimer` with rolling aggregates: avg, p99, min, max over a rolling window (e.g., 120 frames). Print to console every N frames or when a `--profile` flag is set.
@@ -74,7 +74,7 @@ Steps:
 
 ## Verification matrix
 
-| Tier | Prereq | Code change | Expected result |归属 |
+| Tier | Prereq | Code change | Expected result | Ownership |
 |------|--------|-------------|-----------------|---------|
 | A — External profiling | `dotnet tool install -g dotnet-counters dotnet-trace` | None | Pre/post within ±5%; no new hot path | #14 |
 | B — AOT publish | None (uses .NET 10 SDK) | Possibly 1 csproj line | Clean publish + clean run/exit | #14 |
