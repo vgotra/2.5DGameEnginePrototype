@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Engine.Platform;
 using Engine.Rendering;
 using Vortice.Vulkan;
 
@@ -41,9 +42,12 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private nint _appName;
     private nint _engineName;
 
-    public VulkanRenderer(nint windowHandle, nint moduleHandle)
+    public VulkanRenderer(in NativeWindowSurface surface)
     {
-        VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize("vulkan-1.dll");
+        if (surface.Kind != PlatformKind.Win32)
+            throw new PlatformNotSupportedException($"Vulkan surface kind '{surface.Kind}' is not implemented yet (see docs/LinuxSupportPlan.md).");
+
+        VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize(LoaderName());
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
         _appName = Marshal.StringToCoTaskMemUTF8("IsometricSandbox");
         _engineName = Marshal.StringToCoTaskMemUTF8("2D2.5D Game Engine");
@@ -64,7 +68,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         Marshal.FreeCoTaskMem(surfaceExtension);
         Marshal.FreeCoTaskMem(win32Extension);
         _instanceApi = global::Vortice.Vulkan.Vulkan.GetApi(_instance);
-        VkWin32SurfaceCreateInfoKHR surfaceInfo = new() { hinstance = moduleHandle, hwnd = windowHandle };
+        VkWin32SurfaceCreateInfoKHR surfaceInfo = new() { hinstance = surface.ModuleHandle, hwnd = surface.WindowHandle };
         result = _instanceApi.vkCreateWin32SurfaceKHR(&surfaceInfo, out _surface);
         if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan surface creation failed: {result}");
         Span<VkPhysicalDevice> devices = stackalloc VkPhysicalDevice[8];
@@ -168,6 +172,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
     }
 
     private static string ShaderPath(string name) => Path.Combine(AppContext.BaseDirectory, "shaders", name);
+
+    private static string LoaderName() => OperatingSystem.IsWindows() ? "vulkan-1.dll" : "libvulkan.so.1";
 
     private VkRenderPass CreateRenderPass()
     {

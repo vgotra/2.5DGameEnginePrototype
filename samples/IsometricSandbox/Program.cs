@@ -1,7 +1,7 @@
 using System.Numerics;
 using Engine.Core;
 using Engine.Platform;
-using Engine.Platform.Win32;
+using Engine.Platform.Desktop;
 using Engine.Rendering;
 using Engine.Rendering.Vulkan;
 using IsometricSandbox.Game;
@@ -22,9 +22,10 @@ Vector4 white = new(1, 1, 1, 1);
 
 if (useVulkan)
 {
-    using Win32Window vulkanWindow = new(800, 600, "Isometric Sandbox Vulkan");
-    Win32Input vulkanInput = new(vulkanWindow.Handle);
-    using VulkanRenderer renderer = new(vulkanWindow.Handle, vulkanWindow.ModuleHandle);
+    using PlatformSession vulkanSession = GamePlatform.CreateWindow("Isometric Sandbox Vulkan", 800, 600);
+    IGameWindow vulkanWindow = vulkanSession.Window;
+    IInputState vulkanInput = vulkanSession.Input;
+    using VulkanRenderer renderer = new(vulkanWindow.NativeSurface);
     TileMap vulkanMap = new();
     Vector2 vulkanPosition = vulkanMap.TileToWorld(2, 2);
     Vector2 vulkanFacing = new(0, 1), vulkanJumpStart = vulkanPosition, vulkanJumpTarget = vulkanPosition;
@@ -80,8 +81,9 @@ if (useVulkan)
 }
 else
 {
-    using Win32Window window = new(800, 600, "Isometric Sandbox");
-    Win32Input input = new(window.Handle);
+    using PlatformSession session = GamePlatform.CreateWindow("Isometric Sandbox", 800, 600);
+    IGameWindow window = session.Window;
+    IInputState input = session.Input;
     using Win32TileRenderer tileRenderer = new(window);
     TileMap map = new();
     Vector2 position = map.TileToWorld(2, 2);

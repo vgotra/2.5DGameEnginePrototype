@@ -12,13 +12,13 @@ Rendering is split into backend-neutral extraction and a Vortice.Vulkan implemen
 
 ## Coordinate convention
 
-`IsometricMath.WorldToScreen` produces y-down screen coordinates (y = 0 is the top of the window). The SPIR-V vertex shader converts those to NDC and stores `gl_Position` with `ndc.y` unchanged: Vulkan NDC y = -1 already maps to the top of the framebuffer, so no negation is applied. A previous revision negated Y, which mirrored the image; the negation was removed from `shape.vert.glsl` and verified in the deployed SPIR-V (no `OpFNegate`).
+`IsometricMath.WorldToScreen` produces y-down screen coordinates (y = 0 is the top of the window). The SPIR-V vertex shader converts those to NDC and stores `gl_Position` with `ndc.y` unchanged: Vulkan NDC y = -1 already maps to the top of the framebuffer, so no negation is applied.
 
 ## Vulkan implementation
 
 - Requires the latest Vulkan SDK installed (runtime components provide `vulkan-1.dll`; `glslc` from the SDK's `Bin` compiles the shaders).
 - Shaders are GLSL compiled with glslc into SPIR-V under `assets/shaders/`; `Engine.Rendering.Vulkan.csproj` copies `*.spv` to `shaders/` in the output directory.
-- `VulkanRenderer` implements `IRenderer`: swapchain, render pass, per-swapchain framebuffers, graphics pipeline, per-frame command buffers, and acquire/present synchronization.
+- `VulkanRenderer` implements `IRenderer` and consumes a platform-neutral `NativeWindowSurface`: it selects the Vulkan loader name per OS (`vulkan-1.dll` / `libvulkan.so.1`) and creates the instance surface extension for the surface kind (Win32 wired today; X11/Wayland/macOS throw `PlatformNotSupportedException` until implemented — see `docs/LinuxSupportPlan.md`). It owns the swapchain, render pass, per-swapchain framebuffers, graphics pipeline, per-frame command buffers, and acquire/present synchronization.
 - `BatchRenderer` accumulates submitted packets into `ShapeVertex`/index lists and uploads them once per frame through a staging buffer with `vkQueueWaitIdle`, then issues a single indexed draw.
 - `VulkanPipeline` owns the graphics pipeline and layout; the viewport size is passed as an 8-byte push constant (`vec2`).
 - `VulkanBuffer`, `DescriptorSetAllocator`, and `TextureUploader` provide buffer, descriptor, and texture infrastructure ahead of the texture path.
@@ -34,7 +34,7 @@ In `--2d` mode the projection is cartesian instead of isometric and the same bor
 
 ## Window resize and fullscreen
 
-`Win32Window` reports its client size through `WM_SIZE`, which the sample polls each frame. Both loops detect a size change and call `camera.Resize`; the Vulkan loop also calls `VulkanRenderer.Resize`, which recreates the swapchain, image views, and framebuffers (the command pool, command buffers, semaphores, and fence are created once and survive). `F11` toggles borderless fullscreen via `Win32Window.SetFullscreen`, which switches the window style to `WS_POPUP` sized to the monitor bounds and restores the saved rect on exit. The GDI renderer adapts automatically through `GetClientRect`. The window opens centered on the primary screen at 800x600. `IsometricCamera.Follow` clamps the camera to the map bounds (iso clamps the `(x+y)`/`(x-y)` axes, flat mode clamps `x`/`y`), so the map is centered on screen when it fits the viewport (fullscreen) and follows the player when it is larger than the viewport (windowed).
+Window-side details (client size via `WM_SIZE`, borderless fullscreen, dirty-gated GDI repaint) are in [`Windowing.md`](Windowing.md). On a size change the Vulkan loop calls `VulkanRenderer.Resize`, which recreates the swapchain, image views, and framebuffers; the command pool, command buffers, semaphores, and fence are created once and survive. `IsometricCamera.Follow` clamps the camera to the map bounds (iso clamps the `(x+y)`/`(x-y)` axes, flat mode clamps `x`/`y`), so the map is centered on screen when it fits the viewport (fullscreen) and follows the player when it is larger than the viewport (windowed).
 
 ## Current limitations
 

@@ -8,10 +8,11 @@
 | `Engine.Mathematics` | Isometric world/screen conversion and vector math helpers. |
 | `Engine.Ecs` | Generational entities and unmanaged component storage. |
 | `Engine.Threading` | Worker-thread job scheduling foundation. |
-| `Engine.Platform` | Backend-neutral window and input contracts. |
+| `Engine.Platform` | Backend-neutral window and input contracts (`IGameWindow`, `IInputState`), plus `PlatformKind` and `NativeWindowSurface`. |
 | `Engine.Platform.Win32` | Windows window creation, keyboard input, native close handling, and Win32 interop. |
+| `Engine.Platform.Desktop` | Platform host: `GamePlatform.CreateWindow` selects the window/input backend for the current OS (Win32 today; Linux/macOS planned). |
 | `Engine.Rendering` | Backend-neutral `IRenderer` contract, render packets, and generated geometry. |
-| `Engine.Rendering.Vulkan` | Vulkan loader, instance, surface, device, queue, swapchain, command buffers, frame submission, and the batched shape renderer (pipeline, per-frame staging uploads, SPIR-V shaders). |
+| `Engine.Rendering.Vulkan` | Vulkan loader, instance, surface, device, queue, swapchain, command buffers, frame submission, and the batched shape renderer (pipeline, per-frame staging uploads, SPIR-V shaders). Consumes a `NativeWindowSurface`. |
 | `Engine.Audio` | Backend-neutral audio device, clip, voice, and listener contracts. |
 | `Engine.Physics` | Backend-neutral physics body, raycast, and world contracts. |
 | `IsometricSandbox` | The playable MVP sample: tile map, movement, collision, jump, camera, and both the Win32 (GDI) and Vulkan render paths. |
@@ -23,16 +24,9 @@
 
 Used by `Engine.Rendering.Vulkan` for Vulkan types, function loading, instance/device creation, surfaces, swapchains, synchronization, command buffers, and presentation.
 
-### Removed unused packages
+### Packages held for future subsystems
 
-The following packages were present only as planned future dependencies and were not referenced by any project, so they were removed from central package management:
-
-- `Vortice.Win32` — not required by the current direct Win32 P/Invoke implementation.
 - `JoltPhysicsSharp` — physics contracts exist, but Jolt is not integrated yet.
-- `Silk.NET.SDL` — the MVP uses direct Win32 window/input handling.
-- `Serilog` — the MVP does not yet have a logging backend.
-
-Add these packages only when their corresponding subsystem is implemented.
 
 ## MVP components
 

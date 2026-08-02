@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Engine.Platform", "src\Engi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Engine.Platform.Win32", "src\Engine.Platform.Win32\Engine.Platform.Win32.csproj", "{00000000-0000-0000-0000-000000000011}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Engine.Platform.Desktop", "src\Engine.Platform.Desktop\Engine.Platform.Desktop.csproj", "{00000000-0000-0000-0000-000000000013}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IsometricSandbox", "samples\IsometricSandbox\IsometricSandbox.csproj", "{00000000-0000-0000-0000-000000000009}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Engine.Tests", "tests\Engine.Tests\Engine.Tests.csproj", "{00000000-0000-0000-0000-000000000010}"
@@ -52,6 +54,12 @@ Global
 		{00000000-0000-0000-0000-000000000008}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000011}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000011}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00000000-0000-0000-0000-000000000011}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00000000-0000-0000-0000-000000000011}.Release|Any CPU.Build.0 = Release|Any CPU
+		{00000000-0000-0000-0000-000000000013}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{00000000-0000-0000-0000-000000000013}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{00000000-0000-0000-0000-000000000013}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{00000000-0000-0000-0000-000000000013}.Release|Any CPU.Build.0 = Release|Any CPU
 		{00000000-0000-0000-0000-000000000009}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000009}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00000000-0000-0000-0000-000000000010}.Debug|Any CPU.ActiveCfg = Debug|Any CPU

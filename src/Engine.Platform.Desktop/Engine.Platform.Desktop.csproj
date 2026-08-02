@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>Engine.Platform.Desktop</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine.Platform\Engine.Platform.csproj" />
+    <ProjectReference Include="..\Engine.Platform.Win32\Engine.Platform.Win32.csproj" />
+  </ItemGroup>
+</Project>

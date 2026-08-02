@@ -19,6 +19,7 @@ public sealed class Win32Window : IGameWindow
     private const uint SWP_FRAMECHANGED = 0x0020;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
     private readonly nint _handle;
+    private readonly nint _moduleHandle;
     private readonly WndProcDelegate _windowProcedure;
     private nint _previousProcedure;
     private bool _closed;
@@ -28,8 +29,7 @@ public sealed class Win32Window : IGameWindow
     private long _windowedStyle;
 
     public Vector2 Size { get; private set; }
-    public nint Handle => _handle;
-    public nint ModuleHandle { get; }
+    public NativeWindowSurface NativeSurface => new(PlatformKind.Win32, _handle, 0, _moduleHandle);
     public bool ShouldClose => _closed;
     public bool Fullscreen => _fullscreen;
     public bool ConsumeRepaint() { bool repaint = _needsRepaint; _needsRepaint = false; return repaint; }
@@ -61,10 +61,10 @@ public sealed class Win32Window : IGameWindow
 
     public Win32Window(int width, int height, string title)
     {
-        ModuleHandle = GetModuleHandle(null);
+        _moduleHandle = GetModuleHandle(null);
         int x = Math.Max(0, (GetSystemMetrics(SM_CXSCREEN) - width) / 2);
         int y = Math.Max(0, (GetSystemMetrics(SM_CYSCREEN) - height) / 2);
-        _handle = CreateWindowEx(0, "STATIC", title, 0x10CF0000, x, y, width, height, 0, 0, ModuleHandle, 0);
+        _handle = CreateWindowEx(0, "STATIC", title, 0x10CF0000, x, y, width, height, 0, 0, _moduleHandle, 0);
         if (_handle == 0) throw new InvalidOperationException("Unable to create Win32 window.");
         _windowProcedure = WindowProcedure;
         _previousProcedure = SetWindowLongPtr(_handle, -4, Marshal.GetFunctionPointerForDelegate(_windowProcedure));

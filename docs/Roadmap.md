@@ -14,12 +14,21 @@
 - `--2d` mode: flat top-down projection (white squares with black borders) in both backends via `ShapeKind` + a cartesian camera path.
 - Vulkan is the default backend (no backend flag runs `--vulkan`); the window opens centered on the screen at 800x600.
 - Map-bounds camera centering: the camera clamps to the map bounds so the map is centered on screen when it fits the viewport (fullscreen) and follows the player otherwise.
-- Smoke tests and resumable Codex context.
+- Brief tests and resumable `.agents` context.
 
 ## Milestones
 
-- **Milestone 1 — Win32 + GDI reference (Codex).** SDK/build policy, core entity/clock types, isometric math, ECS storage, deterministic tile map, movement/collision/jump, camera follow, Win32 window/input, and the initial GDI reference renderer. Authored with Codex.
-- **Milestone 2 — Vulkan + `IRenderer` + windowing (OpenCode).** Backend-neutral rendering contracts, the batched Vulkan renderer (`Engine.Rendering.Vulkan`), fullscreen switching with swapchain rebuild, `--2d` mode, Vulkan as the default backend, the centered 800x600 window, and map-bounds camera centering in fullscreen. Authored with OpenCode.
+- **Milestone 1 — Win32 + GDI reference.** SDK/build policy, core entity/clock types, isometric math, ECS storage, deterministic tile map, movement/collision/jump, camera follow, Win32 window/input, and the initial GDI reference renderer.
+- **Milestone 2 — Vulkan + `IRenderer` + windowing.** Backend-neutral rendering contracts, the batched Vulkan renderer (`Engine.Rendering.Vulkan`), fullscreen switching with swapchain rebuild, `--2d` mode, Vulkan as the default backend, the centered 800x600 window, and map-bounds camera centering in fullscreen.
+- **Milestone 3 — Cross-platform platform seams.** Backend-neutral `IGameWindow`/`IInputState` contracts, `PlatformKind` + `NativeWindowSurface`, the `Engine.Platform.Desktop.GamePlatform` host, and per-OS Vulkan loader/surface selection. The Linux/SDL2 and macOS backends are planned follow-ups (see `docs/LinuxSupportPlan.md`).
+
+## Platform milestones
+
+1. **Linux build + CI** — solution builds 0-warning on Linux; smoke tests run in CI.
+2. **SDL2 window/input backend** (`Engine.Platform.Sdl2`) — `IGameWindow`/`IInputState` over SDL2 (X11 and Wayland), registered in `GamePlatform`.
+3. **Vulkan surface on Linux** — `VK_KHR_xcb_surface`/`VK_KHR_wayland_surface` instance extension + surface creation in `VulkanRenderer`.
+4. **Parity + verification** — white/black rendering matches Windows; sample verified on X11 and Wayland.
+5. **macOS (later)** — same SDL2 backend via MoltenVK (`VK_MVK_macos_surface`).
 
 ## Next features, ordered by usefulness
 
@@ -35,6 +44,7 @@
 10. **Animation and tile atlas support** — sprite animation, atlas metadata, and render batching.
 11. **Debug tools** — collision overlays, entity inspector, frame graph, and input visualization.
 12. **Minimal editor workflow** — only after runtime formats and asset loading are stable.
+13. **Linux/SDL2 platform backend** — per `docs/LinuxSupportPlan.md` (X11/Wayland windowing and Vulkan surface; macOS via SDL2 + MoltenVK later).
 
 ## Deliberately deferred
 

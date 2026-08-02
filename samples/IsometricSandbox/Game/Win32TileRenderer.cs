@@ -1,12 +1,12 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
-using Engine.Platform.Win32;
+using Engine.Platform;
 
 namespace IsometricSandbox.Game;
 
 public sealed class Win32TileRenderer : IDisposable
 {
-    private readonly Win32Window _window;
+    private readonly IGameWindow _window;
     private readonly nint _windowDc;
     private nint _bufferDc;
     private nint _bufferBitmap;
@@ -16,10 +16,10 @@ public sealed class Win32TileRenderer : IDisposable
     private readonly nint _tileBrush = CreateSolidBrush(ColorRef(255, 255, 255));
     private readonly nint _blackPen = CreatePen(0, 1, 0);
     private int _width, _height;
-    public Win32TileRenderer(Win32Window window) { _window = window; _windowDc = GetDC(window.Handle); }
+    public Win32TileRenderer(IGameWindow window) { _window = window; _windowDc = GetDC(window.NativeSurface.WindowHandle); }
     public void Draw(TileMap map, IsometricCamera camera, Vector2 player, float jumpHeight = 0)
     {
-        RECT area = new(); GetClientRect(_window.Handle, ref area);
+        RECT area = new(); GetClientRect(_window.NativeSurface.WindowHandle, ref area);
         int width = Math.Max(1, area.Right - area.Left), height = Math.Max(1, area.Bottom - area.Top);
         EnsureBackbuffer(width, height);
         FillRect(_bufferDc, ref area, _backgroundBrush);
@@ -36,7 +36,7 @@ public sealed class Win32TileRenderer : IDisposable
         if (camera.Isometric) DrawDiamond(_bufferDc, camera.WorldToScreen(player, map) - new Vector2(0, jumpHeight), 20, 10);
         else DrawBox(_bufferDc, camera.WorldToScreen(player, map) - new Vector2(0, jumpHeight), 20, 20);
         BitBlt(_windowDc, 0, 0, width, height, _bufferDc, 0, 0, 0x00CC0020);
-        ValidateRect(_window.Handle, IntPtr.Zero);
+        ValidateRect(_window.NativeSurface.WindowHandle, IntPtr.Zero);
     }
     private void EnsureBackbuffer(int width, int height)
     {
@@ -61,7 +61,7 @@ public sealed class Win32TileRenderer : IDisposable
         SelectObject(dc, previousPen);
         SelectObject(dc, previousBrush);
     }
-    public void Dispose() { if (_bufferDc != 0) { SelectObject(_bufferDc, _previousBitmap); DeleteObject(_bufferBitmap); DeleteDC(_bufferDc); } DeleteObject(_backgroundBrush); DeleteObject(_tileBrush); DeleteObject(_blackPen); ReleaseDC(_window.Handle, _windowDc); }
+    public void Dispose() { if (_bufferDc != 0) { SelectObject(_bufferDc, _previousBitmap); DeleteObject(_bufferBitmap); DeleteDC(_bufferDc); } DeleteObject(_backgroundBrush); DeleteObject(_tileBrush); DeleteObject(_blackPen); ReleaseDC(_window.NativeSurface.WindowHandle, _windowDc); }
     private static uint ColorRef(byte r, byte g, byte b) => (uint)(r | (g << 8) | (b << 16));
     [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; public POINT(int x, int y) { X = x; Y = y; } }
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }

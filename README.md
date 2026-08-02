@@ -1,10 +1,12 @@
 # 2D/2.5D Isometric Game Engine
 
-Windows-first .NET 10 prototype using Vortice.Vulkan. The first target is a small Diablo-like isometric vertical slice with explicit ownership, data-oriented ECS, mandatory multithreading, and low-allocation frame execution.
+Windows-first (at current moment) .NET 10 prototype using Vortice.Vulkan. The first target is a small Diablo-like isometric vertical slice with explicit ownership, data-oriented ECS, mandatory multithreading, and low-allocation frame execution.
 
-See [docs/GameEngineDesign.md](docs/GameEngineDesign.md) for the architecture and [.codex/context/CurrentState.md](.codex/context/CurrentState.md) for resumable implementation state.
+See [docs/GameEngineDesign.md](docs/GameEngineDesign.md) for the architecture and [.agents/context/CurrentState.md](.agents/context/CurrentState.md) for resumable implementation state.
 
-## Execute the MVP
+Platforms: Windows is supported today (Vulkan default, GDI fallback). Linux (X11/Wayland via SDL2) and macOS are planned — see [docs/LinuxSupportPlan.md](docs/LinuxSupportPlan.md). The docs index is [docs/README.md](docs/README.md).
+
+## How to run application
 
 Requirements: Windows, the .NET 10 SDK, and the latest [Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (installed with the default runtime components so `vulkan-1.dll` is available; `glslc` from the SDK's `Bin` is used to compile the shaders).
 
@@ -54,6 +56,6 @@ Both backends render the same scene: an isometric tile map and a jumping player 
 
 The prioritized feature list is maintained in [docs/Roadmap.md](docs/Roadmap.md). The most valuable next steps are the texture sampling path (bind descriptor sets, texture-blended sprites, atlas support), followed by asset loading, profiling, ECS queries, and dependency-aware background jobs.
 
-## Development history
+## Release notes
 
-The initial Win32 platform work and the GDI reference renderer were authored with Codex. The Vulkan renderer (`Engine.Rendering.Vulkan`) and the fullscreen, `--2d`, and windowing milestones (including the Vulkan default, centered 800x600 window, and map centering in fullscreen) were authored with OpenCode.
+See [RELEASE_NOTES.md](RELEASE_NOTES.md) for the change history.
