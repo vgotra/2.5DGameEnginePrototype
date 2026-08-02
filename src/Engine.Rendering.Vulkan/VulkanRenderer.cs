@@ -8,6 +8,14 @@ namespace Engine.Rendering.Vulkan;
 
 public sealed unsafe class VulkanRenderer : IRenderer
 {
+    /// <summary>
+    /// How many frames the CPU may run ahead of the GPU. Each slot owns a fence plus an
+    /// acquire/render semaphore pair, so signals are never overwritten while a previous frame
+    /// still consumes them. Matches the triple-buffered swapchain, so the loop overlaps upload,
+    /// render, and present instead of draining the queue every frame.
+    /// </summary>
+    private const int FramesInFlight = 3;
+
     private VkInstance _instance;
     private VkInstanceApi _instanceApi = null!;
     private VkSurfaceKHR _surface;
@@ -24,11 +32,13 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private VkRenderPass _renderPass;
     private VkCommandPool _commandPool;
     private VkCommandBuffer[] _commandBuffers = Array.Empty<VkCommandBuffer>();
-    private VkSemaphore _imageAvailable;
-    private VkSemaphore _renderFinished;
-    private VkFence _inFlight;
+    private VkSemaphore[] _imageAvailable = Array.Empty<VkSemaphore>();
+    private VkSemaphore[] _renderFinished = Array.Empty<VkSemaphore>();
+    private VkFence[] _fences = Array.Empty<VkFence>();
+    private VkFence[] _imagesInFlight = Array.Empty<VkFence>();
     private VkPhysicalDeviceMemoryProperties _memoryProperties;
     private uint _imageIndex;
+    private int _currentFrame;
     private bool _inFrame;
 
     private ShaderModuleLoader _shaderLoader = null!;
@@ -106,18 +116,63 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass);
         _descriptorAllocator = new DescriptorSetAllocator(_device, _deviceApi);
         _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, _commandPool, _descriptorAllocator);
-        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _graphicsQueue, _commandPool, 1);
+        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _graphicsQueue, FramesInFlight);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
 
     public void BeginFrame(Vector2 viewport)
     {
         if (_swapchain.IsNull) throw new InvalidOperationException("Swapchain is not ready.");
-        VkResult result = _deviceApi.vkWaitForFences(_inFlight, true, ulong.MaxValue);
+        // Round-robin through the frames-in-flight slots; each slot's fence guards the slot's
+        // command submission and its batch buffers, letting the CPU run up to FramesInFlight
+        // frames ahead of the GPU.
+        _currentFrame = (_currentFrame + 1) % FramesInFlight;
+
+        // Wait for the slot's fence BEFORE acquiring. vkAcquireNextImageKHR signals
+        // _imageAvailable[_currentFrame] as soon as an image is free, which on an unpaced loop
+        // is effectively immediately. Re-signalling a semaphore that the previous frame's submit
+        // still has pending is undefined behaviour and hangs the acquire (the GPU never gets a
+        // chance to consume the earlier signal), which freezes the frame and starves input
+        // processing. Waiting the slot fence first guarantees that submit fully retired, so the
+        // semaphore is safe to signal again; for a caught-up CPU this returns immediately.
+        VkFence slotFence = _fences[_currentFrame];
+        VkResult result = _deviceApi.vkWaitForFences(slotFence, true, ulong.MaxValue);
         if (result != VkResult.Success) throw new InvalidOperationException($"Fence wait failed: {result}");
-        _deviceApi.vkResetFences(_inFlight);
-        result = _deviceApi.vkAcquireNextImageKHR(_swapchain, ulong.MaxValue, _imageAvailable, VkFence.Null, out _imageIndex);
+        _deviceApi.vkResetFences(slotFence);
+
+        result = _deviceApi.vkAcquireNextImageKHR(_swapchain, ulong.MaxValue, _imageAvailable[_currentFrame], VkFence.Null, out _imageIndex);
+        if (result == VkResult.ErrorOutOfDateKHR)
+        {
+            // The window was resized since the last frame and the swapchain images no longer
+            // match the surface. Rebuild the swapchain and retry the acquire once rather than
+            // surfacing the error to the game loop.
+            Resize((int)viewport.X, (int)viewport.Y);
+            // Resize destroyed and recreated the command resources, so the fence and semaphore
+            // handles above are stale. Re-fetch the (freshly-signaled) slot fence, wait + reset
+            // it, then re-acquire with the new semaphore.
+            slotFence = _fences[_currentFrame];
+            result = _deviceApi.vkWaitForFences(slotFence, true, ulong.MaxValue);
+            if (result != VkResult.Success) throw new InvalidOperationException($"Fence wait failed: {result}");
+            _deviceApi.vkResetFences(slotFence);
+            result = _deviceApi.vkAcquireNextImageKHR(_swapchain, ulong.MaxValue, _imageAvailable[_currentFrame], VkFence.Null, out _imageIndex);
+        }
         if (result is not (VkResult.Success or VkResult.SuboptimalKHR)) throw new InvalidOperationException($"Image acquire failed: {result}");
+
+        // Per-swapchain-image fence: the acquired image may still be rendered by a newer frame
+        // that ran in a different slot. Wait on that image's last fence before writing to it so
+        // the CPU never overwrites in-flight GPU work. If that image's last use was THIS slot,
+        // its fence is the one we already waited (and are about to use again) above — waiting it
+        // a second time would deadlock, because it will not be re-signalled until this frame's
+        // submit, so the wait is skipped. A different slot's fence was not touched this frame and
+        // is safe to wait.
+        VkFence imageFence = _imagesInFlight[_imageIndex];
+        if (imageFence.IsNotNull && imageFence != slotFence)
+        {
+            result = _deviceApi.vkWaitForFences(imageFence, true, ulong.MaxValue);
+            if (result != VkResult.Success) throw new InvalidOperationException($"Image fence wait failed: {result}");
+        }
+        _imagesInFlight[_imageIndex] = slotFence;
+
         VkCommandBuffer commandBuffer = _commandBuffers[_imageIndex];
         _deviceApi.vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
         VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
@@ -133,7 +188,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
             pClearValues = &clear
         };
         _deviceApi.vkCmdBeginRenderPass(commandBuffer, &renderPassBegin, VkSubpassContents.Inline);
-        _batchRenderer.BeginFrame(commandBuffer, viewport);
+        _batchRenderer.BeginFrame(_currentFrame, commandBuffer, viewport);
         _inFrame = true;
     }
 
@@ -152,8 +207,9 @@ public sealed unsafe class VulkanRenderer : IRenderer
         VkResult result = _deviceApi.vkEndCommandBuffer(commandBuffer);
         if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer end failed: {result}");
         VkPipelineStageFlags waitStage = VkPipelineStageFlags.ColorAttachmentOutput;
-        VkSemaphore imageAvailable = _imageAvailable;
-        VkSemaphore renderFinished = _renderFinished;
+        VkSemaphore imageAvailable = _imageAvailable[_currentFrame];
+        VkSemaphore renderFinished = _renderFinished[_currentFrame];
+        VkFence slotFence = _fences[_currentFrame];
         VkSubmitInfo submit = new()
         {
             commandBufferCount = 1,
@@ -164,10 +220,12 @@ public sealed unsafe class VulkanRenderer : IRenderer
             signalSemaphoreCount = 1,
             pSignalSemaphores = &renderFinished
         };
-        result = _deviceApi.vkQueueSubmit(_graphicsQueue, submit, _inFlight);
+        result = _deviceApi.vkQueueSubmit(_graphicsQueue, submit, slotFence);
         if (result != VkResult.Success) throw new InvalidOperationException($"Queue submit failed: {result}");
-        result = _deviceApi.vkQueuePresentKHR(_graphicsQueue, _renderFinished, _swapchain, _imageIndex);
-        if (result is not (VkResult.Success or VkResult.SuboptimalKHR)) throw new InvalidOperationException($"Present failed: {result}");
+        result = _deviceApi.vkQueuePresentKHR(_graphicsQueue, renderFinished, _swapchain, _imageIndex);
+        // SuboptimalKHR and ErrorOutOfDateKHR mean the swapchain no longer matches the window;
+        // the next frame's size check (or the acquire path) rebuilds it, so neither is fatal.
+        if (result is not (VkResult.Success or VkResult.SuboptimalKHR or VkResult.ErrorOutOfDateKHR)) throw new InvalidOperationException($"Present failed: {result}");
         _inFrame = false;
     }
 
@@ -218,8 +276,12 @@ public sealed unsafe class VulkanRenderer : IRenderer
         for (int i = 0; i < _framebuffers.Length; i++) if (_framebuffers[i].IsNotNull) _deviceApi.vkDestroyFramebuffer(_framebuffers[i]);
         for (int i = 0; i < _swapchainViews.Length; i++) if (_swapchainViews[i].IsNotNull) _deviceApi.vkDestroyImageView(_swapchainViews[i]);
         if (_swapchain.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
+        // Command resources (command buffers, per-image fence tracking) are sized to the
+        // swapchain image count, so they must be recreated whenever the count can change.
+        DestroyCommandResources();
         CreateSwapchain((uint)width, (uint)height);
         CreateFramebuffers();
+        CreateCommandResources();
         _imageIndex = uint.MaxValue;
     }
 
@@ -258,7 +320,17 @@ public sealed unsafe class VulkanRenderer : IRenderer
         result = _instanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, modes);
         if (result != VkResult.Success || modeCount == 0) throw new InvalidOperationException("No Vulkan present modes found.");
         VkExtent2D extent = new(Math.Clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width), Math.Clamp(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
-        uint imageCount = Math.Max(capabilities.minImageCount, 2);
+        // Prefer MAILBOX (tear-free, non-blocking present) and fall back to FIFO (vsync). A
+        // non-blocking present lets the loop overlap CPU/GPU work instead of gating every frame
+        // to a vblank, which is the root cause of the visible judder on camera pans.
+        VkPresentModeKHR presentMode = VkPresentModeKHR.Fifo;
+        for (int i = 0; i < modeCount; i++)
+        {
+            if (modes[i] == VkPresentModeKHR.Mailbox) { presentMode = VkPresentModeKHR.Mailbox; break; }
+        }
+        // Request triple buffering when the driver allows it: the extra image plus MAILBOX gives
+        // the renderer headroom to absorb timing jitter without stalling on acquire or present.
+        uint imageCount = Math.Max(capabilities.minImageCount, 3);
         if (capabilities.maxImageCount > 0) imageCount = Math.Min(imageCount, capabilities.maxImageCount);
         VkSwapchainCreateInfoKHR info = new()
         {
@@ -272,7 +344,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
             imageSharingMode = VkSharingMode.Exclusive,
             preTransform = capabilities.currentTransform,
             compositeAlpha = VkCompositeAlphaFlagsKHR.Opaque,
-            presentMode = modes[0],
+            presentMode = presentMode,
             clipped = true
         };
         result = _deviceApi.vkCreateSwapchainKHR(&info, out _swapchain);
@@ -320,14 +392,43 @@ public sealed unsafe class VulkanRenderer : IRenderer
         fixed (VkCommandBuffer* commandBufferPointer = _commandBuffers)
             result = _deviceApi.vkAllocateCommandBuffers(&allocationInfo, commandBufferPointer);
         if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer allocation failed: {result}");
+        _imageAvailable = new VkSemaphore[FramesInFlight];
+        _renderFinished = new VkSemaphore[FramesInFlight];
+        _fences = new VkFence[FramesInFlight];
         VkSemaphoreCreateInfo semaphoreInfo = new();
-        result = _deviceApi.vkCreateSemaphore(&semaphoreInfo, out _imageAvailable);
-        if (result != VkResult.Success) throw new InvalidOperationException($"Semaphore creation failed: {result}");
-        result = _deviceApi.vkCreateSemaphore(&semaphoreInfo, out _renderFinished);
-        if (result != VkResult.Success) throw new InvalidOperationException($"Semaphore creation failed: {result}");
+        // Fences start signaled so the first BeginFrame's wait returns immediately.
         VkFenceCreateInfo fenceInfo = new() { flags = VkFenceCreateFlags.Signaled };
-        result = _deviceApi.vkCreateFence(&fenceInfo, out _inFlight);
-        if (result != VkResult.Success) throw new InvalidOperationException($"Fence creation failed: {result}");
+        for (int i = 0; i < FramesInFlight; i++)
+        {
+            result = _deviceApi.vkCreateSemaphore(&semaphoreInfo, out _imageAvailable[i]);
+            if (result != VkResult.Success) throw new InvalidOperationException($"Semaphore creation failed: {result}");
+            result = _deviceApi.vkCreateSemaphore(&semaphoreInfo, out _renderFinished[i]);
+            if (result != VkResult.Success) throw new InvalidOperationException($"Semaphore creation failed: {result}");
+            result = _deviceApi.vkCreateFence(&fenceInfo, out _fences[i]);
+            if (result != VkResult.Success) throw new InvalidOperationException($"Fence creation failed: {result}");
+        }
+        _imagesInFlight = new VkFence[_swapchainImages.Length];
+        Array.Fill(_imagesInFlight, VkFence.Null);
+    }
+
+    private void DestroyCommandResources()
+    {
+        if (_commandPool.IsNull) return;
+        if (_commandBuffers.Length > 0)
+        {
+            fixed (VkCommandBuffer* commandBufferPointer = _commandBuffers)
+                _deviceApi.vkFreeCommandBuffers(_commandPool, (uint)_commandBuffers.Length, commandBufferPointer);
+            _commandBuffers = Array.Empty<VkCommandBuffer>();
+        }
+        for (int i = 0; i < _fences.Length; i++) if (_fences[i].IsNotNull) _deviceApi.vkDestroyFence(_fences[i]);
+        for (int i = 0; i < _renderFinished.Length; i++) if (_renderFinished[i].IsNotNull) _deviceApi.vkDestroySemaphore(_renderFinished[i]);
+        for (int i = 0; i < _imageAvailable.Length; i++) if (_imageAvailable[i].IsNotNull) _deviceApi.vkDestroySemaphore(_imageAvailable[i]);
+        _fences = Array.Empty<VkFence>();
+        _renderFinished = Array.Empty<VkSemaphore>();
+        _imageAvailable = Array.Empty<VkSemaphore>();
+        _imagesInFlight = Array.Empty<VkFence>();
+        _deviceApi.vkDestroyCommandPool(_commandPool);
+        _commandPool = VkCommandPool.Null;
     }
 
     public void Dispose()
@@ -340,10 +441,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _shaderLoader?.Dispose();
         for (int i = 0; i < _framebuffers.Length; i++) if (_framebuffers[i].IsNotNull) _deviceApi.vkDestroyFramebuffer(_framebuffers[i]);
         if (_renderPass.IsNotNull) _deviceApi.vkDestroyRenderPass(_renderPass);
-        if (_inFlight.IsNotNull) _deviceApi.vkDestroyFence(_inFlight);
-        if (_renderFinished.IsNotNull) _deviceApi.vkDestroySemaphore(_renderFinished);
-        if (_imageAvailable.IsNotNull) _deviceApi.vkDestroySemaphore(_imageAvailable);
-        if (_commandPool.IsNotNull) _deviceApi.vkDestroyCommandPool(_commandPool);
+        DestroyCommandResources();
         for (int i = 0; i < _swapchainViews.Length; i++) if (_swapchainViews[i].IsNotNull) _deviceApi.vkDestroyImageView(_swapchainViews[i]);
         if (_swapchain.IsNotNull && _device.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
         if (_device.IsNotNull) _deviceApi.vkDestroyDevice();

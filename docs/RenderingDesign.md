@@ -19,7 +19,7 @@ Rendering is split into backend-neutral extraction and a Vortice.Vulkan implemen
 - Requires the latest Vulkan SDK installed (runtime components provide `vulkan-1.dll`; `glslc` from the SDK's `Bin` compiles the shaders).
 - Shaders are GLSL compiled with glslc into SPIR-V under `assets/shaders/`; `Engine.Rendering.Vulkan.csproj` copies `*.spv` to `shaders/` in the output directory.
 - `VulkanRenderer` implements `IRenderer` and consumes a platform-neutral `NativeWindowSurface`: it selects the Vulkan loader name per OS (`vulkan-1.dll` / `libvulkan.so.1`) and creates the instance surface extension for the surface kind (Win32 wired today; X11/Wayland/macOS throw `PlatformNotSupportedException` until implemented — see `docs/LinuxSupportPlan.md`). It owns the swapchain, render pass, per-swapchain framebuffers, graphics pipeline, per-frame command buffers, and acquire/present synchronization.
-- `BatchRenderer` accumulates submitted packets into `ShapeVertex`/index lists and uploads them once per frame through a staging buffer with `vkQueueWaitIdle`, then issues a single indexed draw.
+- `BatchRenderer` accumulates submitted packets into `ShapeVertex`/index lists and uploads them through persistent per-frame-slot staging buffers, recording the staging→device copies directly into the main command buffer with a `TRANSFER → VERTEX_INPUT` buffer barrier, then issues a single indexed draw. Geometry is re-uploaded only when it changes (FNV dirty gate).
 - `VulkanPipeline` owns the graphics pipeline and layout; the viewport size is passed as an 8-byte push constant (`vec2`).
 - `VulkanBuffer`, `DescriptorSetAllocator`, and `TextureUploader` provide buffer, descriptor, and texture infrastructure ahead of the texture path.
 
@@ -35,7 +35,6 @@ Window-side details (client size via `WM_SIZE`, borderless fullscreen) are in [`
 
 ## Current limitations
 
-- One staging upload + `vkQueueWaitIdle` per frame serializes the graphics queue (correct, not optimal).
-- Frame delivery is vsync-gated: the swapchain uses `presentMode = modes[0]` (FIFO on Windows), double buffering, and a single in-flight fence, and presents only after the per-frame queue drain — so timing jitter shows as visible judder on camera pans. Planned fix: `docs/FramePacingPlan.md` (Mailbox + triple buffering, per-image fences, no per-frame `vkQueueWaitIdle`).
+- The swapchain prefers `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering and a 3-slot frame-in-flight pool plus per-swapchain-image fences, so the CPU overlaps frames instead of draining the queue. `vkQueueWaitIdle` remains only for resize, dispose, and rare buffer growth. See `docs/FramePacingPlan.md`.
 - `SpritePacket.Texture`/`Material` are ignored by the shape pipeline; texture rendering is pending.
 - Tile borders are drawn by overdraw (~2px black behind each white tile), so border thickness is fixed by the geometry rather than a separate stroke.

@@ -8,6 +8,11 @@ using IsometricSandbox.Game;
 
 bool flatMode = args.Contains("--2d");
 bool startFullscreen = args.Contains("--fullscreen");
+double frameCap = 0;
+for (int i = 0; i < args.Length - 1; i++)
+{
+    if (args[i] == "--cap" && double.TryParse(args[i + 1], out double fps)) frameCap = fps;
+}
 
 const float jumpDuration = 0.24f;
 const float playerBorder = 2f;
@@ -27,7 +32,7 @@ Vector2 facing = new(0, 1), jumpStart = position, jumpTarget = position;
 float jumpTime = 1f;
 IsometricCamera camera = new(window.Size) { Isometric = !flatMode };
 GameClock clock = new();
-long previous = Environment.TickCount64;
+FrameTimer frameTimer = new(frameCap);
 Vector2 viewport = window.Size;
 if (startFullscreen) window.SetFullscreen(true);
 SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2 + 2];
@@ -42,9 +47,7 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
         camera.Resize(viewport);
         renderer.Resize((int)viewport.X, (int)viewport.Y);
     }
-    long now = Environment.TickCount64;
-    clock.Advance((now - previous) / 1000.0);
-    previous = now;
+    clock.Advance(frameTimer.Advance());
     Vector2 direction = new((input.IsDown(GameKey.Right) ? 1 : 0) - (input.IsDown(GameKey.Left) ? 1 : 0), (input.IsDown(GameKey.Down) ? 1 : 0) - (input.IsDown(GameKey.Up) ? 1 : 0));
     while (clock.TryConsumeFixedStep())
     {
@@ -71,5 +74,5 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     sprites[tileCount + 1] = new SpritePacket(playerScreen, playerSize, white, default, default, tileCount + 1, playerShape);
     renderer.Submit(sprites.AsSpan(0, tileCount + 2));
     renderer.EndFrame();
-    Thread.Sleep(2);
+    frameTimer.WaitForNextFrame();
 }

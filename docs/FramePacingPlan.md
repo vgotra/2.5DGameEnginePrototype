@@ -1,6 +1,6 @@
 # Frame Pacing Plan
 
-Plan for roadmap item 1 — **Stable game loop and window lifecycle** (frame pacing / clean shutdown). This file records the diagnosis and the planned approach; **nothing here is implemented yet**. The current frame-delivery limitation is tracked in `.agents/context/KnownIssues.md` and `RenderingDesign.md`.
+Plan for roadmap item 1 — **Stable game loop and window lifecycle** (frame pacing / clean shutdown). This file records the diagnosis and the implementation. Steps 1-5 are **implemented** (2026-08-03); step 6 (sim-to-present interpolation) is deferred.
 
 ## Symptom
 
@@ -30,5 +30,11 @@ Tracked under roadmap item 1. Implementation order:
 
 ## Status
 
-- **Not implemented.** This is a planning record; the code still matches the "Current limitations" sections of `RenderingDesign.md`.
-- Next session: implement steps 1-5 (and optionally 6) in the sample + `Engine.Rendering.Vulkan`, then verify smoothness directly on the sample.
+- **Implemented (2026-08-03).** Steps 1-5 below landed in `Engine.Core`, `Engine.Rendering.Vulkan`, and `samples/IsometricSandbox`:
+  1. **High-res timer + frame cap** — `Engine.Core.FrameTimer` (Stopwatch-based `Advance`/`WaitForNextFrame`); the sample replaces `Environment.TickCount64` + `Thread.Sleep(2)`, and `--cap <fps>` configures the target (default unpaced).
+  2. **Present mode + buffering** — `CreateSwapchain` prefers `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) and requests 3 images (clamped to `maxImageCount`).
+  3. **Synchronization rework** — a 3-slot frame-in-flight pool (`_imageAvailable`/`_renderFinished`/`_fences`) plus a per-swapchain-image fence map (`_imagesInFlight`); `BeginFrame` waits only the current slot + acquired image, so the CPU overlaps `FramesInFlight` frames. The per-frame `vkQueueWaitIdle` in `BatchRenderer.EndFrame` is gone — staging→device copies are recorded into the main command buffer with a `TRANSFER → VERTEX_INPUT` barrier. `vkQueueWaitIdle` remains only in `Resize`, `Dispose`, and the rare buffer-growth path. `ErrorOutOfDateKHR` at acquire triggers a swapchain rebuild + re-acquire; at present it is non-fatal.
+  4. **Persistent dirty-gated buffers** — vertex/index/staging buffers persist per frame slot; an FNV hash gate skips the staging write + copy when geometry is unchanged.
+  5. **Clean shutdown** — ESC/window close already exit the loop; `Dispose` drains with `vkDeviceWaitIdle` and tears down the per-image sync objects.
+- **Deferred:** step 6 (sim-to-present interpolation) — not needed for 60 Hz fixed-step at 60 Hz refresh; revisit if refresh-rate-independent smoothness is required.
+- Verification: `dotnet build Engine.sln --nologo` 0 warnings, smoke tests pass, sample runs under default/`--2d`/`--fullscreen` and `--cap 60|80|100` with clean close.

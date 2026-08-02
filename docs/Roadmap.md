@@ -31,7 +31,7 @@
 
 ## Next features, ordered by usefulness
 
-1. **Stable game loop and window lifecycle** — frame pacing and clean shutdown (see [`FramePacingPlan.md`](FramePacingPlan.md)): high-resolution dt + frame cap/vsync policy; prefer `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering; per-swapchain-image fences replacing the per-frame `vkQueueWaitIdle`; persistent dirty-gated vertex buffers; graceful ESC/window-close teardown. Root cause being fixed: Vulkan delivers 60 Hz sim steps through a FIFO-vsync, double-buffered, fully drained pipeline, so timing jitter shows as visible judder. Resize/swapchain rebuild is already handled.
+1. **Stable game loop and window lifecycle** — **DONE (2026-08-03)**: frame pacing and clean shutdown (see [`FramePacingPlan.md`](FramePacingPlan.md)) — high-res `Stopwatch` dt + configurable frame cap (`--cap`); `VK_PRESENT_MODE_MAILBOX_KHR` (fallback FIFO) with triple buffering; a 3-slot frame-in-flight pool + per-swapchain-image fences replacing the single in-flight fence and the per-frame `vkQueueWaitIdle`; persistent dirty-gated vertex buffers; graceful ESC/window-close teardown with `ErrorOutOfDateKHR` auto-resize. Sim-to-present interpolation is a deferred optional follow-up.
 2. **Texture sampling path** — sample textures in the fragment shader, bind descriptor sets per sprite batch, texture atlas support, and honor `SpritePacket.Texture`/`Material`.
 3. **Asset loading** — PNG decoding, texture upload, sprite handles, and a small `assets/` convention.
 4. **ECS queries and system scheduling** — replace sample-local state with ECS systems and explicit read/write access.
@@ -44,6 +44,7 @@
 11. **Debug tools** — collision overlays, entity inspector, frame graph, and input visualization.
 12. **Minimal editor workflow** — only after runtime formats and asset loading are stable.
 13. **Linux/SDL2 platform backend** — per `docs/LinuxSupportPlan.md` (X11/Wayland windowing and Vulkan surface; macOS via SDL2 + MoltenVK later).
+14. **Replace `[DllImport]` with source-generated `[LibraryImport]`** — migrate the Win32 P/Invokes in `Engine.Platform.Win32` (`Win32Window.cs`, `Win32Input.cs`; 20 declarations) to `LibraryImportAttribute` on `partial` methods/classes. Preserve current behavior: UTF-16 string marshalling for the `user32.dll` string APIs (`CreateWindowEx`/`SetWindowText`/`GetModuleHandle` via `StringMarshalling.Utf16` — `LibraryImport` defaults to UTF-8), `SetLastError`/`Marshal.GetLastPInvokeError()` if used, and the `CallWindowProc` WndProc callback via function-pointer marshalling. Win32-only; AOT/trim-safe and removes runtime marshalling stubs.
 
 ## Deliberately deferred
 

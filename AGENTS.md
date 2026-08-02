@@ -6,7 +6,7 @@ Windows-first (at current moment) .NET 10 isometric game engine prototype. Vulka
 - Build (must be 0 warnings): `dotnet build Engine.sln --nologo` — `TreatWarningsAsErrors` is on.
 - Brief tests are a plain console app, NOT a test framework: `dotnet run --project tests\Engine.Tests\Engine.Tests.csproj`. Success = prints `Smoke tests passed`. Do not use `dotnet test`.
 - Run the sample (opens a window; needs the Vulkan SDK installed): `dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj`
-- Sample flags: `--2d` (flat top-down), `--fullscreen`. `F11` toggles fullscreen; `Escape` exits.
+- Sample flags: `--2d` (flat top-down), `--fullscreen`, `--cap <fps>` (frame cap; default unpaced). `F11` toggles fullscreen; `Escape` exits.
 - Requires .NET 10 SDK (`global.json` pins 10.0.100, prerelease allowed; projects are `net10.0` with `LangVersion preview`).
 
 ## Shaders — recompile after editing GLSL
@@ -37,5 +37,5 @@ Develop code with **SOLID**, **KISS**, and **DRY**:
 - Code must be **easy to understand, refactor, and support**: follow existing project patterns and conventions, keep hot-path constraints (see Conventions), and keep OS-specific code behind the platform seams (see Platforms).
 
 ## Current work in flight
-- Next roadmap features (`docs/Roadmap.md`): frame pacing / clean shutdown, texture sampling, asset loading, ECS queries + system scheduling, profiling.
+- Next roadmap features (`docs/Roadmap.md`): texture sampling, asset loading, ECS queries + system scheduling, profiling. Frame pacing / clean shutdown (roadmap item 1) is complete.
 - Cross-platform seams (contracts, `GamePlatform` host, `NativeWindowSurface`) are in place; the Linux/SDL2 platform backend is a later milestone.

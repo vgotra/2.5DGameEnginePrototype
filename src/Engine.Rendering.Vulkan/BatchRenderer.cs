@@ -15,15 +15,15 @@ public unsafe class BatchRenderer : IDisposable
     private readonly VulkanPipeline _pipeline;
     private readonly DescriptorSetAllocator _descriptorAllocator;
     private readonly VkQueue _graphicsQueue;
-    private readonly VkCommandPool _commandPool;
     private readonly uint _framesInFlight;
 
     private VulkanBuffer[] _vertexBuffers;
     private VulkanBuffer[] _indexBuffers;
     private VulkanBuffer[] _stagingVertexBuffers;
     private VulkanBuffer[] _stagingIndexBuffers;
-    private VkCommandBuffer _copyCommandBuffer;
-    private int _currentFrame = 0;
+    private ulong[] _vertexHashes;
+    private ulong[] _indexHashes;
+    private int _frameIndex;
 
     private readonly List<ShapeVertex> _vertices = new();
     private readonly List<uint> _indices = new();
@@ -39,7 +39,6 @@ public unsafe class BatchRenderer : IDisposable
         VulkanPipeline pipeline,
         DescriptorSetAllocator descriptorAllocator,
         VkQueue graphicsQueue,
-        VkCommandPool commandPool,
         uint framesInFlight)
     {
         _device = device;
@@ -49,23 +48,14 @@ public unsafe class BatchRenderer : IDisposable
         _pipeline = pipeline;
         _descriptorAllocator = descriptorAllocator;
         _graphicsQueue = graphicsQueue;
-        _commandPool = commandPool;
         _framesInFlight = framesInFlight;
 
         _vertexBuffers = new VulkanBuffer[framesInFlight];
         _indexBuffers = new VulkanBuffer[framesInFlight];
         _stagingVertexBuffers = new VulkanBuffer[framesInFlight];
         _stagingIndexBuffers = new VulkanBuffer[framesInFlight];
-
-        VkCommandBufferAllocateInfo allocInfo = new()
-        {
-            commandPool = commandPool,
-            level = VkCommandBufferLevel.Primary,
-            commandBufferCount = 1
-        };
-        VkCommandBuffer copyCommandBuffer = _copyCommandBuffer;
-        _deviceApi.vkAllocateCommandBuffers(&allocInfo, &copyCommandBuffer);
-        _copyCommandBuffer = copyCommandBuffer;
+        _vertexHashes = new ulong[framesInFlight];
+        _indexHashes = new ulong[framesInFlight];
     }
 
     public void ResizeBuffers(uint maxVertices, uint maxIndices)
@@ -87,9 +77,14 @@ public unsafe class BatchRenderer : IDisposable
         }
     }
 
-    public void BeginFrame(VkCommandBuffer cmdBuffer, Vector2 viewport)
+    /// <summary>
+    /// Starts a frame on the given frame-in-flight slot. <paramref name="frameIndex"/> selects
+    /// the persistent vertex/index/staging buffer set for the slot; the renderer has already
+    /// waited that slot's fence, so the buffers are not in use by any in-flight submission.
+    /// </summary>
+    public void BeginFrame(int frameIndex, VkCommandBuffer cmdBuffer, Vector2 viewport)
     {
-        _currentFrame = (_currentFrame + 1) % (int)_framesInFlight;
+        _frameIndex = frameIndex;
         _vertices.Clear();
         _indices.Clear();
 
@@ -169,50 +164,82 @@ public unsafe class BatchRenderer : IDisposable
         if (_vertices.Count == 0 || _indices.Count == 0)
             return;
 
-        var vertexBuffer = _vertexBuffers[_currentFrame];
-        var indexBuffer = _indexBuffers[_currentFrame];
-        var stagingVertex = _stagingVertexBuffers[_currentFrame];
-        var stagingIndex = _stagingIndexBuffers[_currentFrame];
+        var vertexBuffer = _vertexBuffers[_frameIndex];
+        var indexBuffer = _indexBuffers[_frameIndex];
+        var stagingVertex = _stagingVertexBuffers[_frameIndex];
+        var stagingIndex = _stagingIndexBuffers[_frameIndex];
 
         nuint vertexBytes = (nuint)(_vertices.Count * Unsafe.SizeOf<ShapeVertex>());
         nuint indexBytes = (nuint)(_indices.Count * sizeof(uint));
 
-        if (vertexBytes > vertexBuffer.Size)
+        if (vertexBytes > vertexBuffer.Size || indexBytes > indexBuffer.Size)
         {
+            // Growth is extremely rare (initial sizes cover the 20x20 map). Wait for idle so we
+            // never destroy a device buffer that an in-flight frame slot is still reading.
+            _deviceApi.vkQueueWaitIdle(_graphicsQueue);
             ResizeBuffers((uint)_vertices.Count * 2, (uint)_indices.Count * 2);
-            vertexBuffer = _vertexBuffers[_currentFrame];
-            indexBuffer = _indexBuffers[_currentFrame];
-            stagingVertex = _stagingVertexBuffers[_currentFrame];
-            stagingIndex = _stagingIndexBuffers[_currentFrame];
+            vertexBuffer = _vertexBuffers[_frameIndex];
+            indexBuffer = _indexBuffers[_frameIndex];
+            stagingVertex = _stagingVertexBuffers[_frameIndex];
+            stagingIndex = _stagingIndexBuffers[_frameIndex];
         }
 
+        // Dirty gate: the persistent device buffers retain their previous content, so geometry is
+        // re-uploaded only when it changed since this frame slot was last used. An unchanged frame
+        // skips the staging write + copy and just re-issues the draw.
         Span<ShapeVertex> vertices = CollectionsMarshal.AsSpan(_vertices);
-        fixed (ShapeVertex* vertexPointer = vertices)
-            stagingVertex.UploadData(vertexPointer, (nuint)(vertices.Length * Unsafe.SizeOf<ShapeVertex>()));
         Span<uint> indices = CollectionsMarshal.AsSpan(_indices);
-        fixed (uint* indexPointer = indices)
-            stagingIndex.UploadData(indexPointer, (nuint)(indices.Length * sizeof(uint)));
+        ulong vertexHash = HashBytes(MemoryMarshal.AsBytes(vertices));
+        ulong indexHash = HashBytes(MemoryMarshal.AsBytes(indices));
+        bool geometryChanged = vertexHash != _vertexHashes[_frameIndex] || indexHash != _indexHashes[_frameIndex];
+        _vertexHashes[_frameIndex] = vertexHash;
+        _indexHashes[_frameIndex] = indexHash;
 
-        VkCommandBuffer copyCmd = _copyCommandBuffer;
-
-        VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
-        _deviceApi.vkBeginCommandBuffer(copyCmd, &beginInfo);
-
-        VkBufferCopy vertexCopy = new() { size = vertexBytes };
-        _deviceApi.vkCmdCopyBuffer(copyCmd, stagingVertex.Buffer, vertexBuffer.Buffer, 1, &vertexCopy);
-
-        VkBufferCopy indexCopy = new() { size = indexBytes };
-        _deviceApi.vkCmdCopyBuffer(copyCmd, stagingIndex.Buffer, indexBuffer.Buffer, 1, &indexCopy);
-
-        _deviceApi.vkEndCommandBuffer(copyCmd);
-
-        VkSubmitInfo submitInfo = new()
+        if (geometryChanged)
         {
-            commandBufferCount = 1,
-            pCommandBuffers = &copyCmd
-        };
-        _deviceApi.vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VkFence.Null);
-        _deviceApi.vkQueueWaitIdle(_graphicsQueue);
+            fixed (ShapeVertex* vertexPointer = vertices)
+                stagingVertex.UploadData(vertexPointer, vertexBytes);
+            fixed (uint* indexPointer = indices)
+                stagingIndex.UploadData(indexPointer, indexBytes);
+
+            // Copies are recorded directly into the main command buffer (no separate copy submit,
+            // no per-frame vkQueueWaitIdle), so the GPU overlaps this upload with the previous
+            // frames' rendering and present.
+            VkBufferCopy vertexCopy = new() { size = vertexBytes };
+            _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingVertex.Buffer, vertexBuffer.Buffer, 1, &vertexCopy);
+            VkBufferCopy indexCopy = new() { size = indexBytes };
+            _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingIndex.Buffer, indexBuffer.Buffer, 1, &indexCopy);
+
+            // The transfer writes above must be visible to the vertex/index reads of the draw
+            // that follows. Without this TRANSFER -> VERTEX_INPUT barrier the copy and the draw
+            // could race on the same device buffers.
+            VkBufferMemoryBarrier vertexBarrier = new()
+            {
+                srcAccessMask = VkAccessFlags.TransferWrite,
+                dstAccessMask = VkAccessFlags.VertexAttributeRead,
+                srcQueueFamilyIndex = uint.MaxValue,
+                dstQueueFamilyIndex = uint.MaxValue,
+                buffer = vertexBuffer.Buffer,
+                offset = 0,
+                size = vertexBytes
+            };
+            VkBufferMemoryBarrier indexBarrier = new()
+            {
+                srcAccessMask = VkAccessFlags.TransferWrite,
+                dstAccessMask = VkAccessFlags.IndexRead,
+                srcQueueFamilyIndex = uint.MaxValue,
+                dstQueueFamilyIndex = uint.MaxValue,
+                buffer = indexBuffer.Buffer,
+                offset = 0,
+                size = indexBytes
+            };
+            VkBufferMemoryBarrier* barriers = stackalloc VkBufferMemoryBarrier[2] { vertexBarrier, indexBarrier };
+            _deviceApi.vkCmdPipelineBarrier(cmdBuffer,
+                VkPipelineStageFlags.Transfer,
+                VkPipelineStageFlags.VertexInput,
+                VkDependencyFlags.None,
+                0, null, 2, barriers, 0, null);
+        }
 
         Span<VkBuffer> vertexBufferBind = stackalloc VkBuffer[1] { vertexBuffer.Buffer };
         Span<ulong> vertexBufferOffsets = stackalloc ulong[1];
@@ -228,13 +255,19 @@ public unsafe class BatchRenderer : IDisposable
         _deviceApi.vkCmdDrawIndexed(cmdBuffer, (uint)_indices.Count, 1, 0, 0, 0);
     }
 
+    private static ulong HashBytes(ReadOnlySpan<byte> bytes)
+    {
+        ulong hash = 14695981039346656037;
+        foreach (byte b in bytes)
+        {
+            hash ^= b;
+            hash *= 1099511628211;
+        }
+        return hash;
+    }
+
     public void Dispose()
     {
-        if (_copyCommandBuffer.IsNotNull && _commandPool.IsNotNull)
-        {
-            VkCommandBuffer copyCommandBuffer = _copyCommandBuffer;
-            _deviceApi.vkFreeCommandBuffers(_commandPool, 1, &copyCommandBuffer);
-        }
         for (int i = 0; i < _framesInFlight; i++)
         {
             _vertexBuffers[i].Dispose();
