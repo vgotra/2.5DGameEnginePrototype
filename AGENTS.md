@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Windows-first (at current moment) .NET 10 isometric game engine prototype. Vulkan is the default/main renderer with a GDI reference fallback. Before starting work, read `docs/README.md` (docs index), `.agents/context/FilesMap.md` (repo map), the relevant topic docs, and `.agents/context/*` (CurrentState, NextSteps, Decisions, KnownIssues) and update `.agents/context/` plus `RELEASE_NOTES.md` after each milestone — those files are the resumable-state convention.
+Windows-first (at current moment) .NET 10 isometric game engine prototype. Vulkan is the default/main renderer with a GDI reference fallback. Before starting work, read `docs/README.md` (docs index), `.agents/context/FilesMap.md` (repo map), the relevant topic docs, and `.agents/context/*` (CurrentState, NextSteps, Decisions, KnownIssues) and update `.agents/context/` plus `RELEASE_NOTES.md` after each milestone — those files are the resumable-state convention. The repo root already contains `opencode.json` (opencode config: `instructions` auto-loads `.agents/context/*`; MCP registers the `vulkan` + `renderdoc` servers — see `docs/AgentTooling.md`).
 
 ## Commands
 - Build (must be 0 warnings): `dotnet build Engine.sln --nologo` — `TreatWarningsAsErrors` is on.

@@ -9,7 +9,7 @@ RenderDoc is used here in two separate ways:
 | Role | What runs it | Needs a RenderDoc install? |
 | --- | --- | --- |
 | **Capture** `.rdc` frames from the running Vulkan app | RenderDoc GUI (or its Vulkan capture layer) | Yes — you install it locally. |
-| **Analyze** `.rdc` files | `renderdoc` MCP server (`uvx --python 3.13 renderdoc-mcp`), invoked by opencode | No — the MCP package bundles its own RenderDoc replay module (Python 3.13), so analysis works even without a local RenderDoc install. |
+| **Analyze** `.rdc` files | `renderdoc` MCP server (`uvx --python 3.13 --with "mcp>=1.0,<2" renderdoc-mcp`), invoked by opencode | No — the MCP package bundles its own RenderDoc replay module (Python 3.13), so analysis works even without a local RenderDoc install. |
 
 Capturing and analyzing are independent: you can capture on one machine (or with the GUI) and analyze anywhere the MCP server runs.
 
@@ -41,12 +41,13 @@ The sample renders on the GPU only in Vulkan mode (`--vulkan`, the default). `--
    ```
    Open C:\Projects\2.5DGameEnginePrototype\frame.rdc and summarize this frame's draw calls.
    ```
-   The agent uses the `renderdoc` MCP tools (frame navigation, draw-call/pipeline state, texture/buffer inspection, pixel history). The server is started on demand by `uvx --python 3.13 renderdoc-mcp`; the first call downloads it and its bundled RenderDoc module.
+   The agent uses the `renderdoc` MCP tools (frame navigation, draw-call/pipeline state, texture/buffer inspection, pixel history). The server is started on demand by `uvx --python 3.13 --with "mcp>=1.0,<2" renderdoc-mcp`; the first call downloads it and its bundled RenderDoc module.
 3. Verify the server is wired up by asking for the available MCP tools; you should see the `renderdoc_*` tools.
 
 ## Troubleshooting
 
 - **`uvx` not found** — install [uv](https://docs.astral.sh/uv/getting-started/installation/). The `--python 3.13` flag is required: the bundled RenderDoc module is compiled only for Python 3.13.
+- **`renderdoc` MCP fails to start (`server unavailable`)** — `renderdoc-mcp` requires `mcp>=1.0.0` but breaks on `mcp` 2.x (`mcp.server.fastmcp` was removed), so the launch pins `--with "mcp>=1.0,<2"`. Keep that pin in both `opencode.json` and `.agents/mcp.json`; if it regresses, run `uvx --python 3.13 --with "mcp>=1.0,<2" renderdoc-mcp` and send an MCP `initialize` line to see the error.
 - **Frame capture produces nothing / black frame** — the sample must run in `--vulkan` (default) on a Vulkan-capable driver; `--gdi` has no GPU frame. Rebuild after editing `assets/shaders/*.glsl` (see `docs/ShaderWorkflow.md`).
 - **Capture layer not injected** — prefer **Launch Application** over attaching; RenderDoc can only capture a process it launched (or one that enabled the layer itself).
 - **Analysis errors on an `.rdc` from another machine** — the bundled replay module replays captures locally on the GPU; make sure a compatible Vulkan driver is present. CPU-based replay is not used.
