@@ -30,6 +30,7 @@ Windows-first .NET 10 isometric game engine (Vulkan renderer; Linux/macOS planne
 ## Performance and process
 
 - [`PerformanceBudget.md`](PerformanceBudget.md) — performance targets and multithreading policy.
+- [`LibraryImportVerificationPlan.md`](LibraryImportVerificationPlan.md) — optional verification tiers (AOT publish, dotnet-counters/trace, BenchmarkDotNet, in-engine telemetry) for roadmap item #14's `[LibraryImport]` migration.
 - [`Conventions.md`](Conventions.md) — coding/perf rules that differ from .NET defaults, package/build policy, commands.
 - [`Roadmap.md`](Roadmap.md) — milestones, ordered feature queue, platform milestones, deferred items.
 - [`RecoveryAndContext.md`](RecoveryAndContext.md) — the resumable-state convention every milestone must follow.

@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace Engine.Platform.Win32;
 
 public sealed class Win32Input : IInputState
@@ -14,7 +12,7 @@ public sealed class Win32Input : IInputState
     {
         _previous = _current;
         _current = 0;
-        if (GetForegroundWindow() != _window) return;
+        if (NativeMethods.GetForegroundWindow() != _window) return;
         Set(GameKey.Up, IsDown(0x57) || IsDown(0x26));
         Set(GameKey.Down, IsDown(0x53) || IsDown(0x28));
         Set(GameKey.Left, IsDown(0x41) || IsDown(0x25));
@@ -31,11 +29,5 @@ public sealed class Win32Input : IInputState
     private void Set(GameKey key, bool down) { if (down) _current |= Mask(key); }
     private static uint Mask(GameKey key) => 1u << (int)key;
 
-    [DllImport("user32.dll")]
-    private static extern nint GetForegroundWindow();
-
-    [DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int key);
-
-    private static bool IsDown(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
+    private static bool IsDown(int key) => (NativeMethods.GetAsyncKeyState(key) & 0x8000) != 0;
 }
