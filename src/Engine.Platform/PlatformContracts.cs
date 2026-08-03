@@ -44,6 +44,9 @@ public interface IGameWindow : IDisposable
     Vector2 Size { get; }
     bool ShouldClose { get; }
     bool Fullscreen { get; }
+    /// <summary>True while the window is minimized (0x0 or hidden); renderers should skip
+    /// the swapchain while minimized because the surface extent is degenerate.</summary>
+    bool IsMinimized { get; }
     /// <summary>Native handles required by backends (e.g. Vulkan surface creation).</summary>
     NativeWindowSurface NativeSurface { get; }
     void PumpEvents();

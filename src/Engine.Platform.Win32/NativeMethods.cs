@@ -13,6 +13,10 @@ internal static partial class NativeMethods
     // ---- user32.dll ----
 
     [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool SetProcessDpiAwarenessContext(nint value);
+
+    [LibraryImport("user32.dll")]
     internal static partial int GetSystemMetrics(int index);
 
     [LibraryImport("user32.dll", EntryPoint = "CreateWindowExW", StringMarshalling = StringMarshalling.Utf16)]

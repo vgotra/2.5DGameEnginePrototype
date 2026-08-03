@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Vortice.Vulkan;
 
@@ -82,14 +81,6 @@ public unsafe struct VulkanPipeline : IDisposable
             VkVertexInputBindingDescription binding = ShapePipelineDescription.Binding;
             VkVertexInputAttributeDescription[] attributes = ShapePipelineDescription.Attributes;
 
-            VkPipelineVertexInputStateCreateInfo vertexInput = new()
-            {
-                vertexBindingDescriptionCount = 1,
-                pVertexBindingDescriptions = &binding,
-                vertexAttributeDescriptionCount = (uint)attributes.Length,
-                pVertexAttributeDescriptions = (VkVertexInputAttributeDescription*)Unsafe.AsPointer(ref attributes[0])
-            };
-
             VkPipelineInputAssemblyStateCreateInfo inputAssembly = ShapePipelineDescription.InputAssembly;
 
             VkPipelineViewportStateCreateInfo viewport = new()
@@ -115,8 +106,23 @@ public unsafe struct VulkanPipeline : IDisposable
             };
 
             VkDynamicState[] dynamicStates = { VkDynamicState.Viewport, VkDynamicState.Scissor };
+
+            // All managed arrays referenced by the create-info graph are pinned for the duration
+            // of vkCreateGraphicsPipelines. Taking Unsafe.AsPointer on an unpinned managed array
+            // is a GC-relocation hazard: a background GC can move the array between pointer capture
+            // and the native call reading it, which would silently corrupt the pipeline description.
+            fixed (VkPipelineShaderStageCreateInfo* stagePtr = stages)
+            fixed (VkVertexInputAttributeDescription* attributePtr = attributes)
             fixed (VkDynamicState* dynStates = dynamicStates)
             {
+                VkPipelineVertexInputStateCreateInfo vertexInput = new()
+                {
+                    vertexBindingDescriptionCount = 1,
+                    pVertexBindingDescriptions = &binding,
+                    vertexAttributeDescriptionCount = (uint)attributes.Length,
+                    pVertexAttributeDescriptions = attributePtr
+                };
+
                 VkPipelineDynamicStateCreateInfo dynamicState = new()
                 {
                     dynamicStateCount = (uint)dynamicStates.Length,
@@ -126,7 +132,7 @@ public unsafe struct VulkanPipeline : IDisposable
                 VkGraphicsPipelineCreateInfo pipelineInfo = new()
                 {
                     stageCount = 2,
-                    pStages = (VkPipelineShaderStageCreateInfo*)Unsafe.AsPointer(ref stages[0]),
+                    pStages = stagePtr,
                     pVertexInputState = &vertexInput,
                     pInputAssemblyState = &inputAssembly,
                     pViewportState = &viewport,

@@ -1,7 +1,7 @@
 # Known Issues
 
 - The current JobSystem is a provisional queue-based scheduler and does not yet implement dependency graphs or work stealing. `DrainAsync` blocks on a completion semaphore (no busy-wait); the `System.Threading.Channels` rewrite is deferred to the ECS/jobs milestone.
-- The batch renderer uploads geometry through a staging buffer every time the geometry changes (FNV dirty gate); when it does upload, the staging→device copies are recorded into the main command buffer, so no per-frame queue drain occurs. `vkQueueWaitIdle` remains only for resize, dispose, and rare buffer growth.
+- The batch renderer uploads geometry through a staging buffer every time the geometry changes (per-slot byte-snapshot dirty gate); when it does upload, the staging→device copies are recorded into the main command buffer, so no per-frame queue drain occurs. `vkQueueWaitIdle` remains only for resize, dispose, and rare buffer growth.
 - MAILBOX present is non-blocking, so an unpaced CPU renders as fast as it can and presents every completed frame (the 60 Hz fixed-step sim renders multiple times per present) — `--cap <fps>` restores a steady cadence. Sim-to-present interpolation is a deferred optional follow-up for refresh-rate-independent smoothness (see `docs/FramePacingPlan.md`).
 - `SpritePacket.Texture`/`Material` are ignored by the shape pipeline; texture rendering is pending.
 - Tile borders are drawn by overdrawing a slightly larger black diamond behind each white tile (~2px).

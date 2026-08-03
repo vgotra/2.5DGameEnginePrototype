@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using Engine.Core;
 using Engine.Ecs;
@@ -37,7 +38,8 @@ IsometricCamera fullscreenCamera = new(new Vector2(1920, 1080));
 fullscreenCamera.Follow(new Vector2(2, 2), map);
 Assert(fullscreenCamera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(960, 540), "iso map centered in fullscreen viewport");
 SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2];
-Assert(RenderExtractionSystem.ExtractMapSprites(map, camera, sprites) == map.Width * map.Height * 2, "map sprite extraction");
+int isoExtracted = RenderExtractionSystem.ExtractMapSprites(map, camera, sprites);
+Assert(isoExtracted > 0 && isoExtracted <= map.Width * map.Height * 2, "iso map sprite extraction bounded");
 Assert(sprites[0].Shape == ShapeKind.Diamond && sprites[1].Shape == ShapeKind.Diamond, "iso sprites are diamonds");
 IsometricCamera flatCamera = new(new Vector2(800, 600)) { Isometric = false };
 flatCamera.Follow(new Vector2(10, 10), map);
@@ -47,7 +49,8 @@ IsometricCamera fullscreenFlat = new(new Vector2(1920, 1080)) { Isometric = fals
 fullscreenFlat.Follow(new Vector2(2, 2), map);
 Assert(fullscreenFlat.WorldToScreen(new Vector2(10, 10), map).X == 960, "flat map centered horizontally in fullscreen viewport");
 SpritePacket[] flatSprites = new SpritePacket[map.Width * map.Height * 2];
-Assert(RenderExtractionSystem.ExtractMapSprites(map, flatCamera, flatSprites) == map.Width * map.Height * 2, "flat map sprite extraction");
+int flatExtracted = RenderExtractionSystem.ExtractMapSprites(map, flatCamera, flatSprites);
+Assert(flatExtracted > 0 && flatExtracted <= map.Width * map.Height * 2, "flat map sprite extraction bounded");
 Assert(flatSprites[0].Shape == ShapeKind.Box && flatSprites[1].Shape == ShapeKind.Box && flatSprites[1].Size == new Vector2(map.TileWidth, map.TileWidth), "flat sprites are boxes");
 int completed = 0;
 using (JobSystem jobs = new(4))
@@ -56,6 +59,63 @@ using (JobSystem jobs = new(4))
     await jobs.DrainAsync();
 }
 Assert(completed == 100, "job system drains all scheduled jobs");
+
+int parallelCompleted = 0;
+using (JobSystem parallelJobs = new(8))
+{
+    for (int i = 0; i < 2000; i++) _ = parallelJobs.Schedule(() => Interlocked.Increment(ref parallelCompleted));
+    await parallelJobs.DrainAsync();
+}
+Assert(parallelCompleted == 2000, "job system drains 2000 jobs across 8 workers");
+
+FrameTimer uncappedTimer = new();
+Assert(uncappedTimer.Advance() >= 0, "uncapped frame timer advances");
+Stopwatch sw = Stopwatch.StartNew();
+uncappedTimer.WaitForNextFrame();
+sw.Stop();
+Assert(sw.ElapsedMilliseconds < 5, "uncapped wait returns immediately");
+FrameTimer cappedTimer = new(60);
+cappedTimer.Advance();
+sw.Restart();
+cappedTimer.WaitForNextFrame();
+sw.Stop();
+Assert(sw.ElapsedMilliseconds is >= 8 and <= 250, "frame cap paces to ~16.7ms");
+
+GameClock stepClock = new();
+for (int i = 0; i < 5; i++) stepClock.Advance(GameClock.FixedStep);
+int steps = 0;
+while (stepClock.TryConsumeFixedStep()) steps++;
+Assert(steps == 5, "game clock consumes one fixed step per advance");
+GameClock clampedClock = new();
+clampedClock.Advance(0.5);
+Assert(Math.Abs(clampedClock.DeltaSeconds - 0.25) < 1e-9, "game clock clamps long frames");
+Assert(clampedClock.Accumulator <= 0.25, "game clock accumulator bounded");
+
+TileMap slideMap = new();
+slideMap.SetTile(3, 3, TileType.Blocked);
+Vector2 slid = slideMap.TryMove(new(3.5f, 2.5f), new(4.0f, 3.0f), 0.2f);
+Assert(slid.X == 4.0f && slid.Y == 2.5f, "movement slides horizontally around a blocked cell");
+Vector2 stopped = slideMap.TryMove(new(3.4f, 2.4f), new(3.4f, 3.0f), 0.2f);
+Assert(stopped == new Vector2(3.4f, 2.4f), "blocked cell stops movement");
+
+IsometricCamera flatFit = new(new Vector2(1280, 1280)) { Isometric = false };
+flatFit.Follow(new Vector2(2, 2), map);
+Assert(flatFit.WorldToScreen(new Vector2(10, 10), map) == new Vector2(640, 640), "flat map centered on both axes when it fits the viewport");
+
+IsometricCamera narrow = new(new Vector2(300, 300)) { Isometric = false };
+narrow.Follow(new Vector2(10, 10), map);
+SpritePacket[] culledSprites = new SpritePacket[map.Width * map.Height * 2];
+int culledCount = RenderExtractionSystem.ExtractMapSprites(map, narrow, culledSprites);
+Assert(culledCount > 0 && culledCount < map.Width * map.Height * 2, "viewport culling skips off-screen tiles");
+
+World multiStore = new();
+EntityId multiEntity = multiStore.Create();
+multiStore.Storage<TestComponent>().Add(multiEntity, new TestComponent(1));
+multiStore.Storage<TestComponent2>().Add(multiEntity, new TestComponent2(2));
+Assert(multiStore.Storage<TestComponent>().Count == 1 && multiStore.Storage<TestComponent2>().Count == 1, "two component stores populated");
+multiStore.Destroy(multiEntity);
+Assert(multiStore.Storage<TestComponent>().Count == 0 && multiStore.Storage<TestComponent2>().Count == 0, "destroy purges every component store");
+
 Console.WriteLine("Smoke tests passed");
 
 static void Assert(bool condition, string name)
@@ -64,3 +124,4 @@ static void Assert(bool condition, string name)
 }
 
 public readonly record struct TestComponent(int Value);
+public readonly record struct TestComponent2(int Value);

@@ -9,9 +9,9 @@ using IsometricSandbox.Game;
 bool flatMode = args.Contains("--2d");
 bool startFullscreen = args.Contains("--fullscreen");
 double frameCap = 0;
-for (int i = 0; i < args.Length - 1; i++)
+for (int i = 0; i < args.Length; i++)
 {
-    if (args[i] == "--cap" && double.TryParse(args[i + 1], out double fps)) frameCap = fps;
+    if (args[i] == "--cap" && i + 1 < args.Length && double.TryParse(args[i + 1], out double fps)) frameCap = fps;
 }
 
 const float jumpDuration = 0.24f;
@@ -41,6 +41,15 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     window.PumpEvents();
     input.Update();
     if (input.WasPressed(GameKey.Fullscreen)) window.SetFullscreen(!window.Fullscreen);
+    if (window.IsMinimized)
+    {
+        // Skip rendering while minimized: the swapchain surface extent is degenerate and
+        // vkAcquireNextImageKHR would block on the infinite timeout. Keep pumping and pacing
+        // so restore (a WM_SIZE with a real extent) resumes through the normal resize path.
+        frameTimer.WaitForNextFrame();
+        if (frameCap <= 0) Thread.Sleep(15);
+        continue;
+    }
     if (window.Size != viewport)
     {
         viewport = window.Size;

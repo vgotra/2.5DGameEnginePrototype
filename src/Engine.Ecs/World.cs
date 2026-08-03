@@ -4,7 +4,7 @@ namespace Engine.Ecs;
 
 public sealed class World
 {
-    private readonly List<ushort> _generations = new();
+    private readonly List<uint> _generations = new();
     private readonly Stack<uint> _free = new();
     private readonly Dictionary<ComponentTypeId, object> _stores = new();
 

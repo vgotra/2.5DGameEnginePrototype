@@ -40,6 +40,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private uint _imageIndex;
     private int _currentFrame;
     private bool _inFrame;
+    private bool _disposed;
+    private bool _loaderInitialized;
 
     private ShaderModuleLoader _shaderLoader = null!;
     private VulkanPipeline _pipeline;
@@ -55,11 +57,25 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
     public VulkanRenderer(in NativeWindowSurface surface)
     {
+        try
+        {
+            Initialize(surface);
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
+    }
+
+    private void Initialize(in NativeWindowSurface surface)
+    {
         if (surface.Kind != PlatformKind.Win32)
             throw new PlatformNotSupportedException($"Vulkan surface kind '{surface.Kind}' is not implemented yet (see docs/LinuxSupportPlan.md).");
 
         VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize(LoaderName());
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
+        _loaderInitialized = true;
         // App/engine/extension name strings are pinned in-place (u8 literals) so nothing needs a
         // CoTaskMem free and nothing leaks if a creation call throws mid-construction.
         ReadOnlySpan<byte> appName = "IsometricSandbox\0"u8;
@@ -484,24 +500,33 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
     public void Dispose()
     {
-        if (_device.IsNotNull) _deviceApi.vkDeviceWaitIdle();
+        if (_disposed) return;
+        _disposed = true;
+
+        // _deviceApi stays null when initialization fails before vkCreateDevice, so every use
+        // below is guarded. All handle fields default to Null in that state, so a partial-init
+        // teardown releases only the objects that were actually created.
+        if (_device.IsNotNull && _deviceApi != null) _deviceApi.vkDeviceWaitIdle();
         _batchRenderer?.Dispose();
         _textureUploader?.Dispose();
         _descriptorAllocator?.Dispose();
         if (_pipeline.Pipeline.IsNotNull) _pipeline.Dispose();
         _shaderLoader?.Dispose();
-        for (int i = 0; i < _framebuffers.Length; i++) if (_framebuffers[i].IsNotNull) _deviceApi.vkDestroyFramebuffer(_framebuffers[i]);
-        if (_renderPass.IsNotNull) _deviceApi.vkDestroyRenderPass(_renderPass);
-        DestroyCommandResources();
-        for (int i = 0; i < _swapchainViews.Length; i++) if (_swapchainViews[i].IsNotNull) _deviceApi.vkDestroyImageView(_swapchainViews[i]);
-        if (_swapchain.IsNotNull && _device.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
-        if (_device.IsNotNull) _deviceApi.vkDestroyDevice();
+        if (_deviceApi != null)
+        {
+            for (int i = 0; i < _framebuffers.Length; i++) if (_framebuffers[i].IsNotNull) _deviceApi.vkDestroyFramebuffer(_framebuffers[i]);
+            if (_renderPass.IsNotNull) _deviceApi.vkDestroyRenderPass(_renderPass);
+            DestroyCommandResources();
+            for (int i = 0; i < _swapchainViews.Length; i++) if (_swapchainViews[i].IsNotNull) _deviceApi.vkDestroyImageView(_swapchainViews[i]);
+            if (_swapchain.IsNotNull && _device.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
+            if (_device.IsNotNull) _deviceApi.vkDestroyDevice();
+        }
         if (_surface.IsNotNull) _instanceApi.vkDestroySurfaceKHR(_surface);
 #if DEBUG
         if (_debugMessenger.IsNotNull) _instanceApi.vkDestroyDebugUtilsMessengerEXT(_debugMessenger);
 #endif
         if (_instance.IsNotNull) _instanceApi.vkDestroyInstance();
-        global::Vortice.Vulkan.Vulkan.vkShutdown();
+        if (_loaderInitialized) global::Vortice.Vulkan.Vulkan.vkShutdown();
     }
 
 #if DEBUG

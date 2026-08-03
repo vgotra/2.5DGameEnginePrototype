@@ -21,8 +21,10 @@ public unsafe class BatchRenderer : IDisposable
     private VulkanBuffer[] _indexBuffers;
     private VulkanBuffer[] _stagingVertexBuffers;
     private VulkanBuffer[] _stagingIndexBuffers;
-    private ulong[] _vertexHashes;
-    private ulong[] _indexHashes;
+    private byte[]?[] _vertexSnapshots;
+    private byte[]?[] _indexSnapshots;
+    private nuint[] _vertexSnapshotSizes;
+    private nuint[] _indexSnapshotSizes;
     private int _frameIndex;
 
     private readonly List<ShapeVertex> _vertices = new();
@@ -54,8 +56,10 @@ public unsafe class BatchRenderer : IDisposable
         _indexBuffers = new VulkanBuffer[framesInFlight];
         _stagingVertexBuffers = new VulkanBuffer[framesInFlight];
         _stagingIndexBuffers = new VulkanBuffer[framesInFlight];
-        _vertexHashes = new ulong[framesInFlight];
-        _indexHashes = new ulong[framesInFlight];
+        _vertexSnapshots = new byte[]?[framesInFlight];
+        _indexSnapshots = new byte[]?[framesInFlight];
+        _vertexSnapshotSizes = new nuint[framesInFlight];
+        _indexSnapshotSizes = new nuint[framesInFlight];
     }
 
     public void ResizeBuffers(uint maxVertices, uint maxIndices)
@@ -186,17 +190,39 @@ public unsafe class BatchRenderer : IDisposable
 
         // Dirty gate: the persistent device buffers retain their previous content, so geometry is
         // re-uploaded only when it changed since this frame slot was last used. An unchanged frame
-        // skips the staging write + copy and just re-issues the draw.
+        // skips the staging write + copy and just re-issues the draw. Change detection compares the
+        // freshly built vertex/index bytes against a per-slot snapshot with a vectorized
+        // SequenceEqual (far cheaper than a bytewise FNV scan of the ~300 KB buffer), and the
+        // snapshot is refreshed only on change.
         Span<ShapeVertex> vertices = CollectionsMarshal.AsSpan(_vertices);
         Span<uint> indices = CollectionsMarshal.AsSpan(_indices);
-        ulong vertexHash = HashBytes(MemoryMarshal.AsBytes(vertices));
-        ulong indexHash = HashBytes(MemoryMarshal.AsBytes(indices));
-        bool geometryChanged = vertexHash != _vertexHashes[_frameIndex] || indexHash != _indexHashes[_frameIndex];
-        _vertexHashes[_frameIndex] = vertexHash;
-        _indexHashes[_frameIndex] = indexHash;
+        Span<byte> vertexBytesSpan = MemoryMarshal.AsBytes(vertices);
+        Span<byte> indexBytesSpan = MemoryMarshal.AsBytes(indices);
+        byte[]? vertexSnapshot = _vertexSnapshots[_frameIndex];
+        byte[]? indexSnapshot = _indexSnapshots[_frameIndex];
+        bool geometryChanged;
+        if (vertexSnapshot is null || indexSnapshot is null ||
+            vertexBytes != _vertexSnapshotSizes[_frameIndex] || indexBytes != _indexSnapshotSizes[_frameIndex])
+        {
+            geometryChanged = true;
+        }
+        else
+        {
+            geometryChanged = !vertexBytesSpan.SequenceEqual(vertexSnapshot.AsSpan(0, (int)vertexBytes)) ||
+                              !indexBytesSpan.SequenceEqual(indexSnapshot.AsSpan(0, (int)indexBytes));
+        }
 
         if (geometryChanged)
         {
+            // Snapshot arrays are preallocated once per slot and reallocated only when the vertex/
+            // index counts change (rare; initial sizes cover the 20x20 map).
+            if (vertexSnapshot?.Length != (int)vertexBytes) _vertexSnapshots[_frameIndex] = new byte[(int)vertexBytes];
+            if (indexSnapshot?.Length != (int)indexBytes) _indexSnapshots[_frameIndex] = new byte[(int)indexBytes];
+            vertexBytesSpan.CopyTo(_vertexSnapshots[_frameIndex]!);
+            indexBytesSpan.CopyTo(_indexSnapshots[_frameIndex]!);
+            _vertexSnapshotSizes[_frameIndex] = vertexBytes;
+            _indexSnapshotSizes[_frameIndex] = indexBytes;
+
             fixed (ShapeVertex* vertexPointer = vertices)
                 stagingVertex.UploadData(vertexPointer, vertexBytes);
             fixed (uint* indexPointer = indices)
@@ -253,17 +279,6 @@ public unsafe class BatchRenderer : IDisposable
         _deviceApi.vkCmdPushConstants(cmdBuffer, _pipeline.Layout, VkShaderStageFlags.Vertex, 0, (uint)sizeof(VulkanPipeline.CameraPushConstants), &pushConstants);
 
         _deviceApi.vkCmdDrawIndexed(cmdBuffer, (uint)_indices.Count, 1, 0, 0, 0);
-    }
-
-    private static ulong HashBytes(ReadOnlySpan<byte> bytes)
-    {
-        ulong hash = 14695981039346656037;
-        foreach (byte b in bytes)
-        {
-            hash ^= b;
-            hash *= 1099511628211;
-        }
-        return hash;
     }
 
     public void Dispose()
