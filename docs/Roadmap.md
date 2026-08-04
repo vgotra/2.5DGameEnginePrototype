@@ -4,7 +4,7 @@
 
 1. **Texture sampling path** — sample textures in the fragment shader, bind descriptor sets per sprite batch, texture atlas support, and honor `SpritePacket.Texture`/`Material`.
 2. **Asset loading** — PNG decoding, texture upload, sprite handles, and a small `assets/` convention.
-3. **ECS queries and system scheduling** — replace sample-local state with ECS systems and explicit read/write access.
+3. **ECS queries and system scheduling** — replace sample-local state with ECS systems and explicit read/write access. Target scale: ~100k entities with parallel multi-component queries.
 4. **Profiling and allocation metrics** — frame timings, draw calls, jobs, GC bytes, and Vulkan timestamps.
 5. **Job dependencies and safe parallel work** — dependency-aware jobs for asset loading, large-map extraction, and uploads.
 6. **Scene/save format** — explicit non-reflection serialization for tile maps, entities, and player state.
