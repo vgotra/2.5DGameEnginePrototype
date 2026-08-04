@@ -1,4 +1,4 @@
 # Restrictions (Platform Neutrality)
 
-- Contracts and shared gameplay code never contain OS-specific P/Invoke or types.
-- OS-specific code lives in `Engine.Platform.*` backends; the renderer consumes `NativeWindowSurface`; backend selection happens in `Engine.Platform.Desktop.GamePlatform`. See [`LinuxSupportPlan.md`](../LinuxSupportPlan.md).
+- FORBID OS-specific P/Invoke and types in contracts and shared gameplay code.
+- KEEP OS-specific code in `Engine.Platform.*` backends. CONSUME `NativeWindowSurface` from the renderer. PERFORM backend selection in `Engine.Platform.Desktop.GamePlatform`. SEE `../LinuxSupportPlan.md`.
