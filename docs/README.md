@@ -34,4 +34,5 @@ Status tags: **Implemented** (describes shipped behavior), **Plan** (ordered fut
 
 ## Tooling
 
+- [`AgentTooling.md`](AgentTooling.md) — **Reference**. MCP servers used by AI agents: install (`tools/Setup-McpServers.ps1`), config in `opencode.json` / `.agents/mcp.json`, relative-path resolution, and per-server guardrails.
 - [`RenderDocSetup.md`](RenderDocSetup.md) — **Reference**. **Read only when you really need it.** Install RenderDoc, capture frames from the sample, analyze `.rdc` via the `renderdoc` MCP server.
