@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace IsometricSandbox.Game;
 
@@ -23,16 +24,21 @@ public sealed class TileMap
         _tiles[(height / 2) * width + width / 2] = (byte)TileType.Goal;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsInside(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TileType Get(int x, int y) => IsInside(x, y) ? (TileType)_tiles[y * Width + x] : TileType.Blocked;
     public void SetTile(int x, int y, TileType type)
     {
         if (!IsInside(x, y)) return;
         _tiles[y * Width + x] = (byte)type;
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsWalkable(int x, int y) => !IsInside(x, y) || _tiles[y * Width + x] != (byte)TileType.Blocked;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2 TileToWorld(int x, int y) => IsInside(x, y) ? _centers[y * Width + x] : new(x + 0.5f, y + 0.5f);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool CanOccupy(Vector2 position, float radius)
     {
         int minX = (int)MathF.Floor(position.X - radius), maxX = (int)MathF.Floor(position.X + radius);
@@ -48,6 +54,7 @@ public sealed class TileMap
         return true;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2 TryMove(Vector2 position, Vector2 desired, float radius)
     {
         Vector2 result = position;

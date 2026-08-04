@@ -6,6 +6,7 @@ Single reference for prerequisites, building, running, and verifying the engine 
 - [`Build.md`](Build.md) — `dotnet build Engine.slnx --nologo` (0 errors).
 - [`Test.md`](Test.md) — `dotnet run --project tests\Engine.Tests\Engine.Tests.csproj` smoke tests.
 - [`Run.md`](Run.md) — `dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj`, flags, controls.
+- [`Benchmarking.md`](Benchmarking.md) — perf/alloc benchmark harness and session-to-session comparison.
 - [`Verify.md`](Verify.md) — the after-change verification checklist.
 
 ## Related

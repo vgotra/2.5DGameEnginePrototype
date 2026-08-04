@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace Engine.Platform.Win32;
 
 public sealed class Win32Input : IInputState
@@ -27,7 +29,9 @@ public sealed class Win32Input : IInputState
     public bool WasReleased(GameKey key) => (_current & Mask(key)) == 0 && (_previous & Mask(key)) != 0;
 
     private void Set(GameKey key, bool down) { if (down) _current |= Mask(key); }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint Mask(GameKey key) => 1u << (int)key;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsDown(int key) => (NativeMethods.GetAsyncKeyState(key) & 0x8000) != 0;
 }

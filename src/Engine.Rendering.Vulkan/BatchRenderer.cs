@@ -27,8 +27,8 @@ public unsafe class BatchRenderer : IDisposable
     private nuint[] _indexSnapshotSizes;
     private int _frameIndex;
 
-    private readonly List<ShapeVertex> _vertices = new();
-    private readonly List<uint> _indices = new();
+    private readonly GrowableBuffer<ShapeVertex> _vertices = new();
+    private readonly GrowableBuffer<uint> _indices = new();
 
     private VkViewport _viewport;
     private VkRect2D _scissor;
@@ -64,6 +64,8 @@ public unsafe class BatchRenderer : IDisposable
 
     public void ResizeBuffers(uint maxVertices, uint maxIndices)
     {
+        _vertices.EnsureCapacity((int)maxVertices);
+        _indices.EnsureCapacity((int)maxIndices);
         for (int i = 0; i < _framesInFlight; i++)
         {
             if (_vertexBuffers[i].Buffer.IsNotNull) _vertexBuffers[i].Dispose();
@@ -125,36 +127,47 @@ public unsafe class BatchRenderer : IDisposable
     private void AddShape(ShapePacket packet)
     {
         int vertexOffset = _vertices.Count;
-        int indexOffset = _indices.Count;
+        if (packet.Shape == ShapeKind.Box) AddBoxShape(packet, vertexOffset);
+        else AddDiamondShape(packet, vertexOffset);
+    }
 
+    private void AddBoxShape(ShapePacket packet, int vertexOffset)
+    {
         float halfWidth = packet.Size.X * 0.5f;
         float halfHeight = packet.Size.Y * 0.5f;
 
-        if (packet.Shape == ShapeKind.Box)
-        {
-            Vector2 topLeft = packet.Position + new Vector2(-halfWidth, -halfHeight);
-            Vector2 topRight = packet.Position + new Vector2(halfWidth, -halfHeight);
-            Vector2 bottomRight = packet.Position + new Vector2(halfWidth, halfHeight);
-            Vector2 bottomLeft = packet.Position + new Vector2(-halfWidth, halfHeight);
+        Vector2 topLeft = packet.Position + new Vector2(-halfWidth, -halfHeight);
+        Vector2 topRight = packet.Position + new Vector2(halfWidth, -halfHeight);
+        Vector2 bottomRight = packet.Position + new Vector2(halfWidth, halfHeight);
+        Vector2 bottomLeft = packet.Position + new Vector2(-halfWidth, halfHeight);
 
-            _vertices.Add(new ShapeVertex(topLeft, packet.Color));
-            _vertices.Add(new ShapeVertex(topRight, packet.Color));
-            _vertices.Add(new ShapeVertex(bottomRight, packet.Color));
-            _vertices.Add(new ShapeVertex(bottomLeft, packet.Color));
-        }
-        else
-        {
-            Vector2 top = packet.Position + new Vector2(0, -halfHeight);
-            Vector2 right = packet.Position + new Vector2(halfWidth, 0);
-            Vector2 bottom = packet.Position + new Vector2(0, halfHeight);
-            Vector2 left = packet.Position + new Vector2(-halfWidth, 0);
+        _vertices.Add(new ShapeVertex(topLeft, packet.Color));
+        _vertices.Add(new ShapeVertex(topRight, packet.Color));
+        _vertices.Add(new ShapeVertex(bottomRight, packet.Color));
+        _vertices.Add(new ShapeVertex(bottomLeft, packet.Color));
+        AppendQuadIndices(vertexOffset);
+    }
 
-            _vertices.Add(new ShapeVertex(top, packet.Color));
-            _vertices.Add(new ShapeVertex(right, packet.Color));
-            _vertices.Add(new ShapeVertex(bottom, packet.Color));
-            _vertices.Add(new ShapeVertex(left, packet.Color));
-        }
+    private void AddDiamondShape(ShapePacket packet, int vertexOffset)
+    {
+        float halfWidth = packet.Size.X * 0.5f;
+        float halfHeight = packet.Size.Y * 0.5f;
 
+        Vector2 top = packet.Position + new Vector2(0, -halfHeight);
+        Vector2 right = packet.Position + new Vector2(halfWidth, 0);
+        Vector2 bottom = packet.Position + new Vector2(0, halfHeight);
+        Vector2 left = packet.Position + new Vector2(-halfWidth, 0);
+
+        _vertices.Add(new ShapeVertex(top, packet.Color));
+        _vertices.Add(new ShapeVertex(right, packet.Color));
+        _vertices.Add(new ShapeVertex(bottom, packet.Color));
+        _vertices.Add(new ShapeVertex(left, packet.Color));
+        AppendQuadIndices(vertexOffset);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void AppendQuadIndices(int vertexOffset)
+    {
         _indices.Add((uint)vertexOffset + 0);
         _indices.Add((uint)vertexOffset + 1);
         _indices.Add((uint)vertexOffset + 2);
@@ -186,8 +199,8 @@ public unsafe class BatchRenderer : IDisposable
             stagingIndex = _stagingIndexBuffers[_frameIndex];
         }
 
-        Span<ShapeVertex> vertices = CollectionsMarshal.AsSpan(_vertices);
-        Span<uint> indices = CollectionsMarshal.AsSpan(_indices);
+        Span<ShapeVertex> vertices = _vertices.AsSpan();
+        Span<uint> indices = _indices.AsSpan();
         Span<byte> vertexBytesSpan = MemoryMarshal.AsBytes(vertices);
         Span<byte> indexBytesSpan = MemoryMarshal.AsBytes(indices);
         byte[]? vertexSnapshot = _vertexSnapshots[_frameIndex];

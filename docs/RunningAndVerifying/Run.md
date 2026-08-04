@@ -15,6 +15,7 @@ dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj
 | `--2d` | Flat top-down grid of white squares with black borders instead of the isometric diamond view. |
 | `--fullscreen` | Start the window in borderless fullscreen. |
 | `--cap <fps>` | Cap the frame rate (e.g. `--cap 60`); default is unpaced. |
+| `--metrics` | Print a rolling table every 120 frames: avg/max frame time, sim steps, sprites, avg allocated bytes/frame, GC collections (see [`Benchmarking.md`](Benchmarking.md)). |
 
 Example:
 

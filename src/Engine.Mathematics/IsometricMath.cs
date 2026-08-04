@@ -1,12 +1,15 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Engine.Mathematics;
 
 public static class IsometricMath
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2 WorldToScreen(Vector2 world, float tileWidth, float tileHeight)
         => new((world.X - world.Y) * tileWidth * 0.5f, (world.X + world.Y) * tileHeight * 0.5f);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector2 ScreenToWorld(Vector2 screen, float tileWidth, float tileHeight)
     {
         float x = screen.X / (tileWidth * 0.5f);

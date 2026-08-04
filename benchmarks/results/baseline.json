@@ -1,0 +1,173 @@
+{
+  "SchemaVersion": 1,
+  "Machine": "DESKTOP",
+  "Commit": "b58d8d7",
+  "TimestampUtc": "2026-08-04T22:28:26.2471593Z",
+  "Benchmarks": [
+    {
+      "Name": "Extraction_Iso20x20",
+      "Iterations": 50000,
+      "MedianNsPerOp": 1128.996,
+      "MinNsPerOp": 1123.01,
+      "MaxNsPerOp": 1137.404,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Extraction_Flat20x20",
+      "Iterations": 50000,
+      "MedianNsPerOp": 1093.358,
+      "MinNsPerOp": 1086.41,
+      "MaxNsPerOp": 1100.922,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Extraction_Iso128x128",
+      "Iterations": 5000,
+      "MedianNsPerOp": 30875.06,
+      "MinNsPerOp": 30792.8,
+      "MaxNsPerOp": 30959,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Extraction_Flat128x128",
+      "Iterations": 5000,
+      "MedianNsPerOp": 25773.46,
+      "MinNsPerOp": 25557.42,
+      "MaxNsPerOp": 48172.72,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Collision_TryMoveOpen",
+      "Iterations": 100000,
+      "MedianNsPerOp": 88.108,
+      "MinNsPerOp": 87.739,
+      "MaxNsPerOp": 92.821,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Movement_Move",
+      "Iterations": 100000,
+      "MedianNsPerOp": 60.805,
+      "MinNsPerOp": 60.423,
+      "MaxNsPerOp": 67.084,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Collision_TryMoveBlocked",
+      "Iterations": 100000,
+      "MedianNsPerOp": 52.248,
+      "MinNsPerOp": 51.281,
+      "MaxNsPerOp": 55.666,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "SparseSet_AddRemove",
+      "Iterations": 200000,
+      "MedianNsPerOp": 24.857,
+      "MinNsPerOp": 24.6695,
+      "MaxNsPerOp": 25.21,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "SparseSet_TryGetHit",
+      "Iterations": 200000,
+      "MedianNsPerOp": 6.887,
+      "MinNsPerOp": 6.8365,
+      "MaxNsPerOp": 8.28,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "SparseSet_RemoveMiss",
+      "Iterations": 200000,
+      "MedianNsPerOp": 8.086,
+      "MinNsPerOp": 7.849,
+      "MaxNsPerOp": 8.158,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Buffer_AddClear",
+      "Iterations": 200000,
+      "MedianNsPerOp": 10.9325,
+      "MinNsPerOp": 10.794,
+      "MaxNsPerOp": 11.103,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Buffer_Add64Clear",
+      "Iterations": 100000,
+      "MedianNsPerOp": 101.87,
+      "MinNsPerOp": 100.045,
+      "MaxNsPerOp": 907.516,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Math_ScreenTransformIso",
+      "Iterations": 500000,
+      "MedianNsPerOp": 5.5492,
+      "MinNsPerOp": 5.3162,
+      "MaxNsPerOp": 5.7356,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Math_ScreenTransformFlat",
+      "Iterations": 500000,
+      "MedianNsPerOp": 7.2976,
+      "MinNsPerOp": 7.0636,
+      "MaxNsPerOp": 7.5554,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    },
+    {
+      "Name": "Math_IsometricWorldToScreen",
+      "Iterations": 500000,
+      "MedianNsPerOp": 10.1676,
+      "MinNsPerOp": 9.7212,
+      "MaxNsPerOp": 10.7208,
+      "AllocBytesPerOp": 0,
+      "Gen0Collections": 0,
+      "Gen1Collections": 0,
+      "Gen2Collections": 0
+    }
+  ]
+}

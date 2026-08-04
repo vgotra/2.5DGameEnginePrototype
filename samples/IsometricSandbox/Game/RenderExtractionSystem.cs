@@ -1,5 +1,4 @@
 using System.Numerics;
-using Engine.Mathematics;
 using Engine.Rendering;
 
 namespace IsometricSandbox.Game;
@@ -19,11 +18,12 @@ public static class RenderExtractionSystem
         float halfWidth = tileWidth * 0.5f + BorderWidth;
         float halfHeight = tileHeight * 0.5f + BorderWidth;
         Vector2 viewport = camera.Viewport;
+        ScreenTransform transform = camera.GetScreenTransform(map);
         int written = 0;
         for (int y = 0; y < map.Height && written + 2 <= sprites.Length; y++)
         for (int x = 0; x < map.Width && written + 2 <= sprites.Length; x++)
         {
-            Vector2 screen = camera.WorldToScreen(map.TileToWorld(x, y), map);
+            Vector2 screen = transform.ToScreen(x + 0.5f, y + 0.5f);
             if (screen.X + halfWidth < 0 || screen.X - halfWidth > viewport.X ||
                 screen.Y + halfHeight < 0 || screen.Y - halfHeight > viewport.Y)
                 continue;

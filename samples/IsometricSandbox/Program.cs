@@ -8,6 +8,7 @@ using IsometricSandbox.Game;
 
 bool flatMode = args.Contains("--2d");
 bool startFullscreen = args.Contains("--fullscreen");
+bool metrics = args.Contains("--metrics");
 double frameCap = 0;
 for (int i = 0; i < args.Length; i++)
 {
@@ -36,8 +37,13 @@ FrameTimer frameTimer = new(frameCap);
 Vector2 viewport = window.Size;
 if (startFullscreen) window.SetFullscreen(true);
 SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2 + 2];
+FrameMetrics frameMetrics = default;
 while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
 {
+    long frameStartAlloc = GC.GetAllocatedBytesForCurrentThread();
+    long frameStartGen0 = GC.CollectionCount(0);
+    long frameStartGen1 = GC.CollectionCount(1);
+    long frameStartGen2 = GC.CollectionCount(2);
     window.PumpEvents();
     input.Update();
     if (input.WasPressed(GameKey.Fullscreen)) window.SetFullscreen(!window.Fullscreen);
@@ -53,10 +59,14 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
         camera.Resize(viewport);
         renderer.Resize((int)viewport.X, (int)viewport.Y);
     }
-    clock.Advance(frameTimer.Advance());
+    double elapsed = frameTimer.Advance();
+    double frameMs = elapsed * 1000.0;
+    clock.Advance(elapsed);
     Vector2 direction = new((input.IsDown(GameKey.Right) ? 1 : 0) - (input.IsDown(GameKey.Left) ? 1 : 0), (input.IsDown(GameKey.Down) ? 1 : 0) - (input.IsDown(GameKey.Up) ? 1 : 0));
+    int fixedSteps = 0;
     while (clock.TryConsumeFixedStep())
     {
+        fixedSteps++;
         if (direction.LengthSquared() > 0) facing = Vector2.Normalize(direction);
         if (input.WasPressed(GameKey.Space) && jumpTime >= jumpDuration)
         {
@@ -81,4 +91,15 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     renderer.Submit(sprites.AsSpan(0, tileCount + 2));
     renderer.EndFrame();
     frameTimer.WaitForNextFrame();
+    if (metrics)
+    {
+        frameMetrics.Add(
+            frameMs,
+            fixedSteps,
+            tileCount + 2,
+            GC.GetAllocatedBytesForCurrentThread() - frameStartAlloc,
+            GC.CollectionCount(0) - frameStartGen0,
+            GC.CollectionCount(1) - frameStartGen1,
+            GC.CollectionCount(2) - frameStartGen2);
+    }
 }

@@ -1,7 +1,39 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Engine.Mathematics;
 
 namespace IsometricSandbox.Game;
+
+/// <summary>
+/// Per-frame affine screen transform for a camera, computed once per frame and reused for every
+/// tile in the extraction loop. Keeps the per-tile hot path to two fused multiply-adds per axis
+/// instead of instance calls, per-branch checks, and temporary allocations (see Conventions/HotPath.md).
+/// </summary>
+public readonly struct ScreenTransform
+{
+    public readonly float OriginX;
+    public readonly float OriginY;
+    public readonly float ScaleX;
+    public readonly float ScaleY;
+    public readonly bool Isometric;
+
+    public ScreenTransform(float originX, float originY, float scaleX, float scaleY, bool isometric)
+    {
+        OriginX = originX;
+        OriginY = originY;
+        ScaleX = scaleX;
+        ScaleY = scaleY;
+        Isometric = isometric;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector2 ToScreen(float worldX, float worldY)
+    {
+        if (Isometric)
+            return new(OriginX + (worldX - worldY) * ScaleX, OriginY + (worldX + worldY) * ScaleY);
+        return new(OriginX + worldX * ScaleX, OriginY + worldY * ScaleY);
+    }
+}
 
 public sealed class IsometricCamera
 {
@@ -11,6 +43,7 @@ public sealed class IsometricCamera
     public bool Isometric { get; set; } = true;
     public IsometricCamera(Vector2 viewport) => Viewport = viewport;
     public void Resize(Vector2 viewport) => Viewport = viewport;
+
     public void Follow(Vector2 target, TileMap map)
     {
         Vector2 position = target;
@@ -39,9 +72,28 @@ public sealed class IsometricCamera
         }
         Position = position;
     }
-    public Vector2 WorldToScreen(Vector2 world, TileMap map)
+
+    /// <summary>Computes the per-frame screen transform; the extraction loop hoists this out of its tile loop.</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ScreenTransform GetScreenTransform(TileMap map)
     {
-        if (!Isometric) return ((world - Position) * Zoom * map.TileWidth) + Viewport * 0.5f;
-        return (IsometricMath.WorldToScreen(world - Position, map.TileWidth, map.TileHeight) * Zoom) + Viewport * 0.5f;
+        if (!Isometric)
+        {
+            float scale = Zoom * map.TileWidth;
+            return new(
+                Viewport.X * 0.5f - Position.X * scale,
+                Viewport.Y * 0.5f - Position.Y * scale,
+                scale, scale, false);
+        }
+        float scaleX = map.TileWidth * 0.5f * Zoom;
+        float scaleY = map.TileHeight * 0.5f * Zoom;
+        return new(
+            Viewport.X * 0.5f - (Position.X - Position.Y) * scaleX,
+            Viewport.Y * 0.5f - (Position.X + Position.Y) * scaleY,
+            scaleX, scaleY, true);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector2 WorldToScreen(Vector2 world, TileMap map)
+        => GetScreenTransform(map).ToScreen(world.X, world.Y);
 }
