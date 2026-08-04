@@ -2,12 +2,6 @@ using System.Runtime.CompilerServices;
 
 namespace Engine.Rendering.Vulkan;
 
-/// <summary>
-/// Minimal growable array with an explicit count, used on per-frame accumulation paths in place of
-/// <see cref="System.Collections.Generic.List{T}"/>. Growth is amortized (doubles), so steady-state
-/// <see cref="Add"/> is a single store + increment with no allocation; <see cref="AsSpan"/> exposes the
-/// live region for zero-copy iteration and upload (see Conventions/HotPath.md).
-/// </summary>
 public sealed class GrowableBuffer<T>
 {
     private T[] _items = Array.Empty<T>();

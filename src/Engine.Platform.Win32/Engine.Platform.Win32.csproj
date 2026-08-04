@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><AssemblyName>Engine.Platform.Win32</AssemblyName><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
+  <PropertyGroup><AssemblyName>Engine.Platform.Win32</AssemblyName></PropertyGroup>
   <ItemGroup><ProjectReference Include="..\Engine.Platform\Engine.Platform.csproj" /></ItemGroup>
 </Project>

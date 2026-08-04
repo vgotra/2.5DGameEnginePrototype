@@ -1,10 +1,12 @@
+using System.Runtime.CompilerServices;
+using Engine.Rendering;
 using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
 
 public static class ShapePipelineDescription
 {
-    public static VkVertexInputBindingDescription Binding => new() { binding = 0, stride = 24, inputRate = VkVertexInputRate.Vertex };
+    public static VkVertexInputBindingDescription Binding => new() { binding = 0, stride = (uint)Unsafe.SizeOf<ShapeVertex>(), inputRate = VkVertexInputRate.Vertex };
 
     public static VkVertexInputAttributeDescription[] Attributes => new[]
     {

@@ -4,11 +4,6 @@ using Engine.Mathematics;
 
 namespace IsometricSandbox.Game;
 
-/// <summary>
-/// Per-frame affine screen transform for a camera, computed once per frame and reused for every
-/// tile in the extraction loop. Keeps the per-tile hot path to two fused multiply-adds per axis
-/// instead of instance calls, per-branch checks, and temporary allocations (see Conventions/HotPath.md).
-/// </summary>
 public readonly struct ScreenTransform
 {
     public readonly float OriginX;
@@ -73,7 +68,6 @@ public sealed class IsometricCamera
         Position = position;
     }
 
-    /// <summary>Computes the per-frame screen transform; the extraction loop hoists this out of its tile loop.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ScreenTransform GetScreenTransform(TileMap map)
     {

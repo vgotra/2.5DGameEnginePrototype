@@ -8,12 +8,6 @@ namespace Engine.Rendering.Vulkan;
 
 public sealed unsafe class VulkanRenderer : IRenderer
 {
-    /// <summary>
-    /// How many frames the CPU may run ahead of the GPU. Each slot owns a fence plus an
-    /// acquire/render semaphore pair, so signals are never overwritten while a previous frame
-    /// still consumes them. Matches the triple-buffered swapchain, so the loop overlaps upload,
-    /// render, and present instead of draining the queue every frame.
-    /// </summary>
     private const int FramesInFlight = 3;
 
     private VkInstance _instance;

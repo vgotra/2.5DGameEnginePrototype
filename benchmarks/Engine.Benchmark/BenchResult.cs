@@ -1,6 +1,5 @@
 namespace Engine.Benchmark;
 
-/// <summary>One full benchmark run: environment provenance plus per-benchmark results.</summary>
 internal sealed record BenchRunResult(
     int SchemaVersion,
     string Machine,
@@ -8,7 +7,6 @@ internal sealed record BenchRunResult(
     DateTime TimestampUtc,
     List<BenchmarkResult> Benchmarks);
 
-/// <summary>Measured result for a single benchmark.</summary>
 internal sealed record BenchmarkResult(
     string Name,
     int Iterations,

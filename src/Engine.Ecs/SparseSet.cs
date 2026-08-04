@@ -2,20 +2,12 @@ using Engine.Core;
 
 namespace Engine.Ecs;
 
-/// <summary>Non-generic view of <see cref="SparseSet{T}"/> so <see cref="World"/> can purge
-/// component rows from every storage on entity destruction.</summary>
 public interface ISparseSet
 {
     int Count { get; }
     bool Remove(EntityId entity);
 }
 
-/// <summary>
-/// Dense/sparse component storage (data-oriented): a dense SoA of <see cref="EntityId"/> and value
-/// rows (cache-friendly iteration, exposed as spans) indexed through a sparse array of packed dense
-/// positions. Lookup is one array load, remove is swap-with-last, and growth is amortized — no
-/// per-entity hash, boxing, or allocation (see Conventions/HotPath.md).
-/// </summary>
 public sealed class SparseSet<T> : ISparseSet where T : unmanaged
 {
     private int[] _sparse = Array.Empty<int>();
@@ -66,8 +58,6 @@ public sealed class SparseSet<T> : ISparseSet where T : unmanaged
         return false;
     }
 
-    /// <summary>Removes the entity's row if it belongs to this storage. Swap-with-last keeps the
-    /// dense arrays packed (no holes) at the cost of reordering the iteration order.</summary>
     public bool Remove(EntityId entity)
     {
         if (entity.Index >= (uint)_sparse.Length) return false;

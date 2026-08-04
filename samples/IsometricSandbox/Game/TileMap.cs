@@ -20,7 +20,7 @@ public sealed class TileMap
         _tiles = new byte[width * height];
         _centers = new Vector2[width * height];
         for (int y = 0; y < height; y++)
-        for (int x = 0; x < width; x++) { _tiles[y * width + x] = (byte)TileType.Floor; _centers[y * width + x] = new(x + 0.5f, y + 0.5f); }
+            for (int x = 0; x < width; x++) { _tiles[y * width + x] = (byte)TileType.Floor; _centers[y * width + x] = new(x + 0.5f, y + 0.5f); }
         _tiles[(height / 2) * width + width / 2] = (byte)TileType.Goal;
     }
 
@@ -44,13 +44,13 @@ public sealed class TileMap
         int minX = (int)MathF.Floor(position.X - radius), maxX = (int)MathF.Floor(position.X + radius);
         int minY = (int)MathF.Floor(position.Y - radius), maxY = (int)MathF.Floor(position.Y + radius);
         for (int y = minY; y <= maxY; y++)
-        for (int x = minX; x <= maxX; x++)
-        {
-            if (IsWalkable(x, y)) continue;
-            float closestX = Math.Clamp(position.X, x, x + 1f), closestY = Math.Clamp(position.Y, y, y + 1f);
-            float dx = position.X - closestX, dy = position.Y - closestY;
-            if (dx * dx + dy * dy < radius * radius) return false;
-        }
+            for (int x = minX; x <= maxX; x++)
+            {
+                if (IsWalkable(x, y)) continue;
+                float closestX = Math.Clamp(position.X, x, x + 1f), closestY = Math.Clamp(position.Y, y, y + 1f);
+                float dx = position.X - closestX, dy = position.Y - closestY;
+                if (dx * dx + dy * dy < radius * radius) return false;
+            }
         return true;
     }
 

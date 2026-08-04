@@ -13,4 +13,3 @@ Windowing (`Engine.Platform.Win32`): the window opens centered on the primary sc
 Vulkan is the only renderer.
 
 The platform layer is cross-platform-ready. See `docs/LinuxSupportPlan.md`.
-

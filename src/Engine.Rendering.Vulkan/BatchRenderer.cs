@@ -83,11 +83,6 @@ public unsafe class BatchRenderer : IDisposable
         }
     }
 
-    /// <summary>
-    /// Starts a frame on the given frame-in-flight slot. <paramref name="frameIndex"/> selects
-    /// the persistent vertex/index/staging buffer set for the slot; the renderer has already
-    /// waited that slot's fence, so the buffers are not in use by any in-flight submission.
-    /// </summary>
     public void BeginFrame(int frameIndex, VkCommandBuffer cmdBuffer, Vector2 viewport)
     {
         _frameIndex = frameIndex;

@@ -6,3 +6,4 @@
 4. Are ECS systems processing raw pointers/spans instead of objects? MUST BE YES.
 5. Is multi-threading avoiding `lock` and respecting exclusive write access? MUST BE YES.
 6. Are physics and assets relying on Handles/IDs rather than managed references? MUST BE YES.
+7. Are there zero comments in source code? MUST BE YES.

@@ -1,9 +1,5 @@
 namespace IsometricSandbox.Game;
 
-/// <summary>
-/// Rolling per-frame statistics for the <c>--metrics</c> flag. Accumulates with struct math only
-/// (the measured frame path stays allocation-free) and prints on a fixed interval, then resets.
-/// </summary>
 public struct FrameMetrics
 {
     private const int PrintInterval = 120;

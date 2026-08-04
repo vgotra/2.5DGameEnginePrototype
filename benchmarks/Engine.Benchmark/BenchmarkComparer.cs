@@ -12,13 +12,6 @@ internal sealed record CompareEntry(
 
 internal sealed record CompareReport(bool SameMachine, int Failures, List<CompareEntry> Entries);
 
-/// <summary>
-/// Session-to-session comparison. Same-machine only: absolute numbers are noisy across machines
-/// (CPU frequency scaling, background load), so verdicts below are trustworthy only when
-/// <see cref="CompareReport.SameMachine"/> is true. Time thresholds: warn at +15%, fail at +30%.
-/// Allocations fail whenever average bytes/op exceeds the tolerance or any gen0 collection occurred
-/// (steady-state target is zero allocation).
-/// </summary>
 internal static class BenchmarkComparer
 {
     private const double TimeWarnPct = 15.0;

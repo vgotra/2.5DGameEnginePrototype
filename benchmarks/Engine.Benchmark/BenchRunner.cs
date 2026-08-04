@@ -4,11 +4,6 @@ namespace Engine.Benchmark;
 
 internal readonly record struct BenchmarkCase(string Name, int Iterations, Action Operation);
 
-/// <summary>
-/// Measurement core: warmup runs happen outside measurement (JIT/tiered compilation and first-time
-/// growth settle there), then a single-threaded allocation pass measures exact per-thread bytes and
-/// GC collection deltas, and a multi-trial timing pass reports median/min/max ns per operation.
-/// </summary>
 internal static class BenchRunner
 {
     private const int TimingTrials = 7;

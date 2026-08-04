@@ -29,6 +29,8 @@ public sealed class Win32Window : IGameWindow
     private const long DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
     private const uint SWP_FRAMECHANGED = 0x0020;
     private const uint MONITOR_DEFAULTTONEAREST = 2;
+    private const int SM_CXSCREEN = 0;
+    private const int SM_CYSCREEN = 1;
     private readonly nint _handle;
     private readonly nint _moduleHandle;
     private readonly WndProcDelegate _windowProcedure;
@@ -115,7 +117,5 @@ public sealed class Win32Window : IGameWindow
         return NativeMethods.CallWindowProc(_previousProcedure, handle, message, wParam, lParam);
     }
 
-    private const int SM_CXSCREEN = 0;
-    private const int SM_CYSCREEN = 1;
     [UnmanagedFunctionPointer(CallingConvention.Winapi)] private delegate nint WndProcDelegate(nint handle, uint message, nint wParam, nint lParam);
 }

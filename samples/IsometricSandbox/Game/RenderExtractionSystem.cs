@@ -5,7 +5,6 @@ namespace IsometricSandbox.Game;
 
 public static class RenderExtractionSystem
 {
-    /// <summary>Pixel width of the black border overdraw behind each tile/player shape.</summary>
     public const float BorderWidth = 2f;
 
     public static int ExtractMapSprites(TileMap map, IsometricCamera camera, Span<SpritePacket> sprites)
@@ -21,16 +20,16 @@ public static class RenderExtractionSystem
         ScreenTransform transform = camera.GetScreenTransform(map);
         int written = 0;
         for (int y = 0; y < map.Height && written + 2 <= sprites.Length; y++)
-        for (int x = 0; x < map.Width && written + 2 <= sprites.Length; x++)
-        {
-            Vector2 screen = transform.ToScreen(x + 0.5f, y + 0.5f);
-            if (screen.X + halfWidth < 0 || screen.X - halfWidth > viewport.X ||
-                screen.Y + halfHeight < 0 || screen.Y - halfHeight > viewport.Y)
-                continue;
-            int sortKey = y * map.Width + x;
-            sprites[written++] = new SpritePacket(screen, new(tileWidth + BorderWidth * 2, tileHeight + BorderWidth * 2), black, default, default, sortKey, shape);
-            sprites[written++] = new SpritePacket(screen, new(tileWidth, tileHeight), white, default, default, sortKey, shape);
-        }
+            for (int x = 0; x < map.Width && written + 2 <= sprites.Length; x++)
+            {
+                Vector2 screen = transform.ToScreen(x + 0.5f, y + 0.5f);
+                if (screen.X + halfWidth < 0 || screen.X - halfWidth > viewport.X ||
+                    screen.Y + halfHeight < 0 || screen.Y - halfHeight > viewport.Y)
+                    continue;
+                int sortKey = y * map.Width + x;
+                sprites[written++] = new SpritePacket(screen, new(tileWidth + BorderWidth * 2, tileHeight + BorderWidth * 2), black, default, default, sortKey, shape);
+                sprites[written++] = new SpritePacket(screen, new(tileWidth, tileHeight), white, default, default, sortKey, shape);
+            }
         return written;
     }
 }

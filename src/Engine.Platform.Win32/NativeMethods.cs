@@ -2,12 +2,6 @@ using System.Runtime.InteropServices;
 
 namespace Engine.Platform.Win32;
 
-/// <summary>
-/// Win32 P/Invoke surface, source-generated via [LibraryImport] for AOT/trim-safety
-/// and to remove runtime marshalling stubs. UTF-16 string APIs use StringMarshalling.Utf16
-/// (the default under [DllImport(CharSet.Unicode]); LibraryImport defaults to UTF-8).
-/// SetLastError is omitted because no caller queries Marshal.GetLastPInvokeError().
-/// </summary>
 internal static partial class NativeMethods
 {
     [LibraryImport("user32.dll")]
@@ -43,7 +37,7 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool SetWindowText(nint handle, string title);
 
-    [LibraryImport("user32.dll", EntryPoint = "PeekMessageA")]
+    [LibraryImport("user32.dll", EntryPoint = "PeekMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool PeekMessage(out MSG message, nint handle, uint min, uint max, uint remove);
 
@@ -51,7 +45,7 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool TranslateMessage(ref MSG message);
 
-    [LibraryImport("user32.dll", EntryPoint = "DispatchMessageA")]
+    [LibraryImport("user32.dll", EntryPoint = "DispatchMessageW")]
     internal static partial nint DispatchMessage(ref MSG message);
 
     [LibraryImport("user32.dll")]
@@ -86,7 +80,7 @@ internal static partial class NativeMethods
         int height,
         uint flags);
 
-    [LibraryImport("user32.dll", EntryPoint = "CallWindowProcA")]
+    [LibraryImport("user32.dll", EntryPoint = "CallWindowProcW")]
     internal static partial nint CallWindowProc(nint previousProcedure, nint handle, uint message, nint wParam, nint lParam);
 
     [LibraryImport("user32.dll")]

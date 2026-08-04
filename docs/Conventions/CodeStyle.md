@@ -7,4 +7,5 @@
 - ENSURE code is easy to understand, refactor, and support. FOLLOW existing project patterns and conventions.
 - APPLY the naming rules in `.editorconfig`: PascalCase types/members, camelCase locals/parameters, `_camel` private fields, `I` interface prefix.
 - USE file-scoped namespaces.
+- NEVER add comments to source code; write code that is self-documenting.
 - APPLY the runtime hot-path rules in `Coding.md`.

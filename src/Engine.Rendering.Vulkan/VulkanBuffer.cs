@@ -73,7 +73,7 @@ public unsafe struct VulkanBuffer : IDisposable
         VkMemoryRequirements memReqs;
         api.vkGetBufferMemoryRequirements(buffer, &memReqs);
 
-        uint memoryTypeIndex = FindMemoryType(memoryProperties, memReqs.memoryTypeBits, memoryFlags);
+        uint memoryTypeIndex = VulkanMemory.FindMemoryType(memoryProperties, memReqs.memoryTypeBits, memoryFlags);
 
         VkMemoryAllocateInfo allocInfo = new()
         {
@@ -106,39 +106,13 @@ public unsafe struct VulkanBuffer : IDisposable
         };
     }
 
-    private static uint FindMemoryType(
-        VkPhysicalDeviceMemoryProperties memoryProperties,
-        uint typeFilter,
-        VkMemoryPropertyFlags flags)
-    {
-        for (uint i = 0; i < memoryProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1u << (int)i)) != 0 &&
-                (memoryProperties.memoryTypes[(int)i].propertyFlags & flags) == flags)
-            {
-                return i;
-            }
-        }
-        throw new InvalidOperationException("Failed to find suitable memory type");
-    }
-
     public void UploadData<T>(T[] data) where T : unmanaged
     {
         nuint size = (nuint)(data.Length * Unsafe.SizeOf<T>());
-        if (size > Size)
-            throw new InvalidOperationException("Data size exceeds buffer size");
-
-        void* mapped;
-        VkResult result = _deviceApi.vkMapMemory(Memory, 0, size, 0, &mapped);
-        if (result != VkResult.Success)
-            throw new InvalidOperationException($"Buffer map failed: {result}");
-
         fixed (T* src = data)
         {
-            global::System.Buffer.MemoryCopy(src, mapped, (long)size, (long)size);
+            UploadData(src, size);
         }
-
-        _deviceApi.vkUnmapMemory(Memory);
     }
 
     public void UploadData(void* data, nuint size)

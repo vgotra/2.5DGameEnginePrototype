@@ -122,7 +122,7 @@ public unsafe class TextureUploader : IDisposable
         VkMemoryRequirements memReqs;
         _deviceApi.vkGetImageMemoryRequirements(image, &memReqs);
 
-        uint memoryTypeIndex = FindMemoryType(memReqs.memoryTypeBits, VkMemoryPropertyFlags.DeviceLocal);
+        uint memoryTypeIndex = VulkanMemory.FindMemoryType(_memoryProperties, memReqs.memoryTypeBits, VkMemoryPropertyFlags.DeviceLocal);
 
         VkMemoryAllocateInfo allocInfo = new()
         {
@@ -135,19 +135,6 @@ public unsafe class TextureUploader : IDisposable
             throw new InvalidOperationException($"Image memory allocation failed: {result}");
 
         return memory;
-    }
-
-    private uint FindMemoryType(uint typeFilter, VkMemoryPropertyFlags flags)
-    {
-        for (uint i = 0; i < _memoryProperties.memoryTypeCount; i++)
-        {
-            if ((typeFilter & (1u << (int)i)) != 0 &&
-                (_memoryProperties.memoryTypes[(int)i].propertyFlags & flags) == flags)
-            {
-                return i;
-            }
-        }
-        throw new InvalidOperationException("Failed to find suitable memory type");
     }
 
     private VkImageView CreateImageView(VkImage image)

@@ -1,10 +1,12 @@
+using System.Collections.Concurrent;
+
 namespace Engine.Threading;
 
 public sealed class JobSystem : IDisposable
 {
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task[] _workers;
-    private readonly System.Collections.Concurrent.ConcurrentQueue<Action> _queue = new();
+    private readonly ConcurrentQueue<Action> _queue = new();
     private readonly SemaphoreSlim _signal = new(0);
     private readonly SemaphoreSlim _completed = new(0);
     private int _pending;
