@@ -76,8 +76,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize(LoaderName());
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
         _loaderInitialized = true;
-        // App/engine/extension name strings are pinned in-place (u8 literals) so nothing needs a
-        // CoTaskMem free and nothing leaks if a creation call throws mid-construction.
         ReadOnlySpan<byte> appName = "IsometricSandbox\0"u8;
         ReadOnlySpan<byte> engineName = "2D2.5D Game Engine\0"u8;
         ReadOnlySpan<byte> surfaceExtension = "VK_KHR_surface\0"u8;
@@ -190,18 +188,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
     public void BeginFrame(Vector2 viewport)
     {
         if (_swapchain.IsNull) throw new InvalidOperationException("Swapchain is not ready.");
-        // Round-robin through the frames-in-flight slots; each slot's fence guards the slot's
-        // command submission and its batch buffers, letting the CPU run up to FramesInFlight
-        // frames ahead of the GPU.
         _currentFrame = (_currentFrame + 1) % FramesInFlight;
 
-        // Wait for the slot's fence BEFORE acquiring. vkAcquireNextImageKHR signals
-        // _imageAvailable[_currentFrame] as soon as an image is free, which on an unpaced loop
-        // is effectively immediately. Re-signalling a semaphore that the previous frame's submit
-        // still has pending is undefined behaviour and hangs the acquire (the GPU never gets a
-        // chance to consume the earlier signal), which freezes the frame and starves input
-        // processing. Waiting the slot fence first guarantees that submit fully retired, so the
-        // semaphore is safe to signal again; for a caught-up CPU this returns immediately.
         VkFence slotFence = _fences[_currentFrame];
         VkResult result = _deviceApi.vkWaitForFences(slotFence, true, ulong.MaxValue);
         if (result != VkResult.Success) throw new InvalidOperationException($"Fence wait failed: {result}");
@@ -210,13 +198,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         result = _deviceApi.vkAcquireNextImageKHR(_swapchain, ulong.MaxValue, _imageAvailable[_currentFrame], VkFence.Null, out _imageIndex);
         if (result == VkResult.ErrorOutOfDateKHR)
         {
-            // The window was resized since the last frame and the swapchain images no longer
-            // match the surface. Rebuild the swapchain and retry the acquire once rather than
-            // surfacing the error to the game loop.
             Resize((int)viewport.X, (int)viewport.Y);
-            // Resize destroyed and recreated the command resources, so the fence and semaphore
-            // handles above are stale. Re-fetch the (freshly-signaled) slot fence, wait + reset
-            // it, then re-acquire with the new semaphore.
             slotFence = _fences[_currentFrame];
             result = _deviceApi.vkWaitForFences(slotFence, true, ulong.MaxValue);
             if (result != VkResult.Success) throw new InvalidOperationException($"Fence wait failed: {result}");
@@ -225,13 +207,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         }
         if (result is not (VkResult.Success or VkResult.SuboptimalKHR)) throw new InvalidOperationException($"Image acquire failed: {result}");
 
-        // Per-swapchain-image fence: the acquired image may still be rendered by a newer frame
-        // that ran in a different slot. Wait on that image's last fence before writing to it so
-        // the CPU never overwrites in-flight GPU work. If that image's last use was THIS slot,
-        // its fence is the one we already waited (and are about to use again) above — waiting it
-        // a second time would deadlock, because it will not be re-signalled until this frame's
-        // submit, so the wait is skipped. A different slot's fence was not touched this frame and
-        // is safe to wait.
         VkFence imageFence = _imagesInFlight[_imageIndex];
         if (imageFence.IsNotNull && imageFence != slotFence)
         {
@@ -290,8 +265,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         result = _deviceApi.vkQueueSubmit(_graphicsQueue, submit, slotFence);
         if (result != VkResult.Success) throw new InvalidOperationException($"Queue submit failed: {result}");
         result = _deviceApi.vkQueuePresentKHR(_graphicsQueue, renderFinished, _swapchain, _imageIndex);
-        // SuboptimalKHR and ErrorOutOfDateKHR mean the swapchain no longer matches the window;
-        // the next frame's size check (or the acquire path) rebuilds it, so neither is fatal.
         if (result is not (VkResult.Success or VkResult.SuboptimalKHR or VkResult.ErrorOutOfDateKHR)) throw new InvalidOperationException($"Present failed: {result}");
         _inFrame = false;
     }
@@ -343,8 +316,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         for (int i = 0; i < _framebuffers.Length; i++) if (_framebuffers[i].IsNotNull) _deviceApi.vkDestroyFramebuffer(_framebuffers[i]);
         for (int i = 0; i < _swapchainViews.Length; i++) if (_swapchainViews[i].IsNotNull) _deviceApi.vkDestroyImageView(_swapchainViews[i]);
         if (_swapchain.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
-        // Command resources (command buffers, per-image fence tracking) are sized to the
-        // swapchain image count, so they must be recreated whenever the count can change.
         DestroyCommandResources();
         CreateSwapchain((uint)width, (uint)height);
         CreateFramebuffers();
@@ -387,16 +358,12 @@ public sealed unsafe class VulkanRenderer : IRenderer
         result = _instanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, modes);
         if (result != VkResult.Success || modeCount == 0) throw new InvalidOperationException("No Vulkan present modes found.");
         VkExtent2D extent = new(Math.Clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width), Math.Clamp(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
-        // Prefer MAILBOX (tear-free, non-blocking present) and fall back to FIFO (vsync). A
-        // non-blocking present lets the loop overlap CPU/GPU work instead of gating every frame
-        // to a vblank, which is the root cause of the visible judder on camera pans.
         VkPresentModeKHR presentMode = VkPresentModeKHR.Fifo;
         for (int i = 0; i < modeCount; i++)
         {
             if (modes[i] == VkPresentModeKHR.Mailbox) { presentMode = VkPresentModeKHR.Mailbox; break; }
         }
-        // Request triple buffering when the driver allows it: the extra image plus MAILBOX gives
-        // the renderer headroom to absorb timing jitter without stalling on acquire or present.
+
         uint imageCount = Math.Max(capabilities.minImageCount, 3);
         if (capabilities.maxImageCount > 0) imageCount = Math.Min(imageCount, capabilities.maxImageCount);
         VkSwapchainCreateInfoKHR info = new()
@@ -463,7 +430,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _renderFinished = new VkSemaphore[FramesInFlight];
         _fences = new VkFence[FramesInFlight];
         VkSemaphoreCreateInfo semaphoreInfo = new();
-        // Fences start signaled so the first BeginFrame's wait returns immediately.
         VkFenceCreateInfo fenceInfo = new() { flags = VkFenceCreateFlags.Signaled };
         for (int i = 0; i < FramesInFlight; i++)
         {
@@ -503,9 +469,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (_disposed) return;
         _disposed = true;
 
-        // _deviceApi stays null when initialization fails before vkCreateDevice, so every use
-        // below is guarded. All handle fields default to Null in that state, so a partial-init
-        // teardown releases only the objects that were actually created.
         if (_device.IsNotNull && _deviceApi != null) _deviceApi.vkDeviceWaitIdle();
         _batchRenderer?.Dispose();
         _textureUploader?.Dispose();

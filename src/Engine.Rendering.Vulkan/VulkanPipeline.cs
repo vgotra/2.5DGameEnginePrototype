@@ -57,8 +57,6 @@ public unsafe struct VulkanPipeline : IDisposable
         VkPipelineLayout layout,
         VkPipeline* pipeline)
     {
-        // "main\0" pinned in-place: no per-call CoTaskMem allocation, so nothing leaks if
-        // vkCreateGraphicsPipelines throws mid-construction.
         ReadOnlySpan<byte> entryPoint = "main\0"u8;
         fixed (byte* entryPointPointer = entryPoint)
         {
@@ -107,10 +105,6 @@ public unsafe struct VulkanPipeline : IDisposable
 
             VkDynamicState[] dynamicStates = { VkDynamicState.Viewport, VkDynamicState.Scissor };
 
-            // All managed arrays referenced by the create-info graph are pinned for the duration
-            // of vkCreateGraphicsPipelines. Taking Unsafe.AsPointer on an unpinned managed array
-            // is a GC-relocation hazard: a background GC can move the array between pointer capture
-            // and the native call reading it, which would silently corrupt the pipeline description.
             fixed (VkPipelineShaderStageCreateInfo* stagePtr = stages)
             fixed (VkVertexInputAttributeDescription* attributePtr = attributes)
             fixed (VkDynamicState* dynStates = dynamicStates)

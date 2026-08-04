@@ -17,6 +17,12 @@
       "command": ["uvx", "--python", "3.13", "--with", "mcp>=1.0,<2", "renderdoc-mcp"],
       "enabled": true,
       "timeout": 120000
+    },
+    "mcp-repo-graph": {
+      "type": "local",
+      "command": ["uvx", "--python", "3.13", "--with", "mcp>=1.0,<2", "mcp-repo-graph", "--repo", "C:\\Projects\\2.5DGameEnginePrototype"],
+      "enabled": true,
+      "timeout": 120000
     }
   }
 }

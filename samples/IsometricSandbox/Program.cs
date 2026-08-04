@@ -43,9 +43,6 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     if (input.WasPressed(GameKey.Fullscreen)) window.SetFullscreen(!window.Fullscreen);
     if (window.IsMinimized)
     {
-        // Skip rendering while minimized: the swapchain surface extent is degenerate and
-        // vkAcquireNextImageKHR would block on the infinite timeout. Keep pumping and pacing
-        // so restore (a WM_SIZE with a real extent) resumes through the normal resize path.
         frameTimer.WaitForNextFrame();
         if (frameCap <= 0) Thread.Sleep(15);
         continue;

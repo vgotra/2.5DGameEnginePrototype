@@ -178,8 +178,6 @@ public unsafe class BatchRenderer : IDisposable
 
         if (vertexBytes > vertexBuffer.Size || indexBytes > indexBuffer.Size)
         {
-            // Growth is extremely rare (initial sizes cover the 20x20 map). Wait for idle so we
-            // never destroy a device buffer that an in-flight frame slot is still reading.
             _deviceApi.vkQueueWaitIdle(_graphicsQueue);
             ResizeBuffers((uint)_vertices.Count * 2, (uint)_indices.Count * 2);
             vertexBuffer = _vertexBuffers[_frameIndex];
@@ -188,12 +186,6 @@ public unsafe class BatchRenderer : IDisposable
             stagingIndex = _stagingIndexBuffers[_frameIndex];
         }
 
-        // Dirty gate: the persistent device buffers retain their previous content, so geometry is
-        // re-uploaded only when it changed since this frame slot was last used. An unchanged frame
-        // skips the staging write + copy and just re-issues the draw. Change detection compares the
-        // freshly built vertex/index bytes against a per-slot snapshot with a vectorized
-        // SequenceEqual (far cheaper than a bytewise FNV scan of the ~300 KB buffer), and the
-        // snapshot is refreshed only on change.
         Span<ShapeVertex> vertices = CollectionsMarshal.AsSpan(_vertices);
         Span<uint> indices = CollectionsMarshal.AsSpan(_indices);
         Span<byte> vertexBytesSpan = MemoryMarshal.AsBytes(vertices);
@@ -214,8 +206,6 @@ public unsafe class BatchRenderer : IDisposable
 
         if (geometryChanged)
         {
-            // Snapshot arrays are preallocated once per slot and reallocated only when the vertex/
-            // index counts change (rare; initial sizes cover the 20x20 map).
             if (vertexSnapshot?.Length != (int)vertexBytes) _vertexSnapshots[_frameIndex] = new byte[(int)vertexBytes];
             if (indexSnapshot?.Length != (int)indexBytes) _indexSnapshots[_frameIndex] = new byte[(int)indexBytes];
             vertexBytesSpan.CopyTo(_vertexSnapshots[_frameIndex]!);
@@ -228,17 +218,11 @@ public unsafe class BatchRenderer : IDisposable
             fixed (uint* indexPointer = indices)
                 stagingIndex.UploadData(indexPointer, indexBytes);
 
-            // Copies are recorded directly into the main command buffer (no separate copy submit,
-            // no per-frame vkQueueWaitIdle), so the GPU overlaps this upload with the previous
-            // frames' rendering and present.
             VkBufferCopy vertexCopy = new() { size = vertexBytes };
             _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingVertex.Buffer, vertexBuffer.Buffer, 1, &vertexCopy);
             VkBufferCopy indexCopy = new() { size = indexBytes };
             _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingIndex.Buffer, indexBuffer.Buffer, 1, &indexCopy);
 
-            // The transfer writes above must be visible to the vertex/index reads of the draw
-            // that follows. Without this TRANSFER -> VERTEX_INPUT barrier the copy and the draw
-            // could race on the same device buffers.
             VkBufferMemoryBarrier vertexBarrier = new()
             {
                 srcAccessMask = VkAccessFlags.TransferWrite,

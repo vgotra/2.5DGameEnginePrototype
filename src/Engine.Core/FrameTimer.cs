@@ -44,8 +44,6 @@ public sealed class FrameTimer
         double elapsed = (now - _previousTick) / (double)Stopwatch.Frequency;
         double remaining = _targetFrameSeconds - elapsed;
         if (remaining <= 0) return;
-        // Coarse sleep on the whole-millisecond part, then spin-wait the residual so the frame
-        // deadline is actually reached; Thread.Sleep alone would drop the sub-millisecond tail.
         int wholeMilliseconds = (int)(remaining * 1000.0);
         if (wholeMilliseconds > 0) Thread.Sleep(wholeMilliseconds);
         long deadline = _previousTick + (long)(_targetFrameSeconds * Stopwatch.Frequency);

@@ -72,8 +72,6 @@ public sealed class Win32Window : IGameWindow
 
     public Win32Window(int width, int height, string title)
     {
-        // Request per-monitor DPI v2 awareness before any window/control is created; the call
-        // fails harmlessly (returns false) if the process is already DPI-aware or on older systems.
         NativeMethods.SetProcessDpiAwarenessContext((nint)DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         _moduleHandle = NativeMethods.GetModuleHandle(null);
         int x = Math.Max(0, (NativeMethods.GetSystemMetrics(SM_CXSCREEN) - width) / 2);
@@ -88,8 +86,6 @@ public sealed class Win32Window : IGameWindow
 
     public void PumpEvents()
     {
-        // Drain all pending messages before simulation so input and close events
-        // are handled promptly by the fixed-step loop.
         while (NativeMethods.PeekMessage(out MSG message, 0, 0, 0, 1))
         {
             if (message.message is WM_CLOSE or WM_DESTROY or WM_QUIT) _closed = true;
@@ -107,16 +103,10 @@ public sealed class Win32Window : IGameWindow
 
     private nint WindowProcedure(nint handle, uint message, nint wParam, nint lParam)
     {
-        // Intercept close messages explicitly; relying on the STATIC class procedure
-        // does not provide a reliable signal to the game loop.
         if (message == WM_CLOSE) { _closed = true; NativeMethods.DestroyWindow(handle); return 0; }
         if (message == WM_DESTROY) { _closed = true; NativeMethods.PostQuitMessage(0); return 0; }
         if (message == WM_SIZE)
         {
-            // wParam carries the size action (SIZE_RESTORED/SIZE_MINIMIZED/...). Minimized
-            // surfaces report a 0x0 lParam, so Size keeps its last valid value and the game
-            // loop pauses rendering until restore (WM_SIZE with a real extent) re-triggers
-            // the resize/swapchain-rebuild path.
             _minimized = wParam.ToInt64() == SIZE_MINIMIZED;
             int width = (int)(lParam & 0xFFFF);
             int height = (int)((lParam >> 16) & 0xFFFF);

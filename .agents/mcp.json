@@ -7,6 +7,10 @@
     "renderdoc": {
       "command": "uvx",
       "args": ["--python", "3.13", "--with", "mcp>=1.0,<2", "renderdoc-mcp"]
+    },
+    "mcp-repo-graph": {
+      "command": "uvx",
+      "args": ["--python", "3.13", "--with", "mcp>=1.0,<2", "mcp-repo-graph", "--repo", "C:\\Projects\\2.5DGameEnginePrototype"]
     }
   }
 }

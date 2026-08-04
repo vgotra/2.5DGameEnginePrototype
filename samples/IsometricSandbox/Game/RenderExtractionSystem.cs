@@ -16,10 +16,6 @@ public static class RenderExtractionSystem
         ShapeKind shape = camera.Isometric ? ShapeKind.Diamond : ShapeKind.Box;
         float tileWidth = map.TileWidth;
         float tileHeight = camera.Isometric ? map.TileHeight : map.TileWidth;
-        // Viewport culling: reject tiles whose on-screen bounding box lies entirely outside the
-        // viewport. The AABB (half-extents + border) is valid for both the iso diamond and the
-        // flat box, so off-screen tiles never reach the GPU. This is the culling the performance
-        // budget documents; for maps larger than the viewport it bounds extraction work.
         float halfWidth = tileWidth * 0.5f + BorderWidth;
         float halfHeight = tileHeight * 0.5f + BorderWidth;
         Vector2 viewport = camera.Viewport;

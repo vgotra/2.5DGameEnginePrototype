@@ -22,9 +22,6 @@ public sealed class SparseSet<T> : ISparseSet where T : unmanaged
 
     public void Add(EntityId entity, T value)
     {
-        // Re-adding to an existing slot must refresh the stored entity: a destroyed entity's
-        // index can be recycled with a new generation, and leaving the stale generation would
-        // make the new entity's component invisible to TryGet.
         if (_indices.TryGetValue(entity.Index, out int index)) { _values[index] = value; _entities[index] = entity; return; }
         _indices.Add(entity.Index, _values.Count);
         _entities.Add(entity);

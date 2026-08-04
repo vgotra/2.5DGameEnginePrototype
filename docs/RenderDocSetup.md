@@ -23,10 +23,7 @@ Capturing and analyzing are independent: you can capture on one machine (or with
 
 The sample renders on the GPU through the Vulkan `IRenderer` path (the only render path).
 
-1. Build the sample (warnings must stay at zero):
-   ```
-   dotnet build Engine.sln --nologo
-   ```
+1. Build the sample first (0 errors required — see `docs/RunningAndVerifying/`).
 2. Open RenderDoc → **Launch Application**.
    - **Executable:** `samples\IsometricSandbox\bin\Debug\net10.0\IsometricSandbox.exe` (or `bin\Release\net10.0\`). Launch the apphost exe directly, not via `dotnet run`, so RenderDoc sees the Vulkan calls in-process.
    - **Arguments:** optional `--2d`, `--fullscreen` also capture fine.

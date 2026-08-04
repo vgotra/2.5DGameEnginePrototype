@@ -1,45 +1,37 @@
 # Documentation Index
 
-Windows-first .NET 10 isometric game engine (Vulkan renderer; Linux/macOS planned). This file is the entry point for all documentation — read the relevant topic file instead of the whole tree to keep token use low. The repo structure map is `.agents/context/FilesMap.md`.
+Windows-first .NET 10 isometric game engine (Vulkan renderer; Linux/macOS planned). This file is the entry point for all documentation — read only this index (with its links); open another file only when you really need its details for the task. The codebase structure map comes from the `mcp-repo-graph` MCP server, not a file.
+
+Status tags: **Implemented** (describes shipped behavior), **Plan** (ordered future work), **Design target** (architectural intent, not yet built), **Reference** (authoritative description of the current system), **Convention** (repo rules to follow), **Optional verification** (not started).
 
 ## For AI agents — recommended read order
 
-1. `../AGENTS.md` — build/test/sample commands, shader workflow, architecture, conventions, principles, platforms.
-2. `.agents/context/` — resumable milestone state (auto-loaded via `opencode.json`): `CurrentState.md`, `NextSteps.md`, `Decisions.md`, `KnownIssues.md`, plus the `FilesMap.md`.
-3. This index → open only the topic files relevant to the task.
+1. `../AGENTS.md` — agent instructions (build/test/run commands live in `RunningAndVerifying/`), shader workflow, architecture, conventions, principles, platforms.
+2. `.agents/context/` — resumable milestone state (auto-loaded via `opencode.json`): `CurrentState.md`, `KnownIssues.md`. For the structural map, use the `mcp-repo-graph` MCP server.
+3. This index (read only this file; follow its links only when a task really needs the details in a topic file).
+
+## Building, running, and verifying
+
+- [`RunningAndVerifying/`](RunningAndVerifying/) — **Reference**. Prerequisites, build, test, sample run (flags and controls), and the verify checklist.
 
 ## Design and architecture
 
-- [`Architecture.md`](Architecture.md) — project dependency graph (sample → contracts → backends → core); planned projects marked.
-- [`GameEngineDesign.md`](GameEngineDesign.md) — goals, frame lifecycle, ownership/perf model, modules, non-goals.
-- [`Components.md`](Components.md) — engine component inventory and NuGet dependency policy.
-- [`ECSAndJobsDesign.md`](ECSAndJobsDesign.md) — ECS (archetypes/chunks/queries) and job system design targets.
-- [`AudioAndPhysicsDesign.md`](AudioAndPhysicsDesign.md) — audio/physics contract + adapter design.
+- [`GameEngineDesign.md`](GameEngineDesign.md) — **Reference**. Goals, frame lifecycle, ownership/perf model, modules, non-goals.
 
-## Rendering
+## Shaders
 
-- [`RenderingDesign.md`](RenderingDesign.md) — backend-neutral rendering contracts, coordinate convention, Vulkan implementation, white/black tile style, current limitations.
-- [`FramePacingPlan.md`](FramePacingPlan.md) — diagnosis (Vulkan judder on camera pans) and the planned frame-pacing/clean-shutdown work for roadmap item 1.
-- [`ShaderWorkflow.md`](ShaderWorkflow.md) — GLSL → glslc → committed `.spv`; when and how to recompile; NDC-Y rule.
-- [`Windowing.md`](Windowing.md) — window lifecycle: `WM_SIZE`, borderless fullscreen, swapchain resize.
+- [`ShaderWorkflow.md`](ShaderWorkflow.md) — **Reference**. GLSL → glslc → committed `.spv`; when and how to recompile; NDC-Y rule.
 
 ## Platforms
 
-- [`LinuxSupportPlan.md`](LinuxSupportPlan.md) — Linux (SDL2, later macOS) support plan; platform seams in place.
+- [`LinuxSupportPlan.md`](LinuxSupportPlan.md) — **Plan**. Linux (SDL2, later macOS) support plan; platform seams in place.
 
 ## Performance and process
 
-- [`PerformanceBudget.md`](PerformanceBudget.md) — performance targets and multithreading policy.
-- [`LibraryImportVerificationPlan.md`](LibraryImportVerificationPlan.md) — optional verification tiers (AOT publish, dotnet-counters/trace, BenchmarkDotNet, in-engine telemetry) for roadmap item #14's `[LibraryImport]` migration.
-- [`Conventions.md`](Conventions.md) — coding/perf rules that differ from .NET defaults, package/build policy, commands.
-- [`Roadmap.md`](Roadmap.md) — milestones, ordered feature queue, platform milestones, deferred items.
-- [`RecoveryAndContext.md`](RecoveryAndContext.md) — the resumable-state convention every milestone must follow.
+- [`Conventions/`](Conventions/) — **Convention**. Index of coding, code-style, packaging, restriction, and command conventions.
+- [`Roadmap.md`](Roadmap.md) — **Plan**. Milestones, ordered feature queue, platform milestones, deferred items.
+- [`RecoveryAndContext.md`](RecoveryAndContext.md) — **Convention**. The resumable-state convention every milestone must follow.
 
 ## Tooling
 
-- [`AgentTooling.md`](AgentTooling.md) — AGENTS.md/skills/MCP/agents/commands/plugins reference for the repo.
-- [`RenderDocSetup.md`](RenderDocSetup.md) — install RenderDoc, capture frames from the sample, analyze `.rdc` via the `renderdoc` MCP server.
-
-## History
-
-- [`RELEASE_NOTES.md`](../RELEASE_NOTES.md) — dated change log.
+- [`RenderDocSetup.md`](RenderDocSetup.md) — **Reference**. **Read only when you really need it.** Install RenderDoc, capture frames from the sample, analyze `.rdc` via the `renderdoc` MCP server.

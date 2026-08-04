@@ -35,8 +35,6 @@ public sealed class TileMap
 
     public bool CanOccupy(Vector2 position, float radius)
     {
-        // Check only cells touched by the player's circle. The closest-point test
-        // also prevents clipping through blocked tile corners.
         int minX = (int)MathF.Floor(position.X - radius), maxX = (int)MathF.Floor(position.X + radius);
         int minY = (int)MathF.Floor(position.Y - radius), maxY = (int)MathF.Floor(position.Y + radius);
         for (int y = minY; y <= maxY; y++)
@@ -52,7 +50,6 @@ public sealed class TileMap
 
     public Vector2 TryMove(Vector2 position, Vector2 desired, float radius)
     {
-        // Resolve X and Y independently so blocked movement slides along obstacles.
         Vector2 result = position;
         if (CanOccupy(new(desired.X, position.Y), radius)) result.X = desired.X;
         if (CanOccupy(new(result.X, desired.Y), radius)) result.Y = desired.Y;

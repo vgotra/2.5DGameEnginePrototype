@@ -1,0 +1,15 @@
+<Solution>
+  <Project Path="samples/IsometricSandbox/IsometricSandbox.csproj" />
+  <Project Path="src/Engine.Audio/Engine.Audio.csproj" />
+  <Project Path="src/Engine.Core/Engine.Core.csproj" />
+  <Project Path="src/Engine.Ecs/Engine.Ecs.csproj" />
+  <Project Path="src/Engine.Mathematics/Engine.Mathematics.csproj" />
+  <Project Path="src/Engine.Physics/Engine.Physics.csproj" />
+  <Project Path="src/Engine.Platform.Desktop/Engine.Platform.Desktop.csproj" />
+  <Project Path="src/Engine.Platform.Win32/Engine.Platform.Win32.csproj" />
+  <Project Path="src/Engine.Platform/Engine.Platform.csproj" />
+  <Project Path="src/Engine.Rendering.Vulkan/Engine.Rendering.Vulkan.csproj" />
+  <Project Path="src/Engine.Rendering/Engine.Rendering.csproj" />
+  <Project Path="src/Engine.Threading/Engine.Threading.csproj" />
+  <Project Path="tests/Engine.Tests/Engine.Tests.csproj" />
+</Solution>

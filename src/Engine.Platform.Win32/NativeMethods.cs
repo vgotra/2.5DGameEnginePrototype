@@ -10,8 +10,6 @@ namespace Engine.Platform.Win32;
 /// </summary>
 internal static partial class NativeMethods
 {
-    // ---- user32.dll ----
-
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool SetProcessDpiAwarenessContext(nint value);
@@ -45,16 +43,6 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool SetWindowText(nint handle, string title);
 
-    // Message-pump exports: PeekMessage, DispatchMessage, and CallWindowProc exist
-    // in user32.dll only as their A and W variants (WinUser.h expands them via
-    // #ifdef UNICODE); there is no bare literal export. TranslateMessage is the
-    // one exception - it is a literal-only export with no A/W variant. The old
-    // [DllImport] with the default Ansi charset silently appended 'A' and bound
-    // to the A variants; [LibraryImport] uses the EntryPoint verbatim with no
-    // suffix fallback, so we pin PeekMessageA/DispatchMessageA/CallWindowProcA
-    // to preserve the original Ansi binding. (MSG has no text fields; the A/W
-    // distinction is moot for our WndProc, but exact preservation is the
-    // roadmap mandate.)
     [LibraryImport("user32.dll", EntryPoint = "PeekMessageA")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool PeekMessage(out MSG message, nint handle, uint min, uint max, uint remove);
@@ -109,8 +97,6 @@ internal static partial class NativeMethods
 
     [LibraryImport("user32.dll")]
     internal static partial short GetAsyncKeyState(int key);
-
-    // ---- kernel32.dll ----
 
     [LibraryImport("kernel32.dll", EntryPoint = "GetModuleHandleW", StringMarshalling = StringMarshalling.Utf16)]
     internal static partial nint GetModuleHandle(string? name);
