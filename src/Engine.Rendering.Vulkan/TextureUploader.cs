@@ -32,9 +32,11 @@ public unsafe class TextureUploader : IDisposable
         _graphicsQueue = graphicsQueue;
         _commandPool = commandPool;
         _descriptorAllocator = descriptorAllocator;
+
+        UploadTexture([byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue], 1, 1);
     }
 
-    public TextureHandle UploadTexture(byte[] rgba, int width, int height)
+    public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height)
     {
         if (rgba.Length != width * height * 4)
             throw new ArgumentException("RGBA data size does not match width*height*4");
@@ -190,13 +192,14 @@ public unsafe class TextureUploader : IDisposable
         return sampler;
     }
 
-    private void UploadImageData(byte[] rgba, int width, int height, VkImage image)
+    private void UploadImageData(ReadOnlySpan<byte> rgba, int width, int height, VkImage image)
     {
         nuint bufferSize = (nuint)(width * height * 4);
         VulkanBuffer stagingBuffer = VulkanBuffer.CreateStagingBuffer(
             _device, _deviceApi, _physicalDevice, _memoryProperties, bufferSize);
 
-        stagingBuffer.UploadData(rgba);
+        fixed (byte* rgbaPointer = rgba)
+            stagingBuffer.UploadData(rgbaPointer, bufferSize);
 
         VkCommandBuffer cmdBuffer;
         VkCommandBufferAllocateInfo allocInfo = new()

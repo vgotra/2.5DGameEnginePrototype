@@ -11,9 +11,9 @@ public static class RenderExtractionSystem
     {
         Vector4 white = new(1, 1, 1, 1);
         Vector4 black = new(0, 0, 0, 1);
-        ShapeKind shape = camera.Isometric ? ShapeKind.Diamond : ShapeKind.Box;
+        ShapeKind shape = camera.Projection.TileShape;
         float tileWidth = map.TileWidth;
-        float tileHeight = camera.Isometric ? map.TileHeight : map.TileWidth;
+        float tileHeight = camera.Projection.GetTileHeight(map);
         float halfWidth = tileWidth * 0.5f + BorderWidth;
         float halfHeight = tileHeight * 0.5f + BorderWidth;
         Vector2 viewport = camera.Viewport;

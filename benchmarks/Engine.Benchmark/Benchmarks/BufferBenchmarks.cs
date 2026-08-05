@@ -10,7 +10,7 @@ internal static class BufferBenchmarks
     {
         GrowableBuffer<ShapeVertex> buffer = new();
         buffer.EnsureCapacity(4096);
-        ShapeVertex vertex = new(new Vector2(1f, 2f), new Vector4(1f, 1f, 1f, 1f));
+        ShapeVertex vertex = new(new Vector2(1f, 2f), new Vector4(1f, 1f, 1f, 1f), Vector2.Zero);
 
         return
         [

@@ -11,7 +11,8 @@ public static class ShapePipelineDescription
     public static VkVertexInputAttributeDescription[] Attributes => new[]
     {
         new VkVertexInputAttributeDescription { location = 0, binding = 0, format = VkFormat.R32G32Sfloat, offset = 0 },
-        new VkVertexInputAttributeDescription { location = 1, binding = 0, format = VkFormat.R32G32B32A32Sfloat, offset = 8 }
+        new VkVertexInputAttributeDescription { location = 1, binding = 0, format = VkFormat.R32G32B32A32Sfloat, offset = 8 },
+        new VkVertexInputAttributeDescription { location = 2, binding = 0, format = VkFormat.R32G32Sfloat, offset = 24 }
     };
 
     public static VkPipelineInputAssemblyStateCreateInfo InputAssembly => new() { topology = VkPrimitiveTopology.TriangleList, primitiveRestartEnable = false };

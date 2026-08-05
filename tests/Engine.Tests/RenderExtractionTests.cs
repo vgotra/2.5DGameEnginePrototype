@@ -38,7 +38,7 @@ internal static class RenderExtractionTests
     private static void ExtractMapSprites_FlatExtractionBounded()
     {
         TileMap map = new();
-        IsometricCamera camera = new(new Vector2(800, 600)) { Isometric = false };
+        IsometricCamera camera = new(new Vector2(800, 600)) { Mode = GameMode.TopDown };
         camera.Follow(new Vector2(10, 10), map);
         SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2];
         int extracted = RenderExtractionSystem.ExtractMapSprites(map, camera, sprites);
@@ -48,7 +48,7 @@ internal static class RenderExtractionTests
     private static void ExtractMapSprites_FlatSpritesAreBoxes()
     {
         TileMap map = new();
-        IsometricCamera camera = new(new Vector2(800, 600)) { Isometric = false };
+        IsometricCamera camera = new(new Vector2(800, 600)) { Mode = GameMode.TopDown };
         camera.Follow(new Vector2(10, 10), map);
         SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2];
         RenderExtractionSystem.ExtractMapSprites(map, camera, sprites);
@@ -58,7 +58,7 @@ internal static class RenderExtractionTests
     private static void ExtractMapSprites_CullsOffScreenTiles()
     {
         TileMap map = new();
-        IsometricCamera camera = new(new Vector2(300, 300)) { Isometric = false };
+        IsometricCamera camera = new(new Vector2(300, 300)) { Mode = GameMode.TopDown };
         camera.Follow(new Vector2(10, 10), map);
         SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2];
         int extracted = RenderExtractionSystem.ExtractMapSprites(map, camera, sprites);

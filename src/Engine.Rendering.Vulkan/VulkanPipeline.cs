@@ -16,19 +16,20 @@ public unsafe struct VulkanPipeline : IDisposable
         VkDeviceApi deviceApi,
         VkShaderModule vertModule,
         VkShaderModule fragModule,
-        VkRenderPass renderPass)
+        VkRenderPass renderPass,
+        VkDescriptorSetLayout textureLayout)
     {
         var pipeline = new VulkanPipeline { _device = device, _deviceApi = deviceApi };
 
         VkPipelineLayout* layoutPtr = &pipeline.Layout;
         VkPipeline* pipelinePtr = &pipeline.Pipeline;
-        CreatePipelineLayout(device, deviceApi, layoutPtr);
+        CreatePipelineLayout(device, deviceApi, textureLayout, layoutPtr);
         CreateGraphicsPipeline(device, deviceApi, vertModule, fragModule, renderPass, pipeline.Layout, pipelinePtr);
 
         return pipeline;
     }
 
-    private static void CreatePipelineLayout(VkDevice device, VkDeviceApi api, VkPipelineLayout* layout)
+    private static void CreatePipelineLayout(VkDevice device, VkDeviceApi api, VkDescriptorSetLayout textureLayout, VkPipelineLayout* layout)
     {
         VkPushConstantRange pushConstant = new()
         {
@@ -39,6 +40,8 @@ public unsafe struct VulkanPipeline : IDisposable
 
         VkPipelineLayoutCreateInfo layoutInfo = new()
         {
+            setLayoutCount = 1,
+            pSetLayouts = &textureLayout,
             pushConstantRangeCount = 1,
             pPushConstantRanges = &pushConstant
         };

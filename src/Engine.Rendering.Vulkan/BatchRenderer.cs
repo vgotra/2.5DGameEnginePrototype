@@ -14,6 +14,7 @@ public unsafe class BatchRenderer : IDisposable
     private readonly VkPhysicalDeviceMemoryProperties _memoryProperties;
     private readonly VulkanPipeline _pipeline;
     private readonly DescriptorSetAllocator _descriptorAllocator;
+    private readonly TextureUploader _textureUploader;
     private readonly VkQueue _graphicsQueue;
     private readonly uint _framesInFlight;
 
@@ -29,9 +30,12 @@ public unsafe class BatchRenderer : IDisposable
 
     private readonly GrowableBuffer<ShapeVertex> _vertices = new();
     private readonly GrowableBuffer<uint> _indices = new();
+    private readonly List<TextureRange> _textureRanges = new();
 
     private VkViewport _viewport;
     private VkRect2D _scissor;
+
+    private readonly record struct TextureRange(TextureHandle Texture, uint FirstIndex, uint IndexCount);
 
     public BatchRenderer(
         VkDevice device,
@@ -40,6 +44,7 @@ public unsafe class BatchRenderer : IDisposable
         VkPhysicalDeviceMemoryProperties memoryProperties,
         VulkanPipeline pipeline,
         DescriptorSetAllocator descriptorAllocator,
+        TextureUploader textureUploader,
         VkQueue graphicsQueue,
         uint framesInFlight)
     {
@@ -49,6 +54,7 @@ public unsafe class BatchRenderer : IDisposable
         _memoryProperties = memoryProperties;
         _pipeline = pipeline;
         _descriptorAllocator = descriptorAllocator;
+        _textureUploader = textureUploader;
         _graphicsQueue = graphicsQueue;
         _framesInFlight = framesInFlight;
 
@@ -88,6 +94,7 @@ public unsafe class BatchRenderer : IDisposable
         _frameIndex = frameIndex;
         _vertices.Clear();
         _indices.Clear();
+        _textureRanges.Clear();
 
         _viewport = new VkViewport
         {
@@ -115,15 +122,17 @@ public unsafe class BatchRenderer : IDisposable
         for (int i = 0; i < sprites.Length; i++)
         {
             var sprite = sprites[i];
-            AddShape(new ShapePacket(sprite.Position, sprite.Size, sprite.Color, sprite.SortKey, sprite.Shape));
+            AddShape(new ShapePacket(sprite.Position, sprite.Size, sprite.Color, sprite.SortKey, sprite.Shape), sprite.Texture);
         }
     }
 
-    private void AddShape(ShapePacket packet)
+    private void AddShape(ShapePacket packet, TextureHandle texture)
     {
+        uint firstIndex = (uint)_indices.Count;
         int vertexOffset = _vertices.Count;
         if (packet.Shape == ShapeKind.Box) AddBoxShape(packet, vertexOffset);
         else AddDiamondShape(packet, vertexOffset);
+        _textureRanges.Add(new TextureRange(texture, firstIndex, 6));
     }
 
     private void AddBoxShape(ShapePacket packet, int vertexOffset)
@@ -136,10 +145,10 @@ public unsafe class BatchRenderer : IDisposable
         Vector2 bottomRight = packet.Position + new Vector2(halfWidth, halfHeight);
         Vector2 bottomLeft = packet.Position + new Vector2(-halfWidth, halfHeight);
 
-        _vertices.Add(new ShapeVertex(topLeft, packet.Color));
-        _vertices.Add(new ShapeVertex(topRight, packet.Color));
-        _vertices.Add(new ShapeVertex(bottomRight, packet.Color));
-        _vertices.Add(new ShapeVertex(bottomLeft, packet.Color));
+        _vertices.Add(new ShapeVertex(topLeft, packet.Color, new Vector2(0, 0)));
+        _vertices.Add(new ShapeVertex(topRight, packet.Color, new Vector2(1, 0)));
+        _vertices.Add(new ShapeVertex(bottomRight, packet.Color, new Vector2(1, 1)));
+        _vertices.Add(new ShapeVertex(bottomLeft, packet.Color, new Vector2(0, 1)));
         AppendQuadIndices(vertexOffset);
     }
 
@@ -153,10 +162,10 @@ public unsafe class BatchRenderer : IDisposable
         Vector2 bottom = packet.Position + new Vector2(0, halfHeight);
         Vector2 left = packet.Position + new Vector2(-halfWidth, 0);
 
-        _vertices.Add(new ShapeVertex(top, packet.Color));
-        _vertices.Add(new ShapeVertex(right, packet.Color));
-        _vertices.Add(new ShapeVertex(bottom, packet.Color));
-        _vertices.Add(new ShapeVertex(left, packet.Color));
+        _vertices.Add(new ShapeVertex(top, packet.Color, new Vector2(0.5f, 0)));
+        _vertices.Add(new ShapeVertex(right, packet.Color, new Vector2(1, 0.5f)));
+        _vertices.Add(new ShapeVertex(bottom, packet.Color, new Vector2(0.5f, 1)));
+        _vertices.Add(new ShapeVertex(left, packet.Color, new Vector2(0, 0.5f)));
         AppendQuadIndices(vertexOffset);
     }
 
@@ -270,7 +279,13 @@ public unsafe class BatchRenderer : IDisposable
         };
         _deviceApi.vkCmdPushConstants(cmdBuffer, _pipeline.Layout, VkShaderStageFlags.Vertex, 0, (uint)sizeof(VulkanPipeline.CameraPushConstants), &pushConstants);
 
-        _deviceApi.vkCmdDrawIndexed(cmdBuffer, (uint)_indices.Count, 1, 0, 0, 0);
+        for (int i = 0; i < _textureRanges.Count; i++)
+        {
+            TextureRange range = _textureRanges[i];
+            VkDescriptorSet descriptorSet = _textureUploader.GetDescriptorSet(range.Texture);
+            _deviceApi.vkCmdBindDescriptorSets(cmdBuffer, VkPipelineBindPoint.Graphics, _pipeline.Layout, 0, descriptorSet);
+            _deviceApi.vkCmdDrawIndexed(cmdBuffer, range.IndexCount, 1, range.FirstIndex, 0, 0);
+        }
     }
 
     public void Dispose()

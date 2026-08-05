@@ -20,7 +20,7 @@ internal static class ExtractionBenchmarks
     private static BenchmarkCase ExtractionCase(string name, int size, bool isometric)
     {
         TileMap map = new(size, size);
-        IsometricCamera camera = new(new Vector2(1920, 1080)) { Isometric = isometric };
+        IsometricCamera camera = new(new Vector2(1920, 1080)) { Mode = isometric ? GameMode.Isometric : GameMode.TopDown };
         camera.Follow(new Vector2(size * 0.5f, size * 0.5f), map);
         SpritePacket[] sprites = new SpritePacket[size * size * 2];
         float sink = 0;

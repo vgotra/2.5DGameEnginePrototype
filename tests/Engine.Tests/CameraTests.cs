@@ -34,7 +34,7 @@ internal static class CameraTests
     private static void Follow_FlatCameraCentersViewport()
     {
         TileMap map = new();
-        IsometricCamera camera = new(new Vector2(800, 600)) { Isometric = false };
+        IsometricCamera camera = new(new Vector2(800, 600)) { Mode = GameMode.TopDown };
         camera.Follow(new Vector2(10, 10), map);
         TestAssert.True(camera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(400, 300), "flat camera centers the followed point");
     }
@@ -42,7 +42,7 @@ internal static class CameraTests
     private static void Follow_FlatCameraMapsTileRightward()
     {
         TileMap map = new();
-        IsometricCamera camera = new(new Vector2(800, 600)) { Isometric = false };
+        IsometricCamera camera = new(new Vector2(800, 600)) { Mode = GameMode.TopDown };
         camera.Follow(new Vector2(10, 10), map);
         TestAssert.True(camera.WorldToScreen(new Vector2(11, 10), map) == new Vector2(464, 300), "flat camera maps an adjacent tile one tile right");
     }
@@ -50,7 +50,7 @@ internal static class CameraTests
     private static void Follow_FlatMapCenteredHorizontallyInFullscreen()
     {
         TileMap map = new();
-        IsometricCamera camera = new(new Vector2(1920, 1080)) { Isometric = false };
+        IsometricCamera camera = new(new Vector2(1920, 1080)) { Mode = GameMode.TopDown };
         camera.Follow(new Vector2(2, 2), map);
         TestAssert.True(camera.WorldToScreen(new Vector2(10, 10), map).X == 960, "flat map is centered horizontally in the fullscreen viewport");
     }
@@ -58,7 +58,7 @@ internal static class CameraTests
     private static void Follow_FlatMapCenteredOnBothAxesWhenFitted()
     {
         TileMap map = new();
-        IsometricCamera camera = new(new Vector2(1280, 1280)) { Isometric = false };
+        IsometricCamera camera = new(new Vector2(1280, 1280)) { Mode = GameMode.TopDown };
         camera.Follow(new Vector2(2, 2), map);
         TestAssert.True(camera.WorldToScreen(new Vector2(10, 10), map) == new Vector2(640, 640), "flat map is centered on both axes when it fits the viewport");
     }

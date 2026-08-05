@@ -172,12 +172,16 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _shaderLoader = new ShaderModuleLoader(_deviceApi);
         VkShaderModule vertexModule = _shaderLoader.Load(ShaderPath("shape.vert.spv"));
         VkShaderModule fragmentModule = _shaderLoader.Load(ShaderPath("shape.frag.spv"));
-        _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass);
         _descriptorAllocator = new DescriptorSetAllocator(_device, _deviceApi);
+        VkDescriptorSetLayout textureLayout = _descriptorAllocator.GetLayout(VkDescriptorType.CombinedImageSampler, VkShaderStageFlags.Fragment, 0);
+        _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout);
         _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, _commandPool, _descriptorAllocator);
-        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _graphicsQueue, FramesInFlight);
+        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _textureUploader, _graphicsQueue, FramesInFlight);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
+
+    public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height)
+        => _textureUploader.UploadTexture(rgba, width, height);
 
     public void BeginFrame(Vector2 viewport)
     {

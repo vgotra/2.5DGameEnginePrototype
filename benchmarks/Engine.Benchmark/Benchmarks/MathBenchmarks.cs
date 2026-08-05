@@ -8,8 +8,8 @@ internal static class MathBenchmarks
 {
     public static BenchmarkCase[] Create()
     {
-        ScreenTransform iso = new(400f, 300f, 32f, 16f, true);
-        ScreenTransform flat = new(400f, 300f, 64f, 64f, false);
+        ScreenTransform iso = new(400f, 300f, 32f, 16f, -32f, 16f);
+        ScreenTransform flat = new(400f, 300f, 64f, 64f, 0f, 0f);
         float sink = 0;
 
         return

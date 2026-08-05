@@ -15,6 +15,7 @@ for (int i = 0; i < args.Length; i++)
     if (args[i] == "--cap" && i + 1 < args.Length && double.TryParse(args[i + 1], out double fps)) frameCap = fps;
 }
 
+GameMode mode = flatMode ? GameMode.TopDown : GameMode.Isometric;
 const float jumpDuration = 0.24f;
 const float playerBorder = RenderExtractionSystem.BorderWidth;
 Vector2 playerSize = flatMode ? new(40, 40) : new(40, 20);
@@ -27,11 +28,12 @@ using PlatformSession session = GamePlatform.CreateWindow("Isometric Sandbox", 8
 IGameWindow window = session.Window;
 IInputState input = session.Input;
 using VulkanRenderer renderer = new(window.NativeSurface);
+TextureHandle playerTexture = CreateUkraineFlagTexture(renderer);
 TileMap map = new();
 Vector2 position = map.TileToWorld(2, 2);
 Vector2 facing = new(0, 1), jumpStart = position, jumpTarget = position;
 float jumpTime = 1f;
-IsometricCamera camera = new(window.Size) { Isometric = !flatMode };
+IsometricCamera camera = new(window.Size) { Mode = mode };
 GameClock clock = new();
 FrameTimer frameTimer = new(frameCap);
 Vector2 viewport = window.Size;
@@ -87,7 +89,7 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     float jumpHeight = jumpProgress >= 1 ? 0 : MathF.Sin(jumpProgress * MathF.PI) * 18f;
     Vector2 playerScreen = camera.WorldToScreen(position, map) - new Vector2(0, jumpHeight);
     sprites[tileCount] = new SpritePacket(playerScreen, playerBorderSize, black, default, default, tileCount + 1, playerShape);
-    sprites[tileCount + 1] = new SpritePacket(playerScreen, playerSize, white, default, default, tileCount + 1, playerShape);
+    sprites[tileCount + 1] = new SpritePacket(playerScreen, playerSize, white, playerTexture, default, tileCount + 1, playerShape);
     renderer.Submit(sprites.AsSpan(0, tileCount + 2));
     renderer.EndFrame();
     frameTimer.WaitForNextFrame();
@@ -102,4 +104,23 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
             GC.CollectionCount(1) - frameStartGen1,
             GC.CollectionCount(2) - frameStartGen2);
     }
+}
+
+static TextureHandle CreateUkraineFlagTexture(IRenderer renderer)
+{
+    const int size = 16;
+    byte[] rgba = new byte[size * size * 4];
+    for (int y = 0; y < size; y++)
+    {
+        bool blue = y < size / 2;
+        for (int x = 0; x < size; x++)
+        {
+            int i = (y * size + x) * 4;
+            rgba[i] = blue ? (byte)0 : (byte)255;
+            rgba[i + 1] = blue ? (byte)87 : (byte)215;
+            rgba[i + 2] = blue ? (byte)183 : (byte)0;
+            rgba[i + 3] = 255;
+        }
+    }
+    return renderer.UploadTexture(rgba, size, size);
 }
