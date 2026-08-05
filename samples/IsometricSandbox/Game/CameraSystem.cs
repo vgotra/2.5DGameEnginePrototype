@@ -46,4 +46,17 @@ public sealed class IsometricCamera
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2 WorldToScreen(Vector2 world, TileMap map)
         => GetScreenTransform(map).ToScreen(world.X, world.Y);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Vector2 ScreenToWorld(Vector2 screen, TileMap map)
+    {
+        ScreenTransform transform = GetScreenTransform(map);
+        float dx = screen.X - transform.OriginX;
+        float dy = screen.Y - transform.OriginY;
+        float det = transform.ScaleX * transform.ScaleY - transform.ShearX * transform.ShearY;
+        if (det == 0f) return Position;
+        float worldX = (dx * transform.ScaleY - dy * transform.ShearX) / det;
+        float worldY = (transform.ScaleX * dy - dx * transform.ShearY) / det;
+        return new Vector2(worldX, worldY);
+    }
 }

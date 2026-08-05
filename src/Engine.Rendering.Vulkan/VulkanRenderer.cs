@@ -180,8 +180,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
 
-    public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height)
-        => _textureUploader.UploadTexture(rgba, width, height);
+    public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height, TextureFilter filter = TextureFilter.Linear)
+        => _textureUploader.UploadTexture(rgba, width, height, filter);
 
     public void BeginFrame(Vector2 viewport)
     {

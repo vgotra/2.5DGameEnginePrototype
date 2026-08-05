@@ -17,20 +17,16 @@ for (int i = 0; i < args.Length; i++)
 
 GameMode mode = flatMode ? GameMode.TopDown : GameMode.Isometric;
 const float jumpDuration = 0.24f;
-const float playerBorder = RenderExtractionSystem.BorderWidth;
-Vector2 playerSize = flatMode ? new(40, 40) : new(40, 20);
-Vector2 playerBorderSize = playerSize + new Vector2(playerBorder * 2, playerBorder * 2);
-ShapeKind playerShape = flatMode ? ShapeKind.Box : ShapeKind.Diamond;
-Vector4 black = new(0, 0, 0, 1);
-Vector4 white = new(1, 1, 1, 1);
+const float playerSpeed = 4f;
+const float playerRadius = 0.2f;
 
-using PlatformSession session = GamePlatform.CreateWindow("Isometric Sandbox", 800, 600);
+using PlatformSession session = GamePlatform.CreateWindow("Archer in the Forest", 800, 600);
 IGameWindow window = session.Window;
 IInputState input = session.Input;
 using VulkanRenderer renderer = new(window.NativeSurface);
-TextureHandle playerTexture = CreateUkraineFlagTexture(renderer);
-TileMap map = new();
-Vector2 position = map.TileToWorld(2, 2);
+TextureLibrary textures = new(renderer);
+ArcherGame game = new(new TileMap());
+Vector2 position = game.PlayerStart;
 Vector2 facing = new(0, 1), jumpStart = position, jumpTarget = position;
 float jumpTime = 1f;
 IsometricCamera camera = new(window.Size) { Mode = mode };
@@ -38,8 +34,16 @@ GameClock clock = new();
 FrameTimer frameTimer = new(frameCap);
 Vector2 viewport = window.Size;
 if (startFullscreen) window.SetFullscreen(true);
-SpritePacket[] sprites = new SpritePacket[map.Width * map.Height * 2 + 2];
+int maxSprites = game.Map.Width * game.Map.Height * 2 + 128;
+SpritePacket[] sprites = new SpritePacket[maxSprites];
+SpritePacket[] spriteScratch = new SpritePacket[maxSprites];
+int[] sortKeyCounts = new int[game.Map.Width * game.Map.Height];
+Random flicker = new(7);
 FrameMetrics frameMetrics = default;
+int lastScore = -1;
+Vector2 aimTarget = position;
+bool pendingShot = false;
+
 while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
 {
     long frameStartAlloc = GC.GetAllocatedBytesForCurrentThread();
@@ -49,6 +53,15 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     window.PumpEvents();
     input.Update();
     if (input.WasPressed(GameKey.Fullscreen)) window.SetFullscreen(!window.Fullscreen);
+    if (input.WasPressed(GameKey.Restart))
+    {
+        game.Reset();
+        position = game.PlayerStart;
+        facing = new(0, 1);
+        jumpStart = position;
+        jumpTarget = position;
+        jumpTime = 1f;
+    }
     if (window.IsMinimized)
     {
         frameTimer.WaitForNextFrame();
@@ -65,6 +78,7 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     double frameMs = elapsed * 1000.0;
     clock.Advance(elapsed);
     Vector2 direction = new((input.IsDown(GameKey.Right) ? 1 : 0) - (input.IsDown(GameKey.Left) ? 1 : 0), (input.IsDown(GameKey.Down) ? 1 : 0) - (input.IsDown(GameKey.Up) ? 1 : 0));
+    if (input.MousePressed) { aimTarget = camera.ScreenToWorld(input.MousePosition, game.Map); pendingShot = true; }
     int fixedSteps = 0;
     while (clock.TryConsumeFixedStep())
     {
@@ -73,54 +87,41 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
         if (input.WasPressed(GameKey.Space) && jumpTime >= jumpDuration)
         {
             Vector2 candidate = position + facing * 2f;
-            if (map.CanOccupy(candidate, 0.2f)) { jumpStart = position; jumpTarget = candidate; jumpTime = 0; }
+            if (game.Map.CanOccupy(candidate, playerRadius)) { jumpStart = position; jumpTarget = candidate; jumpTime = 0; }
         }
         if (jumpTime < jumpDuration)
         {
             jumpTime = Math.Min(jumpDuration, jumpTime + (float)GameClock.FixedStep);
             position = Vector2.Lerp(jumpStart, jumpTarget, jumpTime / jumpDuration);
         }
-        else position = MovementSystem.Move(map, position, direction, 4, 0.2f, (float)GameClock.FixedStep);
+        else position = MovementSystem.Move(game.Map, position, direction, playerSpeed, playerRadius, (float)GameClock.FixedStep);
+        if (pendingShot) { game.Shoot(position, aimTarget); pendingShot = false; }
+        game.UpdateFixed(position, (float)GameClock.FixedStep);
     }
-    camera.Follow(position, map);
+    camera.Follow(position, game.Map);
     renderer.BeginFrame(viewport);
-    int tileCount = RenderExtractionSystem.ExtractMapSprites(map, camera, sprites);
     float jumpProgress = Math.Clamp(jumpTime / jumpDuration, 0, 1);
     float jumpHeight = jumpProgress >= 1 ? 0 : MathF.Sin(jumpProgress * MathF.PI) * 18f;
-    Vector2 playerScreen = camera.WorldToScreen(position, map) - new Vector2(0, jumpHeight);
-    sprites[tileCount] = new SpritePacket(playerScreen, playerBorderSize, black, default, default, tileCount + 1, playerShape);
-    sprites[tileCount + 1] = new SpritePacket(playerScreen, playerSize, white, playerTexture, default, tileCount + 1, playerShape);
-    renderer.Submit(sprites.AsSpan(0, tileCount + 2));
+    int spriteCount = RenderExtractionSystem.ExtractScene(
+        game.Map, camera, sprites, game.Animals, game.Arrows.AsSpan(0, game.ArrowCount),
+        position, jumpHeight, textures, flicker, sortKeyCounts, spriteScratch);
+    renderer.Submit(sprites.AsSpan(0, spriteCount));
     renderer.EndFrame();
+    if (game.Score != lastScore)
+    {
+        lastScore = game.Score;
+        window.SetTitle($"Archer in the Forest — Score {game.Score}");
+    }
     frameTimer.WaitForNextFrame();
     if (metrics)
     {
         frameMetrics.Add(
             frameMs,
             fixedSteps,
-            tileCount + 2,
+            spriteCount,
             GC.GetAllocatedBytesForCurrentThread() - frameStartAlloc,
             GC.CollectionCount(0) - frameStartGen0,
             GC.CollectionCount(1) - frameStartGen1,
             GC.CollectionCount(2) - frameStartGen2);
     }
-}
-
-static TextureHandle CreateUkraineFlagTexture(IRenderer renderer)
-{
-    const int size = 16;
-    byte[] rgba = new byte[size * size * 4];
-    for (int y = 0; y < size; y++)
-    {
-        bool blue = y < size / 2;
-        for (int x = 0; x < size; x++)
-        {
-            int i = (y * size + x) * 4;
-            rgba[i] = blue ? (byte)0 : (byte)255;
-            rgba[i + 1] = blue ? (byte)87 : (byte)215;
-            rgba[i + 2] = blue ? (byte)183 : (byte)0;
-            rgba[i + 3] = 255;
-        }
-    }
-    return renderer.UploadTexture(rgba, size, size);
 }

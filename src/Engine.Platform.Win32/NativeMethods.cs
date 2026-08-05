@@ -92,6 +92,14 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll")]
     internal static partial short GetAsyncKeyState(int key);
 
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetCursorPos(out POINT point);
+
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool ScreenToClient(nint handle, ref POINT point);
+
     [LibraryImport("kernel32.dll", EntryPoint = "GetModuleHandleW", StringMarshalling = StringMarshalling.Utf16)]
     internal static partial nint GetModuleHandle(string? name);
 }

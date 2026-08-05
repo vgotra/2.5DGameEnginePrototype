@@ -22,6 +22,10 @@ Status tags: **Implemented** (describes shipped behavior), **Plan** (ordered fut
 
 - [`ShaderWorkflow.md`](ShaderWorkflow.md) — **Reference**. GLSL → glslc → committed `.spv`; when and how to recompile; NDC-Y rule.
 
+## Assets
+
+- [`AssetWorkflow.md`](AssetWorkflow.md) — **Reference**. Drop-in PNG art for the mini-game (player/tiles/animals), placeholder generation, filtering rules, and scope limits.
+
 ## Platforms
 
 - [`LinuxSupportPlan.md`](LinuxSupportPlan.md) — **Plan**. Linux (SDL2, later macOS) support plan; platform seams in place.

@@ -1,1 +1,1 @@
-<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><AssemblyName>Engine.Rendering</AssemblyName></PropertyGroup><ItemGroup><ProjectReference Include="..\Engine.Core\Engine.Core.csproj" /></ItemGroup></Project>
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><AssemblyName>Engine.Rendering</AssemblyName></PropertyGroup><ItemGroup><ProjectReference Include="..\Engine.Core\Engine.Core.csproj" /><PackageReference Include="StbImageSharp" /></ItemGroup></Project>

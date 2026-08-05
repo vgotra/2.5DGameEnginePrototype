@@ -4,5 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Vortice.Vulkan" Version="3.2.3" />
+    <PackageVersion Include="StbImageSharp" Version="2.30.15" />
   </ItemGroup>
 </Project>

@@ -7,4 +7,10 @@
     <ProjectReference Include="..\..\src\Engine.Platform.Desktop\Engine.Platform.Desktop.csproj" />
     <ProjectReference Include="..\..\src\Engine.Rendering.Vulkan\Engine.Rendering.Vulkan.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\textures\*.png">
+      <Link>textures\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>

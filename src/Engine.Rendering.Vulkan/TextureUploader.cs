@@ -36,7 +36,7 @@ public unsafe class TextureUploader : IDisposable
         UploadTexture([byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue], 1, 1);
     }
 
-    public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height)
+    public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height, TextureFilter filter = TextureFilter.Linear)
     {
         if (rgba.Length != width * height * 4)
             throw new ArgumentException("RGBA data size does not match width*height*4");
@@ -46,7 +46,7 @@ public unsafe class TextureUploader : IDisposable
         _deviceApi.vkBindImageMemory(image, memory, 0);
 
         VkImageView imageView = CreateImageView(image);
-        VkSampler sampler = CreateSampler();
+        VkSampler sampler = CreateSampler(filter);
 
         UploadImageData(rgba, width, height, image);
 
@@ -164,12 +164,13 @@ public unsafe class TextureUploader : IDisposable
         return view;
     }
 
-    private VkSampler CreateSampler()
+    private VkSampler CreateSampler(TextureFilter filter)
     {
+        VkFilter vulkanFilter = filter == TextureFilter.Nearest ? VkFilter.Nearest : VkFilter.Linear;
         VkSamplerCreateInfo samplerInfo = new()
         {
-            magFilter = VkFilter.Linear,
-            minFilter = VkFilter.Linear,
+            magFilter = vulkanFilter,
+            minFilter = vulkanFilter,
             addressModeU = VkSamplerAddressMode.Repeat,
             addressModeV = VkSamplerAddressMode.Repeat,
             addressModeW = VkSamplerAddressMode.Repeat,

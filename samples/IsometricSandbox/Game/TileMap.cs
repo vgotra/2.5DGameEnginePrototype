@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace IsometricSandbox.Game;
 
-public enum TileType : byte { Floor, Blocked, Goal }
+public enum TileType : byte { Floor, Blocked, Goal, Tree, Water, Bonfire, Wall }
 
 public sealed class TileMap
 {
@@ -24,6 +24,26 @@ public sealed class TileMap
         _tiles[(height / 2) * width + width / 2] = (byte)TileType.Goal;
     }
 
+    public void LoadLayout(string[] rows)
+    {
+        for (int y = 0; y < Height; y++)
+            for (int x = 0; x < Width; x++)
+            {
+                char c = rows[y][x];
+                _tiles[y * Width + x] = (byte)CharToType(c);
+            }
+    }
+
+    private static TileType CharToType(char c) => c switch
+    {
+        'G' => TileType.Floor,
+        'T' => TileType.Tree,
+        'W' => TileType.Water,
+        'F' => TileType.Bonfire,
+        '#' => TileType.Wall,
+        _ => TileType.Floor,
+    };
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsInside(int x, int y) => (uint)x < (uint)Width && (uint)y < (uint)Height;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -34,7 +54,12 @@ public sealed class TileMap
         _tiles[y * Width + x] = (byte)type;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IsWalkable(int x, int y) => !IsInside(x, y) || _tiles[y * Width + x] != (byte)TileType.Blocked;
+    public bool IsWalkable(int x, int y)
+    {
+        if (!IsInside(x, y)) return false;
+        TileType type = (TileType)_tiles[y * Width + x];
+        return type is TileType.Floor or TileType.Goal;
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2 TileToWorld(int x, int y) => IsInside(x, y) ? _centers[y * Width + x] : new(x + 0.5f, y + 0.5f);
 
