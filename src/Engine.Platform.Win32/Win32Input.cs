@@ -12,7 +12,7 @@ public sealed class Win32Input : IInputState
     private uint _current;
     private uint _previous;
     private bool _mouseDown;
-    private bool _mouseDownPrevious;
+    private bool _mousePressed;
     private Vector2 _mousePosition;
 
     public Win32Input(nint window) => _window = window;
@@ -21,8 +21,8 @@ public sealed class Win32Input : IInputState
     {
         _previous = _current;
         _current = 0;
-        _mouseDownPrevious = _mouseDown;
-        _mouseDown = IsDown(MouseLeftButton);
+        _mouseDown = QueryMouseState(out bool pressLatched);
+        _mousePressed = pressLatched;
         _mousePosition = GetClientPosition();
         if (NativeMethods.GetForegroundWindow() != _window) return;
         Set(GameKey.Up, IsDown(0x57) || IsDown(0x26));
@@ -37,7 +37,7 @@ public sealed class Win32Input : IInputState
 
     public Vector2 MousePosition => _mousePosition;
     public bool IsMouseDown => _mouseDown;
-    public bool MousePressed => _mouseDown && !_mouseDownPrevious;
+    public bool MousePressed => _mousePressed;
 
     public bool IsDown(GameKey key) => (_current & Mask(key)) != 0;
     public bool WasPressed(GameKey key) => (_current & Mask(key)) != 0 && (_previous & Mask(key)) == 0;
@@ -56,4 +56,12 @@ public sealed class Win32Input : IInputState
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsDown(int key) => (NativeMethods.GetAsyncKeyState(key) & 0x8000) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool QueryMouseState(out bool pressLatched)
+    {
+        short state = NativeMethods.GetAsyncKeyState(MouseLeftButton);
+        pressLatched = (state & 0x0001) != 0;
+        return (state & 0x8000) != 0;
+    }
 }

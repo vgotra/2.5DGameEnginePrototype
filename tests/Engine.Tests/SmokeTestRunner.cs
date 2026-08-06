@@ -39,13 +39,3 @@ internal static class SmokeTestRunner
         return allPassed;
     }
 }
-
-internal readonly record struct TestCase(string Name, Action Run);
-
-internal static class TestAssert
-{
-    public static void True(bool condition, string message)
-    {
-        if (!condition) throw new InvalidOperationException($"Failed: {message}");
-    }
-}

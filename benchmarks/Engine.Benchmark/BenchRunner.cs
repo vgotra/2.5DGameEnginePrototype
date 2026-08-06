@@ -2,8 +2,6 @@ using System.Diagnostics;
 
 namespace Engine.Benchmark;
 
-internal readonly record struct BenchmarkCase(string Name, int Iterations, Action Operation);
-
 internal static class BenchRunner
 {
     private const int TimingTrials = 7;

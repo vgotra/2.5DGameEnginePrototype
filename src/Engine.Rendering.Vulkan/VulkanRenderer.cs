@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Runtime.InteropServices;
 using Engine.Platform;
 using Engine.Rendering;
 using Vortice.Vulkan;
@@ -67,6 +66,13 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (surface.Kind != PlatformKind.Win32)
             throw new PlatformNotSupportedException($"Vulkan surface kind '{surface.Kind}' is not implemented yet (see docs/LinuxSupportPlan.md).");
 
+        CreateInstance();
+        CreateSurfaceAndDevice(surface);
+        CreateRenderResources();
+    }
+
+    private void CreateInstance()
+    {
         VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize(LoaderName());
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
         _loaderInitialized = true;
@@ -93,16 +99,13 @@ public sealed unsafe class VulkanRenderer : IRenderer
                 byte** layerNames = stackalloc byte*[1];
                 uint layerCount = 0;
 #if DEBUG
-                if (ValidationLayerAvailable())
+                if (VulkanDebug.ValidationLayerAvailable())
                 {
                     extensions[2] = (nint)debugUtilsPointer;
                     extensionCount = 3;
                     layerNames[0] = layerPointer;
                     layerCount = 1;
-                    messengerInfo.sType = VkStructureType.DebugUtilsMessengerCreateInfoEXT;
-                    messengerInfo.messageSeverity = VkDebugUtilsMessageSeverityFlagsEXT.Warning | VkDebugUtilsMessageSeverityFlagsEXT.Error;
-                    messengerInfo.messageType = VkDebugUtilsMessageTypeFlagsEXT.General | VkDebugUtilsMessageTypeFlagsEXT.Validation | VkDebugUtilsMessageTypeFlagsEXT.Performance;
-                    messengerInfo.pfnUserCallback = &ValidationCallback;
+                    VulkanDebug.ConfigureMessenger(ref messengerInfo);
                     createInfoNext = &messengerInfo;
                 }
 #endif
@@ -135,6 +138,10 @@ public sealed unsafe class VulkanRenderer : IRenderer
             if (messengerResult != VkResult.Success) throw new InvalidOperationException($"Debug messenger creation failed: {messengerResult}");
         }
 #endif
+    }
+
+    private void CreateSurfaceAndDevice(in NativeWindowSurface surface)
+    {
         VkWin32SurfaceCreateInfoKHR surfaceInfo = new() { hinstance = surface.ModuleHandle, hwnd = surface.WindowHandle };
         VkResult result = _instanceApi.vkCreateWin32SurfaceKHR(&surfaceInfo, out _surface);
         if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan surface creation failed: {result}");
@@ -165,6 +172,10 @@ public sealed unsafe class VulkanRenderer : IRenderer
         }
         _deviceApi = global::Vortice.Vulkan.Vulkan.GetApi(_instance, _device);
         _deviceApi.vkGetDeviceQueue(GraphicsQueueFamily, 0, out _graphicsQueue);
+    }
+
+    private void CreateRenderResources()
+    {
         CreateSwapchain(800, 600);
         _renderPass = CreateRenderPass();
         CreateFramebuffers();
@@ -187,7 +198,13 @@ public sealed unsafe class VulkanRenderer : IRenderer
     {
         if (_swapchain.IsNull) throw new InvalidOperationException("Swapchain is not ready.");
         _currentFrame = (_currentFrame + 1) % FramesInFlight;
+        AcquireSwapchainImage(viewport);
+        BeginRenderPass(_commandBuffers[_imageIndex], viewport);
+        _inFrame = true;
+    }
 
+    private void AcquireSwapchainImage(Vector2 viewport)
+    {
         VkFence slotFence = _fences[_currentFrame];
         VkResult result = _deviceApi.vkWaitForFences(slotFence, true, ulong.MaxValue);
         if (result != VkResult.Success) throw new InvalidOperationException($"Fence wait failed: {result}");
@@ -212,11 +229,13 @@ public sealed unsafe class VulkanRenderer : IRenderer
             if (result != VkResult.Success) throw new InvalidOperationException($"Image fence wait failed: {result}");
         }
         _imagesInFlight[_imageIndex] = slotFence;
+    }
 
-        VkCommandBuffer commandBuffer = _commandBuffers[_imageIndex];
+    private void BeginRenderPass(VkCommandBuffer commandBuffer, Vector2 viewport)
+    {
         _deviceApi.vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
         VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
-        result = _deviceApi.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+        VkResult result = _deviceApi.vkBeginCommandBuffer(commandBuffer, &beginInfo);
         if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer begin failed: {result}");
         VkClearValue clear = new(0.04f, 0.07f, 0.12f, 1f);
         VkRenderPassBeginInfo renderPassBegin = new()
@@ -229,7 +248,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         };
         _deviceApi.vkCmdBeginRenderPass(commandBuffer, &renderPassBegin, VkSubpassContents.Inline);
         _batchRenderer.BeginFrame(_currentFrame, commandBuffer, viewport);
-        _inFrame = true;
     }
 
     public void Submit(ReadOnlySpan<SpritePacket> sprites)
@@ -243,6 +261,12 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (!_inFrame) return;
         VkCommandBuffer commandBuffer = _commandBuffers[_imageIndex];
         _batchRenderer.EndFrame(commandBuffer);
+        SubmitAndPresent(commandBuffer);
+        _inFrame = false;
+    }
+
+    private void SubmitAndPresent(VkCommandBuffer commandBuffer)
+    {
         _deviceApi.vkCmdEndRenderPass(commandBuffer);
         VkResult result = _deviceApi.vkEndCommandBuffer(commandBuffer);
         if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer end failed: {result}");
@@ -264,7 +288,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (result != VkResult.Success) throw new InvalidOperationException($"Queue submit failed: {result}");
         result = _deviceApi.vkQueuePresentKHR(_graphicsQueue, renderFinished, _swapchain, _imageIndex);
         if (result is not (VkResult.Success or VkResult.SuboptimalKHR or VkResult.ErrorOutOfDateKHR)) throw new InvalidOperationException($"Present failed: {result}");
-        _inFrame = false;
     }
 
     private static string ShaderPath(string name) => Path.Combine(AppContext.BaseDirectory, "shaders", name);
@@ -346,22 +369,9 @@ public sealed unsafe class VulkanRenderer : IRenderer
         VkSurfaceCapabilitiesKHR capabilities = default;
         VkResult result = _instanceApi.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(_physicalDevice, _surface, &capabilities);
         if (result != VkResult.Success) throw new InvalidOperationException($"Surface capabilities query failed: {result}");
-        Span<VkSurfaceFormatKHR> formats = stackalloc VkSurfaceFormatKHR[16];
-        uint formatCount = (uint)formats.Length;
-        result = _instanceApi.vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, formats);
-        if (result != VkResult.Success || formatCount == 0) throw new InvalidOperationException("No Vulkan surface formats found.");
-        VkSurfaceFormatKHR format = formats[0];
-        Span<VkPresentModeKHR> modes = stackalloc VkPresentModeKHR[16];
-        uint modeCount = (uint)modes.Length;
-        result = _instanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, modes);
-        if (result != VkResult.Success || modeCount == 0) throw new InvalidOperationException("No Vulkan present modes found.");
+        VkSurfaceFormatKHR format = SelectSurfaceFormat();
+        VkPresentModeKHR presentMode = SelectPresentMode();
         VkExtent2D extent = new(Math.Clamp(width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width), Math.Clamp(height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height));
-        VkPresentModeKHR presentMode = VkPresentModeKHR.Fifo;
-        for (int i = 0; i < modeCount; i++)
-        {
-            if (modes[i] == VkPresentModeKHR.Mailbox) { presentMode = VkPresentModeKHR.Mailbox; break; }
-        }
-
         uint imageCount = Math.Max(capabilities.minImageCount, 3);
         if (capabilities.maxImageCount > 0) imageCount = Math.Min(imageCount, capabilities.maxImageCount);
         VkSwapchainCreateInfoKHR info = new()
@@ -383,13 +393,45 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (result != VkResult.Success) throw new InvalidOperationException($"Swapchain creation failed: {result}");
         _swapchainFormat = format.format;
         _swapchainExtent = extent;
+        QuerySwapchainImages();
+        CreateSwapchainImageViews(format.format);
+    }
+
+    private VkSurfaceFormatKHR SelectSurfaceFormat()
+    {
+        Span<VkSurfaceFormatKHR> formats = stackalloc VkSurfaceFormatKHR[16];
+        uint formatCount = (uint)formats.Length;
+        VkResult result = _instanceApi.vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, formats);
+        if (result != VkResult.Success || formatCount == 0) throw new InvalidOperationException("No Vulkan surface formats found.");
+        return formats[0];
+    }
+
+    private VkPresentModeKHR SelectPresentMode()
+    {
+        Span<VkPresentModeKHR> modes = stackalloc VkPresentModeKHR[16];
+        uint modeCount = (uint)modes.Length;
+        VkResult result = _instanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, modes);
+        if (result != VkResult.Success || modeCount == 0) throw new InvalidOperationException("No Vulkan present modes found.");
+        for (int i = 0; i < modeCount; i++)
+        {
+            if (modes[i] == VkPresentModeKHR.Mailbox) return VkPresentModeKHR.Mailbox;
+        }
+        return VkPresentModeKHR.Fifo;
+    }
+
+    private void QuerySwapchainImages()
+    {
         uint swapchainImageCount = 0;
-        result = _deviceApi.vkGetSwapchainImagesKHR(_swapchain, out swapchainImageCount);
+        VkResult result = _deviceApi.vkGetSwapchainImagesKHR(_swapchain, out swapchainImageCount);
         if (result != VkResult.Success || swapchainImageCount == 0) throw new InvalidOperationException("Swapchain returned no images.");
         VkImage[] images = new VkImage[swapchainImageCount];
         result = _deviceApi.vkGetSwapchainImagesKHR(_swapchain, images);
         if (result != VkResult.Success) throw new InvalidOperationException($"Swapchain image query failed: {result}");
         _swapchainImages = images;
+    }
+
+    private void CreateSwapchainImageViews(VkFormat format)
+    {
         _swapchainViews = new VkImageView[_swapchainImages.Length];
         for (int i = 0; i < _swapchainImages.Length; i++)
         {
@@ -397,7 +439,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
             {
                 image = _swapchainImages[i],
                 viewType = VkImageViewType.Image2D,
-                format = format.format,
+                format = format,
                 components = VkComponentMapping.Identity,
                 subresourceRange = new VkImageSubresourceRange
                 {
@@ -408,7 +450,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
                     layerCount = 1
                 }
             };
-            result = _deviceApi.vkCreateImageView(&viewInfo, out _swapchainViews[i]);
+            VkResult result = _deviceApi.vkCreateImageView(&viewInfo, out _swapchainViews[i]);
             if (result != VkResult.Success) throw new InvalidOperationException($"Swapchain image view creation failed: {result}");
         }
     }
@@ -489,48 +531,4 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (_instance.IsNotNull) _instanceApi.vkDestroyInstance();
         if (_loaderInitialized) global::Vortice.Vulkan.Vulkan.vkShutdown();
     }
-
-#if DEBUG
-    private static bool ValidationLayerAvailable()
-    {
-        uint count = 0;
-        if (global::Vortice.Vulkan.Vulkan.vkEnumerateInstanceLayerProperties(&count, null) != VkResult.Success || count == 0) return false;
-        VkLayerProperties[] properties = new VkLayerProperties[count];
-        fixed (VkLayerProperties* propertiesPointer = properties)
-        {
-            if (global::Vortice.Vulkan.Vulkan.vkEnumerateInstanceLayerProperties(&count, propertiesPointer) != VkResult.Success) return false;
-            for (int i = 0; i < properties.Length; i++)
-            {
-                byte* name = propertiesPointer[i].layerName;
-                if (NameEquals(name, "VK_LAYER_KHRONOS_validation")) return true;
-            }
-        }
-        return false;
-    }
-
-    private static bool NameEquals(byte* name, string expected)
-    {
-        int i = 0;
-        foreach (char c in expected)
-        {
-            if (name[i] != (byte)c) return false;
-            i++;
-        }
-        return name[i] == 0;
-    }
-
-    [UnmanagedCallersOnly]
-    private static uint ValidationCallback(
-        VkDebugUtilsMessageSeverityFlagsEXT severity,
-        VkDebugUtilsMessageTypeFlagsEXT type,
-        VkDebugUtilsMessengerCallbackDataEXT* data,
-        void* userData)
-    {
-        string message = data == null || data->pMessage == null
-            ? "<null>"
-            : Marshal.PtrToStringUTF8((nint)data->pMessage) ?? "<unreadable>";
-        System.Diagnostics.Debug.WriteLine("[Vulkan validation] " + message);
-        return 0;
-    }
-#endif
 }

@@ -1,5 +1,3 @@
-using System.Numerics;
-using System.Runtime.InteropServices;
 using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
@@ -63,21 +61,7 @@ public unsafe struct VulkanPipeline : IDisposable
         ReadOnlySpan<byte> entryPoint = "main\0"u8;
         fixed (byte* entryPointPointer = entryPoint)
         {
-            VkPipelineShaderStageCreateInfo vertStage = new()
-            {
-                stage = VkShaderStageFlags.Vertex,
-                module = vertModule,
-                pName = entryPointPointer
-            };
-
-            VkPipelineShaderStageCreateInfo fragStage = new()
-            {
-                stage = VkShaderStageFlags.Fragment,
-                module = fragModule,
-                pName = entryPointPointer
-            };
-
-            VkPipelineShaderStageCreateInfo[] stages = { vertStage, fragStage };
+            VkPipelineShaderStageCreateInfo[] stages = ShaderStages(vertModule, fragModule, entryPointPointer);
 
             VkVertexInputBindingDescription binding = ShapePipelineDescription.Binding;
             VkVertexInputAttributeDescription[] attributes = ShapePipelineDescription.Attributes;
@@ -106,7 +90,7 @@ public unsafe struct VulkanPipeline : IDisposable
                 pAttachments = &blendAttachment
             };
 
-            VkDynamicState[] dynamicStates = { VkDynamicState.Viewport, VkDynamicState.Scissor };
+            VkDynamicState[] dynamicStates = DynamicStates();
 
             fixed (VkPipelineShaderStageCreateInfo* stagePtr = stages)
             fixed (VkVertexInputAttributeDescription* attributePtr = attributes)
@@ -149,6 +133,27 @@ public unsafe struct VulkanPipeline : IDisposable
         }
     }
 
+    private static VkPipelineShaderStageCreateInfo[] ShaderStages(VkShaderModule vertModule, VkShaderModule fragModule, byte* entryPoint)
+    {
+        VkPipelineShaderStageCreateInfo vertStage = new()
+        {
+            stage = VkShaderStageFlags.Vertex,
+            module = vertModule,
+            pName = entryPoint
+        };
+
+        VkPipelineShaderStageCreateInfo fragStage = new()
+        {
+            stage = VkShaderStageFlags.Fragment,
+            module = fragModule,
+            pName = entryPoint
+        };
+
+        return [vertStage, fragStage];
+    }
+
+    private static VkDynamicState[] DynamicStates() => [VkDynamicState.Viewport, VkDynamicState.Scissor];
+
     public void Dispose()
     {
         if (Pipeline.IsNotNull && _device.IsNotNull)
@@ -157,11 +162,5 @@ public unsafe struct VulkanPipeline : IDisposable
             _deviceApi.vkDestroyPipelineLayout(Layout);
         Pipeline = VkPipeline.Null;
         Layout = VkPipelineLayout.Null;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct CameraPushConstants
-    {
-        public Vector2 Viewport;
     }
 }

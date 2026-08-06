@@ -5,8 +5,8 @@ Windows is the current supported platform. This document records the plan and th
 ## Status
 
 - **Now:** Windows-first. Vulkan is the renderer on every platform.
-- **Next:** Linux (X11 and Wayland) — target backend is SDL2.
-- **Later (possible):** macOS via SDL2 + MoltenVK.
+- **Next:** Linux (X11 and Wayland) — target backend is **SDL3** (current stable; SDL2 is maintenance-only).
+- **Later (possible):** macOS via SDL3 + MoltenVK, and unifying the native Win32 windowing/input path onto SDL3.
 - All gameplay-facing contracts are already platform-neutral (`Engine.Platform`, `Engine.Rendering`, `Engine.Audio`, `Engine.Physics`). Linux relies on the same Vulkan render path as Windows.
 
 ## Principles

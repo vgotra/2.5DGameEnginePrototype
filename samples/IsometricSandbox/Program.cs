@@ -78,7 +78,12 @@ while (!window.ShouldClose && !input.IsDown(GameKey.Escape))
     double frameMs = elapsed * 1000.0;
     clock.Advance(elapsed);
     Vector2 direction = new((input.IsDown(GameKey.Right) ? 1 : 0) - (input.IsDown(GameKey.Left) ? 1 : 0), (input.IsDown(GameKey.Down) ? 1 : 0) - (input.IsDown(GameKey.Up) ? 1 : 0));
-    if (input.MousePressed) { aimTarget = camera.ScreenToWorld(input.MousePosition, game.Map); pendingShot = true; }
+    if (input.MousePressed)
+    {
+        camera.Follow(position, game.Map);
+        aimTarget = camera.ScreenToWorld(input.MousePosition, game.Map);
+        pendingShot = true;
+    }
     int fixedSteps = 0;
     while (clock.TryConsumeFixedStep())
     {

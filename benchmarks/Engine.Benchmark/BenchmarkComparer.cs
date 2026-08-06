@@ -2,16 +2,6 @@ using System.Globalization;
 
 namespace Engine.Benchmark;
 
-internal sealed record CompareEntry(
-    string Name,
-    string Verdict,
-    double BaselineNs,
-    double CurrentNs,
-    double TimeDeltaPct,
-    double CurrentAllocBytes);
-
-internal sealed record CompareReport(bool SameMachine, int Failures, List<CompareEntry> Entries);
-
 internal static class BenchmarkComparer
 {
     private const double TimeWarnPct = 15.0;

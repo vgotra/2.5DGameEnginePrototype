@@ -1,14 +1,4 @@
-using System.Numerics;
-
 namespace Engine.Platform;
-
-public enum PlatformKind
-{
-    Win32,
-    X11,
-    Wayland,
-    MacOs
-}
 
 public readonly struct NativeWindowSurface
 {
@@ -24,17 +14,4 @@ public readonly struct NativeWindowSurface
         DisplayHandle = displayHandle;
         ModuleHandle = moduleHandle;
     }
-}
-
-public interface IGameWindow : IDisposable
-{
-    Vector2 Size { get; }
-    bool ShouldClose { get; }
-    bool Fullscreen { get; }
-    bool IsMinimized { get; }
-    NativeWindowSurface NativeSurface { get; }
-    void PumpEvents();
-    void SetFullscreen(bool fullscreen);
-    void SetTitle(string title);
-    void Close();
 }

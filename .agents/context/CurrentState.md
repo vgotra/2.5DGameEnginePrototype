@@ -14,6 +14,16 @@ The sample is now the **"Archer in the Forest" mini-game** (`samples/IsometricSa
 
 Windowing (`Engine.Platform.Win32`): the window opens centered on the primary screen at 800x600. `IInputState` now exposes `MousePosition` (client px), `IsMouseDown`, `MousePressed`, and the `Restart` (R) key via `Win32Input` (polled `GetCursorPos`/`ScreenToClient` + `GetAsyncKeyState`). `IsometricCamera` gained `ScreenToWorld` (affine inverse of `ScreenTransform`) for mouse aiming.
 
+Aiming reliability: `Win32Input.MousePressed` latches the `GetAsyncKeyState` transition bit (`0x0001`) so quick clicks that land entirely between two polls are still captured; the sample freshens the camera transform (`camera.Follow`) immediately before `ScreenToWorld` at click time so the aim target matches the player's current position even after frame hitches.
+
 Vulkan is the only renderer.
 
 The platform layer is cross-platform-ready. See `docs/LinuxSupportPlan.md`.
+
+## Codebase refactor (milestone)
+
+Behavior-preserving refactor, whole repo (excluding `tools/mcp/`):
+
+- **Rendering simplification** (`Engine.Rendering.Vulkan`): the large methods in `VulkanRenderer`/`BatchRenderer`/`TextureUploader`/`VulkanPipeline` were split into small named helpers; shared, single-responsibility helper types extracted and given their own files — `CameraPushConstants`, `FrameGeometryCache` (per-slot byte-snapshot dirty gate), `OneShotCommandBuffer` (immediate uploads), `VulkanImage` (layout transitions), `VulkanDebug` (object labels/names).
+- **1 type = 1 file**, repo-wide, strict (enums and 1-line handles included): every contract bundle was split (`RenderContracts`, `AudioContracts`, `PhysicsContracts`, `PlatformContracts`, `InputContracts`), plus sample `CameraProjection`/`CameraSystem`/`Animal`/`TileMap` into `ICameraProjection`/`IsometricProjection`/`OrthographicProjection`/`ScreenTransform`/`IsometricCamera`, `AnimalSpecies`/`AnimalSystem`, `TileType`; tests `SmokeTestRunner` → `TestCase`/`TestAssert`; benchmarks `BenchResult`/`BenchmarkComparer`/`BenchRunner` → per-type files; Win32 interop structs `POINT`/`RECT`/`MONITORINFO`/`MSG` split from `Win32Types.cs`.
+- Verified after refactor: `dotnet build Engine.slnx` 0 errors/0 warnings, smoke tests print `Smoke tests passed`, sample boots clean, benchmark comparison vs baseline = PASS 15 / WARN 0 / FAIL 0 (no new allocations).

@@ -3,8 +3,6 @@ using System.Runtime.CompilerServices;
 
 namespace IsometricSandbox.Game;
 
-public enum TileType : byte { Floor, Blocked, Goal, Tree, Water, Bonfire, Wall }
-
 public sealed class TileMap
 {
     private readonly byte[] _tiles;

@@ -22,10 +22,7 @@ public unsafe class BatchRenderer : IDisposable
     private VulkanBuffer[] _indexBuffers;
     private VulkanBuffer[] _stagingVertexBuffers;
     private VulkanBuffer[] _stagingIndexBuffers;
-    private byte[]?[] _vertexSnapshots;
-    private byte[]?[] _indexSnapshots;
-    private nuint[] _vertexSnapshotSizes;
-    private nuint[] _indexSnapshotSizes;
+    private readonly FrameGeometryCache _geometryCache;
     private int _frameIndex;
 
     private readonly GrowableBuffer<ShapeVertex> _vertices = new();
@@ -62,10 +59,7 @@ public unsafe class BatchRenderer : IDisposable
         _indexBuffers = new VulkanBuffer[framesInFlight];
         _stagingVertexBuffers = new VulkanBuffer[framesInFlight];
         _stagingIndexBuffers = new VulkanBuffer[framesInFlight];
-        _vertexSnapshots = new byte[]?[framesInFlight];
-        _indexSnapshots = new byte[]?[framesInFlight];
-        _vertexSnapshotSizes = new nuint[framesInFlight];
-        _indexSnapshotSizes = new nuint[framesInFlight];
+        _geometryCache = new FrameGeometryCache((int)framesInFlight);
     }
 
     public void ResizeBuffers(uint maxVertices, uint maxIndices)
@@ -193,91 +187,96 @@ public unsafe class BatchRenderer : IDisposable
         nuint vertexBytes = (nuint)(_vertices.Count * Unsafe.SizeOf<ShapeVertex>());
         nuint indexBytes = (nuint)(_indices.Count * sizeof(uint));
 
-        if (vertexBytes > vertexBuffer.Size || indexBytes > indexBuffer.Size)
-        {
-            _deviceApi.vkQueueWaitIdle(_graphicsQueue);
-            ResizeBuffers((uint)_vertices.Count * 2, (uint)_indices.Count * 2);
-            vertexBuffer = _vertexBuffers[_frameIndex];
-            indexBuffer = _indexBuffers[_frameIndex];
-            stagingVertex = _stagingVertexBuffers[_frameIndex];
-            stagingIndex = _stagingIndexBuffers[_frameIndex];
-        }
+        EnsureBufferCapacity(ref vertexBuffer, ref indexBuffer, ref stagingVertex, ref stagingIndex, vertexBytes, indexBytes);
+        UploadGeometryIfChanged(cmdBuffer, vertexBytes, indexBytes, _vertices.AsSpan(), _indices.AsSpan(), vertexBuffer, indexBuffer, stagingVertex, stagingIndex);
+        RecordDraws(cmdBuffer, vertexBuffer, indexBuffer);
+    }
 
-        Span<ShapeVertex> vertices = _vertices.AsSpan();
-        Span<uint> indices = _indices.AsSpan();
+    private void EnsureBufferCapacity(
+        ref VulkanBuffer vertexBuffer,
+        ref VulkanBuffer indexBuffer,
+        ref VulkanBuffer stagingVertex,
+        ref VulkanBuffer stagingIndex,
+        nuint vertexBytes,
+        nuint indexBytes)
+    {
+        if (vertexBytes <= vertexBuffer.Size && indexBytes <= indexBuffer.Size) return;
+        _deviceApi.vkQueueWaitIdle(_graphicsQueue);
+        ResizeBuffers((uint)_vertices.Count * 2, (uint)_indices.Count * 2);
+        vertexBuffer = _vertexBuffers[_frameIndex];
+        indexBuffer = _indexBuffers[_frameIndex];
+        stagingVertex = _stagingVertexBuffers[_frameIndex];
+        stagingIndex = _stagingIndexBuffers[_frameIndex];
+    }
+
+    private void UploadGeometryIfChanged(
+        VkCommandBuffer cmdBuffer,
+        nuint vertexBytes,
+        nuint indexBytes,
+        Span<ShapeVertex> vertices,
+        Span<uint> indices,
+        VulkanBuffer vertexBuffer,
+        VulkanBuffer indexBuffer,
+        VulkanBuffer stagingVertex,
+        VulkanBuffer stagingIndex)
+    {
         Span<byte> vertexBytesSpan = MemoryMarshal.AsBytes(vertices);
         Span<byte> indexBytesSpan = MemoryMarshal.AsBytes(indices);
-        byte[]? vertexSnapshot = _vertexSnapshots[_frameIndex];
-        byte[]? indexSnapshot = _indexSnapshots[_frameIndex];
-        bool geometryChanged;
-        if (vertexSnapshot is null || indexSnapshot is null ||
-            vertexBytes != _vertexSnapshotSizes[_frameIndex] || indexBytes != _indexSnapshotSizes[_frameIndex])
+        if (!_geometryCache.HasGeometryChanged(_frameIndex, vertexBytes, indexBytes, vertexBytesSpan, indexBytesSpan))
+            return;
+
+        _geometryCache.StoreGeometry(_frameIndex, vertexBytes, indexBytes, vertexBytesSpan, indexBytesSpan);
+
+        fixed (ShapeVertex* vertexPointer = vertices)
+            stagingVertex.UploadData(vertexPointer, vertexBytes);
+        fixed (uint* indexPointer = indices)
+            stagingIndex.UploadData(indexPointer, indexBytes);
+
+        VkBufferCopy vertexCopy = new() { size = vertexBytes };
+        _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingVertex.Buffer, vertexBuffer.Buffer, 1, &vertexCopy);
+        VkBufferCopy indexCopy = new() { size = indexBytes };
+        _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingIndex.Buffer, indexBuffer.Buffer, 1, &indexCopy);
+
+        VkBufferMemoryBarrier vertexBarrier = new()
         {
-            geometryChanged = true;
-        }
-        else
+            srcAccessMask = VkAccessFlags.TransferWrite,
+            dstAccessMask = VkAccessFlags.VertexAttributeRead,
+            srcQueueFamilyIndex = uint.MaxValue,
+            dstQueueFamilyIndex = uint.MaxValue,
+            buffer = vertexBuffer.Buffer,
+            offset = 0,
+            size = vertexBytes
+        };
+        VkBufferMemoryBarrier indexBarrier = new()
         {
-            geometryChanged = !vertexBytesSpan.SequenceEqual(vertexSnapshot.AsSpan(0, (int)vertexBytes)) ||
-                              !indexBytesSpan.SequenceEqual(indexSnapshot.AsSpan(0, (int)indexBytes));
-        }
+            srcAccessMask = VkAccessFlags.TransferWrite,
+            dstAccessMask = VkAccessFlags.IndexRead,
+            srcQueueFamilyIndex = uint.MaxValue,
+            dstQueueFamilyIndex = uint.MaxValue,
+            buffer = indexBuffer.Buffer,
+            offset = 0,
+            size = indexBytes
+        };
+        VkBufferMemoryBarrier* barriers = stackalloc VkBufferMemoryBarrier[2] { vertexBarrier, indexBarrier };
+        _deviceApi.vkCmdPipelineBarrier(cmdBuffer,
+            VkPipelineStageFlags.Transfer,
+            VkPipelineStageFlags.VertexInput,
+            VkDependencyFlags.None,
+            0, null, 2, barriers, 0, null);
+    }
 
-        if (geometryChanged)
-        {
-            if (vertexSnapshot?.Length != (int)vertexBytes) _vertexSnapshots[_frameIndex] = new byte[(int)vertexBytes];
-            if (indexSnapshot?.Length != (int)indexBytes) _indexSnapshots[_frameIndex] = new byte[(int)indexBytes];
-            vertexBytesSpan.CopyTo(_vertexSnapshots[_frameIndex]!);
-            indexBytesSpan.CopyTo(_indexSnapshots[_frameIndex]!);
-            _vertexSnapshotSizes[_frameIndex] = vertexBytes;
-            _indexSnapshotSizes[_frameIndex] = indexBytes;
-
-            fixed (ShapeVertex* vertexPointer = vertices)
-                stagingVertex.UploadData(vertexPointer, vertexBytes);
-            fixed (uint* indexPointer = indices)
-                stagingIndex.UploadData(indexPointer, indexBytes);
-
-            VkBufferCopy vertexCopy = new() { size = vertexBytes };
-            _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingVertex.Buffer, vertexBuffer.Buffer, 1, &vertexCopy);
-            VkBufferCopy indexCopy = new() { size = indexBytes };
-            _deviceApi.vkCmdCopyBuffer(cmdBuffer, stagingIndex.Buffer, indexBuffer.Buffer, 1, &indexCopy);
-
-            VkBufferMemoryBarrier vertexBarrier = new()
-            {
-                srcAccessMask = VkAccessFlags.TransferWrite,
-                dstAccessMask = VkAccessFlags.VertexAttributeRead,
-                srcQueueFamilyIndex = uint.MaxValue,
-                dstQueueFamilyIndex = uint.MaxValue,
-                buffer = vertexBuffer.Buffer,
-                offset = 0,
-                size = vertexBytes
-            };
-            VkBufferMemoryBarrier indexBarrier = new()
-            {
-                srcAccessMask = VkAccessFlags.TransferWrite,
-                dstAccessMask = VkAccessFlags.IndexRead,
-                srcQueueFamilyIndex = uint.MaxValue,
-                dstQueueFamilyIndex = uint.MaxValue,
-                buffer = indexBuffer.Buffer,
-                offset = 0,
-                size = indexBytes
-            };
-            VkBufferMemoryBarrier* barriers = stackalloc VkBufferMemoryBarrier[2] { vertexBarrier, indexBarrier };
-            _deviceApi.vkCmdPipelineBarrier(cmdBuffer,
-                VkPipelineStageFlags.Transfer,
-                VkPipelineStageFlags.VertexInput,
-                VkDependencyFlags.None,
-                0, null, 2, barriers, 0, null);
-        }
-
+    private void RecordDraws(VkCommandBuffer cmdBuffer, VulkanBuffer vertexBuffer, VulkanBuffer indexBuffer)
+    {
         Span<VkBuffer> vertexBufferBind = stackalloc VkBuffer[1] { vertexBuffer.Buffer };
         Span<ulong> vertexBufferOffsets = stackalloc ulong[1];
         _deviceApi.vkCmdBindVertexBuffers(cmdBuffer, 0, vertexBufferBind, vertexBufferOffsets);
         _deviceApi.vkCmdBindIndexBuffer(cmdBuffer, indexBuffer.Buffer, 0, VkIndexType.Uint32);
 
-        VulkanPipeline.CameraPushConstants pushConstants = new()
+        CameraPushConstants pushConstants = new()
         {
-            Viewport = new System.Numerics.Vector2(_viewport.width, _viewport.height)
+            Viewport = new Vector2(_viewport.width, _viewport.height)
         };
-        _deviceApi.vkCmdPushConstants(cmdBuffer, _pipeline.Layout, VkShaderStageFlags.Vertex, 0, (uint)sizeof(VulkanPipeline.CameraPushConstants), &pushConstants);
+        _deviceApi.vkCmdPushConstants(cmdBuffer, _pipeline.Layout, VkShaderStageFlags.Vertex, 0, (uint)sizeof(CameraPushConstants), &pushConstants);
 
         for (int i = 0; i < _textureRanges.Count; i++)
         {

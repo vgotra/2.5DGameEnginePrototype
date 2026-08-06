@@ -6,6 +6,8 @@ namespace Engine.Rendering.Vulkan;
 
 public unsafe class TextureUploader : IDisposable
 {
+    private const VkFormat TextureFormat = VkFormat.R8G8B8A8Srgb;
+
     private readonly VkDevice _device;
     private readonly VkDeviceApi _deviceApi;
     private readonly VkPhysicalDevice _physicalDevice;
@@ -13,6 +15,7 @@ public unsafe class TextureUploader : IDisposable
     private readonly VkQueue _graphicsQueue;
     private readonly VkCommandPool _commandPool;
     private readonly DescriptorSetAllocator _descriptorAllocator;
+    private readonly OneShotCommandBuffer _oneShot;
 
     private readonly List<TextureResource> _textures = new();
 
@@ -32,6 +35,7 @@ public unsafe class TextureUploader : IDisposable
         _graphicsQueue = graphicsQueue;
         _commandPool = commandPool;
         _descriptorAllocator = descriptorAllocator;
+        _oneShot = new OneShotCommandBuffer(deviceApi, commandPool, graphicsQueue);
 
         UploadTexture([byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue], 1, 1);
     }
@@ -41,11 +45,11 @@ public unsafe class TextureUploader : IDisposable
         if (rgba.Length != width * height * 4)
             throw new ArgumentException("RGBA data size does not match width*height*4");
 
-        VkImage image = CreateImage(width, height);
+        VkImage image = VulkanImage.Create(_device, _deviceApi, width, height, TextureFormat, VkImageUsageFlags.TransferDst | VkImageUsageFlags.Sampled);
         VkDeviceMemory memory = AllocateImageMemory(image);
         _deviceApi.vkBindImageMemory(image, memory, 0);
 
-        VkImageView imageView = CreateImageView(image);
+        VkImageView imageView = VulkanImage.CreateView(_deviceApi, image, TextureFormat);
         VkSampler sampler = CreateSampler(filter);
 
         UploadImageData(rgba, width, height, image);
@@ -94,29 +98,7 @@ public unsafe class TextureUploader : IDisposable
             _descriptorAllocator.Free(tex.DescriptorSet);
         }
         _textures.Clear();
-    }
-
-    private VkImage CreateImage(int width, int height)
-    {
-        VkImageCreateInfo imageInfo = new()
-        {
-            imageType = VkImageType.Image2D,
-            format = VkFormat.R8G8B8A8Srgb,
-            extent = new VkExtent3D { width = (uint)width, height = (uint)height, depth = 1 },
-            mipLevels = 1,
-            arrayLayers = 1,
-            samples = VkSampleCountFlags.Count1,
-            tiling = VkImageTiling.Optimal,
-            usage = VkImageUsageFlags.TransferDst | VkImageUsageFlags.Sampled,
-            sharingMode = VkSharingMode.Exclusive,
-            initialLayout = VkImageLayout.Undefined
-        };
-
-        VkResult result = _deviceApi.vkCreateImage(&imageInfo, null, out VkImage image);
-        if (result != VkResult.Success)
-            throw new InvalidOperationException($"Image creation failed: {result}");
-
-        return image;
+        _oneShot.Dispose();
     }
 
     private VkDeviceMemory AllocateImageMemory(VkImage image)
@@ -137,31 +119,6 @@ public unsafe class TextureUploader : IDisposable
             throw new InvalidOperationException($"Image memory allocation failed: {result}");
 
         return memory;
-    }
-
-    private VkImageView CreateImageView(VkImage image)
-    {
-        VkImageViewCreateInfo viewInfo = new()
-        {
-            image = image,
-            viewType = VkImageViewType.Image2D,
-            format = VkFormat.R8G8B8A8Srgb,
-            components = VkComponentMapping.Identity,
-            subresourceRange = new VkImageSubresourceRange
-            {
-                aspectMask = VkImageAspectFlags.Color,
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = 1
-            }
-        };
-
-        VkResult result = _deviceApi.vkCreateImageView(&viewInfo, null, out VkImageView view);
-        if (result != VkResult.Success)
-            throw new InvalidOperationException($"Image view creation failed: {result}");
-
-        return view;
     }
 
     private VkSampler CreateSampler(TextureFilter filter)
@@ -202,42 +159,12 @@ public unsafe class TextureUploader : IDisposable
         fixed (byte* rgbaPointer = rgba)
             stagingBuffer.UploadData(rgbaPointer, bufferSize);
 
-        VkCommandBuffer cmdBuffer;
-        VkCommandBufferAllocateInfo allocInfo = new()
-        {
-            commandPool = _commandPool,
-            level = VkCommandBufferLevel.Primary,
-            commandBufferCount = 1
-        };
-        _deviceApi.vkAllocateCommandBuffers(&allocInfo, &cmdBuffer);
+        VkCommandBuffer cmdBuffer = _oneShot.Begin();
 
-        VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
-        _deviceApi.vkBeginCommandBuffer(cmdBuffer, &beginInfo);
-
-        VkImageMemoryBarrier barrier = new()
-        {
-            oldLayout = VkImageLayout.Undefined,
-            newLayout = VkImageLayout.TransferDstOptimal,
-            srcQueueFamilyIndex = uint.MaxValue,
-            dstQueueFamilyIndex = uint.MaxValue,
-            image = image,
-            subresourceRange = new VkImageSubresourceRange
-            {
-                aspectMask = VkImageAspectFlags.Color,
-                baseMipLevel = 0,
-                levelCount = 1,
-                baseArrayLayer = 0,
-                layerCount = 1
-            },
-            srcAccessMask = 0,
-            dstAccessMask = VkAccessFlags.TransferWrite
-        };
-
-        _deviceApi.vkCmdPipelineBarrier(cmdBuffer,
-            VkPipelineStageFlags.TopOfPipe,
-            VkPipelineStageFlags.Transfer,
-            VkDependencyFlags.None,
-            0, null, 0, null, 1, &barrier);
+        VulkanImage.TransitionLayout(_deviceApi, cmdBuffer, image,
+            VkImageLayout.Undefined, VkImageLayout.TransferDstOptimal,
+            VkPipelineStageFlags.TopOfPipe, VkPipelineStageFlags.Transfer,
+            0, VkAccessFlags.TransferWrite);
 
         VkBufferImageCopy region = new()
         {
@@ -257,27 +184,12 @@ public unsafe class TextureUploader : IDisposable
 
         _deviceApi.vkCmdCopyBufferToImage(cmdBuffer, stagingBuffer.Buffer, image, VkImageLayout.TransferDstOptimal, 1, &region);
 
-        barrier.oldLayout = VkImageLayout.TransferDstOptimal;
-        barrier.newLayout = VkImageLayout.ShaderReadOnlyOptimal;
-        barrier.srcAccessMask = VkAccessFlags.TransferWrite;
-        barrier.dstAccessMask = VkAccessFlags.ShaderRead;
+        VulkanImage.TransitionLayout(_deviceApi, cmdBuffer, image,
+            VkImageLayout.TransferDstOptimal, VkImageLayout.ShaderReadOnlyOptimal,
+            VkPipelineStageFlags.Transfer, VkPipelineStageFlags.FragmentShader,
+            VkAccessFlags.TransferWrite, VkAccessFlags.ShaderRead);
 
-        _deviceApi.vkCmdPipelineBarrier(cmdBuffer,
-            VkPipelineStageFlags.Transfer,
-            VkPipelineStageFlags.FragmentShader,
-            VkDependencyFlags.None,
-            0, null, 0, null, 1, &barrier);
-
-        _deviceApi.vkEndCommandBuffer(cmdBuffer);
-
-        VkSubmitInfo submitInfo = new()
-        {
-            commandBufferCount = 1,
-            pCommandBuffers = &cmdBuffer
-        };
-        _deviceApi.vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VkFence.Null);
-        _deviceApi.vkQueueWaitIdle(_graphicsQueue);
-        _deviceApi.vkFreeCommandBuffers(_commandPool, 1, &cmdBuffer);
+        _oneShot.Submit(cmdBuffer);
 
         stagingBuffer.Dispose();
     }

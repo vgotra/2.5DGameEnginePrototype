@@ -2,12 +2,6 @@ using Engine.Core;
 
 namespace Engine.Ecs;
 
-public interface ISparseSet
-{
-    int Count { get; }
-    bool Remove(EntityId entity);
-}
-
 public sealed class SparseSet<T> : ISparseSet where T : unmanaged
 {
     private int[] _sparse = Array.Empty<int>();
