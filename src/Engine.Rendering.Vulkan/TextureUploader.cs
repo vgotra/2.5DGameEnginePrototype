@@ -25,7 +25,7 @@ public unsafe class TextureUploader : IDisposable
         VkPhysicalDevice physicalDevice,
         VkPhysicalDeviceMemoryProperties memoryProperties,
         VkQueue graphicsQueue,
-        VkCommandPool commandPool,
+        uint graphicsQueueFamily,
         DescriptorSetAllocator descriptorAllocator)
     {
         _device = device;
@@ -33,9 +33,14 @@ public unsafe class TextureUploader : IDisposable
         _physicalDevice = physicalDevice;
         _memoryProperties = memoryProperties;
         _graphicsQueue = graphicsQueue;
-        _commandPool = commandPool;
         _descriptorAllocator = descriptorAllocator;
-        _oneShot = new OneShotCommandBuffer(deviceApi, commandPool, graphicsQueue);
+
+        // The one-shot uploads own their command pool so they are not
+        // invalidated when the renderer recreates its render pool on resize.
+        VkCommandPoolCreateInfo poolInfo = new() { queueFamilyIndex = graphicsQueueFamily };
+        VkResult result = _deviceApi.vkCreateCommandPool(&poolInfo, out _commandPool);
+        if (result != VkResult.Success) throw new InvalidOperationException($"Command pool creation failed: {result}");
+        _oneShot = new OneShotCommandBuffer(deviceApi, _commandPool, graphicsQueue);
 
         UploadTexture([byte.MaxValue, byte.MaxValue, byte.MaxValue, byte.MaxValue], 1, 1);
     }
@@ -99,6 +104,7 @@ public unsafe class TextureUploader : IDisposable
         }
         _textures.Clear();
         _oneShot.Dispose();
+        if (_commandPool.IsNotNull) _deviceApi.vkDestroyCommandPool(_commandPool);
     }
 
     private VkDeviceMemory AllocateImageMemory(VkImage image)

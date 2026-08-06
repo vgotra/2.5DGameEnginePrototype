@@ -11,4 +11,5 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <Import Project="ShaderCompile.targets" />
 </Project>

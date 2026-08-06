@@ -1,23 +1,27 @@
 # Roadmap and Priorities
 
-## Next features, ordered by usefulness
+## Completed
 
-1. **Texture sampling path** — sample textures in the fragment shader, bind descriptor sets per sprite batch, texture atlas support, and honor `SpritePacket.Texture`/`Material`.
-2. **Asset loading** — PNG decoding, texture upload, sprite handles, and a small `assets/` convention.
-3. **ECS queries and system scheduling** — replace sample-local state with ECS systems and explicit read/write access. Target scale: ~100k entities with parallel multi-component queries.
-4. **Profiling and allocation metrics** — frame timings, draw calls, jobs, GC bytes, and Vulkan timestamps.
-5. **Job dependencies and safe parallel work** — dependency-aware jobs for asset loading, large-map extraction, and uploads.
-6. **Scene/save format** — explicit non-reflection serialization for tile maps, entities, and player state.
-7. **Audio backend** — one-shot effects, music streaming, mixer buses, and listener/emitter support.
-8. **Physics adapter** — integrate Jolt only when gameplay needs continuous collision, bodies, or raycasts.
-9. **Animation and tile atlas support** — sprite animation, atlas metadata, and render batching.
-10. **Debug tools** — collision overlays, entity inspector, frame graph, and input visualization.
-11. **Minimal editor workflow** — only after runtime formats and asset loading are stable.
-12. ~~**SDL3 platform backend (replaces SDL2)**~~ — **DONE (SDL3 migration milestone):** windowing/input and the Vulkan surface now run on **SDL3** (`ppy.SDL3-CS`), the native Win32 path is deleted, and `GamePlatform.CreateWindow` uses SDL3 on all OSes. Remaining: verify X11/Wayland on Linux and macOS via SDL3 + MoltenVK (see `docs/LinuxSupportPlan.md`).
-13. **Shader compilation with progress + splash screen** — replace `tools\CompileShaders.ps1` (PowerShell + `glslc` subprocess) with in-process C# shader compilation that works on **all platforms** (see `docs/ShaderWorkflow.md`). At startup a splash screen checks whether any `assets/shaders/*.glsl` is newer than the committed `shaders/*.spv` (recompilation needed) and, when it is, recompiles them showing per-shader progress before the game window opens.
-14. **Virtual reality (VR) support** — OpenXR-based HMD integration (head tracking, per-eye rendering, VR input) layered on top of the Vulkan render path.
-15. **Mobile platforms support** — Android and iOS with the Vulkan renderer, SDL3 windowing, and touch input (promoted from the deferred list).
+- **SDL3 platform backend** — SDL3 windowing/input + Vulkan surface on all OSes; native Win32 path removed.
+- **Build-time shader compilation + splash screen** — incremental MSBuild `glslc` compile to committed `.spv`; startup splash with progress bar while textures load.
+- **Isometric 2.5D render path** — iso diamond view + `--2d` flat mode, upright textured entities, stable depth sorting, camera follow.
+- **Deterministic tile map** — 20×20 map (grass, river, forest, bonfire, wall border) with tile collision.
+- **Continuous movement, collision, and jump** — player slides around blocked cells and jumps two tiles.
+- **"Archer in the Forest" sample** — archer aims/shoots, 10 wandering/fleeing animals, score, no-respawn restart.
+- **Texture sampling path (Initial)** — fragment-shader sampling + per-texture descriptor binds; `SpritePacket.Material`, atlases, sorting pending.
+- **Asset loading (Initial)** — PNG decode + upload + `TextureHandle` + `assets/` convention; sync managed decode, sample-local `TextureLibrary`.
+- **Profiling and allocation metrics (Initial)** — `--metrics` frame/sim/sprites/alloc/GC; draw calls, jobs, Vulkan timestamps pending.
 
-## Deliberately deferred
+## Planned
 
-Networking, skeletal animation, deferred rendering, consoles, a full editor, and production-scale content tooling are not MVP priorities.
+- **ECS queries and system scheduling** — ECS systems + explicit read/write access replacing sample-local state; ~100k entities with parallel multi-component queries.
+- **Job dependencies and safe parallel work** — dependency-aware jobs for asset loading, map extraction, uploads.
+- **Scene/save format** — non-reflection serialization for tile maps, entities, player state.
+- **Audio backend** — one-shot effects, music streaming, mixer buses, listener/emitter.
+- **Physics adapter** — Jolt for continuous collision, bodies, raycasts.
+- **Animation and tile atlas support** — sprite animation, atlas metadata, render batching.
+- **Debug tools** — collision overlays, entity inspector, frame graph, input visualization.
+- **Minimal editor workflow** — after runtime formats and asset loading stabilize.
+- **Virtual reality support** — OpenXR HMD (head tracking, per-eye rendering, VR input).
+- **Mobile platforms** — Android/iOS via Vulkan + SDL3 + touch input.
+- **Deferred** — networking, skeletal animation, deferred rendering, consoles, a full editor, production-scale content tooling.

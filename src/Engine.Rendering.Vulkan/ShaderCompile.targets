@@ -1,0 +1,71 @@
+<Project>
+
+  <!--
+    Build-time GLSL -> SPIR-V compilation (cross-platform; requires glslc from the Vulkan SDK).
+
+    - Every GLSL source in assets/shaders is compiled to a sibling .spv file only when the
+      source is newer than its output (incremental via Inputs/Outputs).
+    - glslc is located from, in order: /p:GlslcPath, $VULKAN_SDK (Bin/glslc.exe or bin/glslc),
+      then PATH.
+    - If glslc is unavailable the target warns and skips (the committed .spv files are used),
+      unless /p:ShadersRequired=true forces a build error.
+    - The compiled SPIR-V is committed and copied to the output shaders/ directory by
+      Engine.Rendering.Vulkan.csproj.
+    - To add a shader, add one <ShaderSource> entry below with its stage name; the output
+      path is derived as the source filename with .spv appended.
+  -->
+
+  <PropertyGroup>
+    <ShaderSourcesRoot>$(MSBuildThisFileDirectory)../../assets/shaders</ShaderSourcesRoot>
+    <ShadersRequired Condition="'$(ShadersRequired)' == ''">false</ShadersRequired>
+    <GlslcPath Condition="'$(GlslcPath)' == '' and '$(VULKAN_SDK)' != '' and Exists('$(VULKAN_SDK)/Bin/glslc.exe')">$(VULKAN_SDK)/Bin/glslc.exe</GlslcPath>
+    <GlslcPath Condition="'$(GlslcPath)' == '' and '$(VULKAN_SDK)' != '' and Exists('$(VULKAN_SDK)/bin/glslc')">$(VULKAN_SDK)/bin/glslc</GlslcPath>
+    <GlslcPath Condition="'$(GlslcPath)' == '' and Exists('/usr/bin/glslc')">/usr/bin/glslc</GlslcPath>
+    <GlslcPath Condition="'$(GlslcPath)' == '' and Exists('/opt/homebrew/bin/glslc')">/opt/homebrew/bin/glslc</GlslcPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ShaderSource Include="$(ShaderSourcesRoot)/shape.vert.glsl">
+      <Stage>vertex</Stage>
+    </ShaderSource>
+    <ShaderSource Include="$(ShaderSourcesRoot)/shape.frag.glsl">
+      <Stage>fragment</Stage>
+    </ShaderSource>
+  </ItemGroup>
+
+  <Target Name="CompileShaders"
+          BeforeTargets="BeforeBuild"
+          Inputs="@(ShaderSource)"
+          Outputs="@(ShaderSource->'$(ShaderSourcesRoot)/%(Filename).spv')">
+
+    <Exec Condition="'$(OS)' == 'Windows_NT' and '$(GlslcPath)' == ''"
+          Command="where glslc"
+          IgnoreExitCode="true"
+          ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GlslcPathFromPath" />
+    </Exec>
+    <Exec Condition="'$(OS)' != 'Windows_NT' and '$(GlslcPath)' == ''"
+          Command="command -v glslc"
+          IgnoreExitCode="true"
+          ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GlslcPathFromPath" />
+    </Exec>
+    <PropertyGroup Condition="'$(GlslcPath)' == '' and '$(GlslcPathFromPath)' != ''">
+      <GlslcPath>$(GlslcPathFromPath.Split('&#10;')[0].Trim())</GlslcPath>
+    </PropertyGroup>
+
+    <Error Condition="'$(GlslcPath)' == '' and '$(ShadersRequired)' == 'true'"
+           Text="[shaders] glslc was not found (set /p:GlslcPath, install the Vulkan SDK, or add glslc to PATH) and ShadersRequired=true." />
+
+    <Message Importance="high"
+             Condition="'$(GlslcPath)' == ''"
+             Text="[shaders] glslc not found; skipping shader recompilation (committed .spv will be used)." />
+    <Message Importance="high"
+             Condition="'$(GlslcPath)' != ''"
+             Text="[shaders] Compiling GLSL shaders with $(GlslcPath)" />
+
+    <Exec Condition="'$(GlslcPath)' != ''"
+          Command="&quot;$(GlslcPath)&quot; -fshader-stage=%(ShaderSource.Stage) &quot;%(ShaderSource.Identity)&quot; -o &quot;$(ShaderSourcesRoot)/%(ShaderSource.Filename).spv&quot;" />
+  </Target>
+
+</Project>

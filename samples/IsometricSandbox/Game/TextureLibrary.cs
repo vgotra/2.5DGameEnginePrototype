@@ -1,26 +1,54 @@
 using System.IO;
+using System.Numerics;
 using Engine.Rendering;
 
 namespace IsometricSandbox.Game;
 
+// Holds the entity/tile textures used by the sample. Textures load one step
+// at a time (LoadNextStep) so the splash screen can show loading progress;
+// SceneRenderer drains these steps during boot before the game starts.
 public sealed class TextureLibrary
 {
+    private readonly IRenderer _renderer;
     private readonly Dictionary<string, TextureHandle> _tiles = new();
+    private readonly string[] _tileNames = { "grass", "water", "tree", "bonfire", "wall" };
+    private int _step;
 
-    public TextureHandle Player { get; }
-    public TextureHandle Deer { get; }
-    public TextureHandle Rabbit { get; }
+    public TextureHandle Player { get; private set; }
+    public TextureHandle Deer { get; private set; }
+    public TextureHandle Rabbit { get; private set; }
+
+    // Three entity textures plus the tile textures, loaded one per step.
+    public int StepCount => 3 + _tileNames.Length;
+    public int Progress => Math.Min(_step, StepCount);
+    public bool IsComplete => _step >= StepCount;
 
     public TextureLibrary(IRenderer renderer)
     {
-        Player = PngLoader.Load(renderer, AssetPath("player")) ?? ProceduralTextures.UkraineFlag(renderer);
-        Deer = PngLoader.Load(renderer, AssetPath("deer")) ?? ProceduralTextures.Blob(renderer, new(0.3f, 0.6f, 0.35f, 1f));
-        Rabbit = PngLoader.Load(renderer, AssetPath("rabbit")) ?? ProceduralTextures.Blob(renderer, new(0.95f, 0.55f, 0.65f, 1f));
+        _renderer = renderer;
+    }
 
-        foreach (string name in new[] { "grass", "water", "tree", "bonfire", "wall" })
+    // Loads the next texture; call repeatedly until IsComplete.
+    public void LoadNextStep()
+    {
+        switch (_step++)
         {
-            TextureHandle? texture = PngLoader.Load(renderer, AssetPath(name));
-            if (texture.HasValue) _tiles[name] = texture.Value;
+            case 0:
+                Player = PngLoader.Load(_renderer, AssetPath("player")) ?? ProceduralTextures.UkraineFlag(_renderer);
+                break;
+            case 1:
+                Deer = PngLoader.Load(_renderer, AssetPath("deer")) ?? ProceduralTextures.Blob(_renderer, new(0.3f, 0.6f, 0.35f, 1f));
+                break;
+            case 2:
+                Rabbit = PngLoader.Load(_renderer, AssetPath("rabbit")) ?? ProceduralTextures.Blob(_renderer, new(0.95f, 0.55f, 0.65f, 1f));
+                break;
+            default:
+                int index = _step - 3 - 1;
+                if (index >= _tileNames.Length) break;
+                string name = _tileNames[index];
+                TextureHandle? texture = PngLoader.Load(_renderer, AssetPath(name));
+                if (texture.HasValue) _tiles[name] = texture.Value;
+                break;
         }
     }
 

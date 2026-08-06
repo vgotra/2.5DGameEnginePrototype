@@ -5,7 +5,11 @@ How shaders are authored, compiled, shipped, and loaded.
 ## Sources, build, and deployment
 
 - GLSL sources live in `assets/shaders/`; compiled SPIR-V (`.spv`) is **committed** and copied to the output `shaders/` directory by `Engine.Rendering.Vulkan.csproj`.
-- After editing a `.glsl`, run `tools\CompileShaders.ps1` (requires `glslc` from the Vulkan SDK `Bin` on `PATH`) and commit the updated `.spv`. Never hand-edit `.spv`.
+- Shaders are compiled at **build time, cross-platform**: `Engine.Rendering.Vulkan.csproj` imports `ShaderCompile.targets`, which runs an incremental `CompileShaders` target before `Build`. Any `.glsl` newer than its committed `.spv` is recompiled with `glslc` (SPIR-V output is deterministic — a recompile of unchanged sources is byte-identical). No-op builds skip the work.
+- `glslc` is located automatically: `/p:GlslcPath=<path>` override → `$(VULKAN_SDK)\Bin\glslc.exe` (Windows) → `$(VULKAN_SDK)/bin/glslc` (Unix) → `/usr/bin/glslc` → `/opt/homebrew/bin/glslc` → `PATH` (`where` / `command -v`).
+- If `glslc` is not found, the build logs `[shaders] glslc not found; skipping shader recompilation (committed .spv will be used).` and falls back to the committed `.spv`; pass `/p:ShadersRequired=true` to turn that into a hard error (useful in CI).
+- Workflow after editing a `.glsl`: just rebuild (`dotnet build Engine.slnx --nologo`) and commit both the `.glsl` and the regenerated `.spv`. Never hand-edit `.spv`.
+- `tools\CompileShaders.ps1` remains available as a manual fallback (requires `glslc` from the Vulkan SDK `Bin` on `PATH`).
 - The renderer loads shaders from `AppContext.BaseDirectory/shaders` (`VulkanRenderer.ShaderPath`).
 
 ## Coordinate convention (do NOT negate Y)

@@ -17,4 +17,7 @@ public static class SampleConfig
 
     // Render lift of the player while jumping, in screen pixels.
     public const float JumpHeight = 18f;
+
+    // Minimum time the splash screen stays visible during startup, in seconds.
+    public const float SplashMinimumSeconds = 0.8f;
 }

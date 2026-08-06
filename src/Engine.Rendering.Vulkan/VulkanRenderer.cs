@@ -197,7 +197,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _descriptorAllocator = new DescriptorSetAllocator(_device, _deviceApi);
         VkDescriptorSetLayout textureLayout = _descriptorAllocator.GetLayout(VkDescriptorType.CombinedImageSampler, VkShaderStageFlags.Fragment, 0);
         _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout);
-        _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, _commandPool, _descriptorAllocator);
+        _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator);
         _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _textureUploader, _graphicsQueue, FramesInFlight);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }

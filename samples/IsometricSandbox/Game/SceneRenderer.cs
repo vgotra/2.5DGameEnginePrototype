@@ -29,12 +29,29 @@ public sealed class SceneRenderer : IDisposable
         _viewport = viewport;
     }
 
+    // The underlying renderer, used to build procedural textures (fonts, etc.).
+    public IRenderer Renderer => _renderer;
+
+    // Textures load one step at a time so the splash can show progress.
+    public int TextureSteps => _textures.StepCount;
+    public int TextureProgress => _textures.Progress;
+    public bool TexturesLoaded => _textures.IsComplete;
+    public void LoadNextTexture() => _textures.LoadNextStep();
+
     // Keeps the swapchain and the viewport used for extraction in sync with
     // the window size.
     public void Resize(Vector2 viewport)
     {
         _viewport = viewport;
         _renderer.Resize((int)viewport.X, (int)viewport.Y);
+    }
+
+    // Presents a caller-built list of sprites (used by the splash screen).
+    public void Present(ReadOnlySpan<SpritePacket> sprites)
+    {
+        _renderer.BeginFrame(_viewport);
+        _renderer.Submit(sprites);
+        _renderer.EndFrame();
     }
 
     // Extracts and presents one frame; returns the number of sprites drawn.

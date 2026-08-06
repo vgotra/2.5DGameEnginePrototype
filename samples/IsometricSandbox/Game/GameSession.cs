@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Numerics;
 using Engine.Core;
 using Engine.Platform;
 using Engine.Platform.Desktop;
+using Engine.Rendering;
 
 namespace IsometricSandbox.Game;
 
@@ -18,9 +20,13 @@ public sealed class GameSession : IDisposable
     private readonly Player _player;
     private readonly IsometricCamera _camera;
     private readonly SceneRenderer _sceneRenderer;
+    private readonly BitmapFont _font;
+    private readonly SplashScreen _splash;
+    private readonly SpritePacket[] _splashSprites = new SpritePacket[128];
     private GameClock _clock;
-    private readonly FrameTimer _frameTimer;
+    private FrameTimer _frameTimer;
     private readonly double _frameCap;
+    private const double SplashFramesPerSecond = 30;
 
     private Vector2 _viewport;
     private FrameMetrics _frameMetrics;
@@ -36,10 +42,12 @@ public sealed class GameSession : IDisposable
         _input = _session.Input;
 
         TileMap map = new();
+        _sceneRenderer = new SceneRenderer(_window.NativeSurface, map, _window.Size);
+        _font = new BitmapFont(_sceneRenderer.Renderer);
+        _splash = new SplashScreen(_font, _window.Size);
         _game = new ArcherGame(map, SampleConfig.AnimalCount);
         _player = new Player(_game.PlayerStart);
         _camera = new IsometricCamera(_window.Size) { Mode = options.FlatMode ? GameMode.TopDown : GameMode.Isometric };
-        _sceneRenderer = new SceneRenderer(_window.NativeSurface, map, _window.Size);
         _clock = new GameClock();
         _frameTimer = new FrameTimer(_frameCap);
         _viewport = _window.Size;
@@ -48,8 +56,53 @@ public sealed class GameSession : IDisposable
 
     public void Run()
     {
+        RunSplash();
+        // The splash paced its own frames; reset the timer so the first game
+        // frame does not inherit a large elapsed value and burst simulation.
+        _frameTimer = new FrameTimer(_frameCap);
         while (!_window.ShouldClose && !_input.IsDown(GameKey.Escape))
             Frame();
+    }
+
+    // Shows the splash at ~30 fps while the world textures load one at a
+    // time, holding for at least SampleConfig.SplashMinimumSeconds.
+    private void RunSplash()
+    {
+        Stopwatch timer = Stopwatch.StartNew();
+        FrameTimer splashTimer = new(SplashFramesPerSecond);
+        while (!_window.ShouldClose)
+        {
+            splashTimer.Advance();
+            _window.PumpEvents();
+            _input.Update();
+            if (_window.Size != _viewport) UpdateViewport();
+            if (_window.IsMinimized)
+            {
+                Thread.Sleep(15);
+                continue;
+            }
+
+            if (!_sceneRenderer.TexturesLoaded) _sceneRenderer.LoadNextTexture();
+
+            RenderSplash(SplashPercent());
+
+            if (_sceneRenderer.TexturesLoaded && timer.Elapsed.TotalSeconds >= SampleConfig.SplashMinimumSeconds)
+                break;
+
+            splashTimer.WaitForNextFrame();
+        }
+    }
+
+    private int SplashPercent()
+    {
+        int steps = Math.Max(1, _sceneRenderer.TextureSteps);
+        return 5 + _sceneRenderer.TextureProgress * 95 / steps;
+    }
+
+    private void RenderSplash(int percent)
+    {
+        int count = _splash.Render(_splashSprites, SampleConfig.WindowTitle, percent);
+        _sceneRenderer.Present(_splashSprites.AsSpan(0, count));
     }
 
     // One frame: events → input → simulate → render → pace → metrics.
@@ -95,6 +148,7 @@ public sealed class GameSession : IDisposable
         _viewport = _window.Size;
         _camera.Resize(_viewport);
         _sceneRenderer.Resize(_viewport);
+        _splash.Resize(_viewport);
     }
 
     // Runs one or more fixed simulation steps and returns how many ran.
