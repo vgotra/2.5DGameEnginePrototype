@@ -5,8 +5,9 @@ dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj
 ```
 
 - Opens an 800x600 window centered on the primary screen; requires the Vulkan SDK.
-- Renders the "Archer in the Forest" mini-game: a forest map with a river (bridges), a flickering bonfire, and wandering deer/rabbits. The archer aims at the mouse cursor and shoots arrows; animals respawn after a delay. Sprites are drawn from `assets/textures/*.png` when present, falling back to procedural/colored art otherwise (see [`AssetWorkflow.md`](../AssetWorkflow.md)).
+- Renders the "Archer in the Forest" mini-game: a forest map with a river (bridges), a flickering bonfire, and exactly 10 wandering deer/rabbits. The archer aims at the mouse cursor and shoots arrows; killed animals stay dead until the run is restarted with R (no respawn). Sprites are drawn from `assets/textures/*.png` when present, falling back to procedural/colored art otherwise (see [`AssetWorkflow.md`](../AssetWorkflow.md)).
 - The camera clamps to the map bounds and centers the map on screen when it fits the viewport (fullscreen); in windowed mode it follows the player.
+- Tunables (window title/size, animal count, player speed/radius, jump duration) live in `samples\IsometricSandbox\Game\SampleConfig.cs`; the animal cap is `ArcherGame.MaxAnimals` (10).
 
 ## Flags
 

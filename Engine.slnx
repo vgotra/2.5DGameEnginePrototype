@@ -7,7 +7,7 @@
   <Project Path="src/Engine.Mathematics/Engine.Mathematics.csproj" />
   <Project Path="src/Engine.Physics/Engine.Physics.csproj" />
   <Project Path="src/Engine.Platform.Desktop/Engine.Platform.Desktop.csproj" />
-  <Project Path="src/Engine.Platform.Win32/Engine.Platform.Win32.csproj" />
+  <Project Path="src/Engine.Platform.SDL3/Engine.Platform.SDL3.csproj" />
   <Project Path="src/Engine.Platform/Engine.Platform.csproj" />
   <Project Path="src/Engine.Rendering.Vulkan/Engine.Rendering.Vulkan.csproj" />
   <Project Path="src/Engine.Rendering/Engine.Rendering.csproj" />

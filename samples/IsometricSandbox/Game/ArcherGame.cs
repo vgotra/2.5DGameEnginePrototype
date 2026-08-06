@@ -7,6 +7,7 @@ public sealed class ArcherGame
     private const int MaxArrows = 32;
     private const float ArrowSpeed = 14f;
     private const float ArrowLifetime = 1.5f;
+    public const int MaxAnimals = 10;
 
     private readonly Random _random = new(1337);
 
@@ -17,9 +18,10 @@ public sealed class ArcherGame
     public int Score { get; private set; }
     public Vector2 PlayerStart { get; }
 
-    public ArcherGame(TileMap map, int animalCount = 8)
+    public ArcherGame(TileMap map, int animalCount = MaxAnimals)
     {
         Map = map;
+        animalCount = Math.Clamp(animalCount, 1, MaxAnimals);
         map.LoadLayout(MapLayout.Rows);
         PlayerStart = map.TileToWorld(MapLayout.PlayerSpawnX, MapLayout.PlayerSpawnY);
         Animals = new Animal[animalCount];
@@ -43,22 +45,11 @@ public sealed class ArcherGame
         for (int i = 0; i < Animals.Length; i++)
         {
             Animal animal = Animals[i];
-            if (!animal.Alive)
-            {
-                if (animal.RespawnTimer <= 0f)
-                {
-                    animal = AnimalSystem.Create(animal.Species, FindSpawn());
-                }
-                else
-                {
-                    animal.RespawnTimer -= deltaSeconds;
-                }
-            }
-            else
+            if (animal.Alive)
             {
                 AnimalSystem.Update(ref animal, Map, player, deltaSeconds, _random);
+                Animals[i] = animal;
             }
-            Animals[i] = animal;
         }
         UpdateArrows(deltaSeconds);
     }
@@ -98,7 +89,6 @@ public sealed class ArcherGame
                     if (Vector2.DistanceSquared(animal.Position, arrow.Position) < combined * combined)
                     {
                         animal.Alive = false;
-                        animal.RespawnTimer = AnimalSystem.RespawnDelay;
                         Animals[j] = animal;
                         hit = true;
                         Score++;

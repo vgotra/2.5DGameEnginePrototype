@@ -5,7 +5,6 @@ namespace IsometricSandbox.Game;
 
 public static class AnimalSystem
 {
-    public const float RespawnDelay = 6f;
     private const float FleeRadius = 3.5f;
 
     public static Animal Create(AnimalSpecies species, Vector2 position)
@@ -23,12 +22,6 @@ public static class AnimalSystem
 
     public static void Update(ref Animal animal, TileMap map, Vector2 player, float deltaSeconds, Random random)
     {
-        if (!animal.Alive)
-        {
-            animal.RespawnTimer -= deltaSeconds;
-            return;
-        }
-
         Vector2 away = animal.Position - player;
         if (away.LengthSquared() < FleeRadius * FleeRadius)
         {

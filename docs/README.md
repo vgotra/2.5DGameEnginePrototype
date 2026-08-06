@@ -28,7 +28,7 @@ Status tags: **Implemented** (describes shipped behavior), **Plan** (ordered fut
 
 ## Platforms
 
-- [`LinuxSupportPlan.md`](LinuxSupportPlan.md) — **Plan**. Linux (SDL2, later macOS) support plan; platform seams in place.
+- [`LinuxSupportPlan.md`](LinuxSupportPlan.md) — **Plan**. Linux (SDL3, later macOS) support plan; platform seams in place.
 
 ## Performance and process
 

@@ -4,4 +4,4 @@ Read the current context files (`.agents/context/`) and use the `mcp-repo-graph`
 
 Develop with SOLID, KISS, and DRY: small single-responsibility types and methods, the smallest solution that works, and code that is easy to understand, refactor, and support — follow existing patterns rather than adding speculative abstraction.
 
-Keep code platform-neutral: contracts and shared gameplay code never contain OS-specific P/Invoke or types. OS-specific code lives in `Engine.Platform.*` backends; the renderer consumes `NativeWindowSurface`, and platform selection happens in `Engine.Platform.Desktop.GamePlatform`. Linux (via SDL2) and macOS are planned, not current — do not add Win32-only parameters to contracts or `IRenderer`.
+Keep code platform-neutral: contracts and shared gameplay code never contain OS-specific P/Invoke or types. OS-specific code lives in `Engine.Platform.*` backends; the renderer consumes `NativeWindowSurface` + an `IVulkanSurfaceFactory` (never an OS surface struct), and platform selection happens in `Engine.Platform.Desktop.GamePlatform` (SDL3 on all OSes). Do not add OS-specific parameters to contracts or `IRenderer`.

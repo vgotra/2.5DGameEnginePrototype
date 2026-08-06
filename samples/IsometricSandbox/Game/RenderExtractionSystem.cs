@@ -13,28 +13,7 @@ public static class RenderExtractionSystem
     private static readonly Vector4 RabbitColor = new(0.95f, 0.65f, 0.75f, 1);
 
     public static int ExtractMapSprites(TileMap map, IsometricCamera camera, Span<SpritePacket> sprites)
-    {
-        ShapeKind shape = camera.Projection.TileShape;
-        float tileWidth = map.TileWidth;
-        float tileHeight = camera.Projection.GetTileHeight(map);
-        float halfWidth = tileWidth * 0.5f + BorderWidth;
-        float halfHeight = tileHeight * 0.5f + BorderWidth;
-        Vector2 viewport = camera.Viewport;
-        ScreenTransform transform = camera.GetScreenTransform(map);
-        int written = 0;
-        for (int y = 0; y < map.Height && written + 2 <= sprites.Length; y++)
-            for (int x = 0; x < map.Width && written + 2 <= sprites.Length; x++)
-            {
-                Vector2 screen = transform.ToScreen(x + 0.5f, y + 0.5f);
-                if (screen.X + halfWidth < 0 || screen.X - halfWidth > viewport.X ||
-                    screen.Y + halfHeight < 0 || screen.Y - halfHeight > viewport.Y)
-                    continue;
-                int sortKey = y * map.Width + x;
-                sprites[written++] = new SpritePacket(screen, new(tileWidth + BorderWidth * 2, tileHeight + BorderWidth * 2), Black, default, default, sortKey, shape);
-                sprites[written++] = new SpritePacket(screen, new(tileWidth, tileHeight), White, default, default, sortKey, shape);
-            }
-        return written;
-    }
+        => ExtractTiles(map, camera, sprites, null, null);
 
     public static int ExtractScene(
         TileMap map,
@@ -74,8 +53,9 @@ public static class RenderExtractionSystem
         return written;
     }
 
-    private static int ExtractTiles(TileMap map, IsometricCamera camera, Span<SpritePacket> sprites, TextureLibrary textures, Random flicker)
+    private static int ExtractTiles(TileMap map, IsometricCamera camera, Span<SpritePacket> sprites, TextureLibrary? textures, Random? flicker)
     {
+        bool textured = textures is not null && flicker is not null;
         ShapeKind shape = camera.Projection.TileShape;
         float tileWidth = map.TileWidth;
         float tileHeight = camera.Projection.GetTileHeight(map);
@@ -93,16 +73,22 @@ public static class RenderExtractionSystem
                 if (screen.X + halfWidth < 0 || screen.X - halfWidth > viewport.X ||
                     screen.Y + halfHeight < 0 || screen.Y - halfHeight > viewport.Y)
                     continue;
-                TileType type = map.Get(x, y);
                 int sortKey = y * map.Width + x;
                 sprites[written++] = new SpritePacket(screen, borderSize, Black, default, default, sortKey, shape);
-                sprites[written++] = WriteTileFill(screen, tileSize, type, textures, flicker, sortKey, shape);
+                sprites[written++] = textured
+                    ? WriteTileFill(screen, tileSize, map.Get(x, y), textures, flicker, sortKey, shape)
+                    : new SpritePacket(screen, tileSize, White, default, default, sortKey, shape);
             }
         return written;
     }
 
-    private static SpritePacket WriteTileFill(Vector2 screen, Vector2 size, TileType type, TextureLibrary textures, Random flicker, float sortKey, ShapeKind shape)
+    // With no texture library this writes the plain white fill used by
+    // ExtractMapSprites; otherwise it picks the per-tile texture/color and
+    // applies the bonfire flicker.
+    private static SpritePacket WriteTileFill(Vector2 screen, Vector2 size, TileType type, TextureLibrary? textures, Random? flicker, float sortKey, ShapeKind shape)
     {
+        if (textures is null || flicker is null)
+            return new SpritePacket(screen, size, White, default, default, sortKey, shape);
         string? textureName = TileVisual.TextureName(type);
         TextureHandle? texture = textureName is null ? null : textures.TryGetTile(textureName);
         bool isBonfire = type == TileType.Bonfire;

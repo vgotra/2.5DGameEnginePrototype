@@ -8,7 +8,7 @@
 - SEPARATE data from logic: pure agent data (vectors, timers, target IDs) lives in value-type structs; processing lives in static methods or singleton system classes that take those structs by `ref`.
 - KEEP methods short (under ~20-30 lines). The JIT/AOT inliner refuses large methods and methods with complex `try`/`catch`.
 - MINIMIZE branching in hot loops. AVOID large `if`/`else if` chains for AI state evaluation. PREFER math, bitwise operations, and precomputed masks/tables.
-- ENFORCE `[LibraryImport]` for OS/native-C P/Invoke (Win32 `NativeMethods`, native C libraries such as JoltC). NEVER `[DllImport]` — the source generator emits marshalling at compile time, eliminating runtime marshalling stubs. BIND Vulkan through the Vortice.Vulkan managed package instead.
+- ENFORCE `[LibraryImport]` for OS/native-C P/Invoke (OS windowing interop such as SDL3-CS's bindings, native C libraries such as JoltC). NEVER `[DllImport]` — the source generator emits marshalling at compile time, eliminating runtime marshalling stubs. BIND Vulkan through the Vortice.Vulkan managed package instead.
 - DECLARE the native surface as `internal static partial` methods in one file per backend.
 - USE blittable types only: pointers (`void*`, `nint`, pointer-to-struct) instead of C# arrays. NEVER pass managed objects.
 - USE `unsafe`: native wrapper methods live in `unsafe` contexts and take pointers.

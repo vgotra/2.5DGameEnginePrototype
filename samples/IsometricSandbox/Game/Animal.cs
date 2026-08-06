@@ -10,5 +10,4 @@ public struct Animal
     public float Radius;
     public Vector2 WanderTarget;
     public bool Alive;
-    public float RespawnTimer;
 }

@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Engine.Platform;
 using Engine.Rendering;
 using Vortice.Vulkan;
@@ -12,6 +13,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private VkInstance _instance;
     private VkInstanceApi _instanceApi = null!;
     private VkSurfaceKHR _surface;
+    private IVulkanSurfaceFactory? _surfaceFactory;
     private VkPhysicalDevice _physicalDevice;
     private VkDevice _device;
     private VkDeviceApi _deviceApi = null!;
@@ -63,52 +65,57 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
     private void Initialize(in NativeWindowSurface surface)
     {
-        if (surface.Kind != PlatformKind.Win32)
-            throw new PlatformNotSupportedException($"Vulkan surface kind '{surface.Kind}' is not implemented yet (see docs/LinuxSupportPlan.md).");
+        IVulkanSurfaceFactory? factory = surface.SurfaceFactory;
+        if (factory == null)
+            throw new InvalidOperationException("No Vulkan surface factory provided; the window must implement IVulkanSurfaceFactory.");
+        _surfaceFactory = factory;
 
-        CreateInstance();
+        CreateInstance(factory.RequiredInstanceExtensions);
         CreateSurfaceAndDevice(surface);
         CreateRenderResources();
     }
 
-    private void CreateInstance()
+    private void CreateInstance(ReadOnlySpan<string> surfaceExtensions)
     {
         VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize(LoaderName());
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
         _loaderInitialized = true;
         ReadOnlySpan<byte> appName = "IsometricSandbox\0"u8;
         ReadOnlySpan<byte> engineName = "2D2.5D Game Engine\0"u8;
-        ReadOnlySpan<byte> surfaceExtension = "VK_KHR_surface\0"u8;
-        ReadOnlySpan<byte> win32Extension = "VK_KHR_win32_surface\0"u8;
         void* createInfoNext = null;
 #if DEBUG
         VkDebugUtilsMessengerCreateInfoEXT messengerInfo = default;
-        ReadOnlySpan<byte> debugUtilsExtension = "VK_EXT_debug_utils\0"u8;
-        ReadOnlySpan<byte> validationLayer = "VK_LAYER_KHRONOS_validation\0"u8;
+        bool validationAvailable = VulkanDebug.ValidationLayerAvailable();
 #endif
-        fixed (byte* appPointer = appName, enginePointer = engineName, surfacePointer = surfaceExtension, win32Pointer = win32Extension)
+        List<string> names = ["VK_KHR_surface"];
+        names.AddRange(surfaceExtensions);
+        List<IntPtr> nativeNames = new(names.Count);
+        try
         {
-#if DEBUG
-            fixed (byte* debugUtilsPointer = debugUtilsExtension, layerPointer = validationLayer)
-#endif
+            byte** extensionPointers = stackalloc byte*[names.Count + 1];
+            uint extensionCount = 0;
+            foreach (string name in names)
             {
-                nint* extensions = stackalloc nint[3];
-                uint extensionCount = 2;
-                extensions[0] = (nint)surfacePointer;
-                extensions[1] = (nint)win32Pointer;
-                byte** layerNames = stackalloc byte*[1];
-                uint layerCount = 0;
+                IntPtr pointer = Marshal.StringToCoTaskMemUTF8(name);
+                nativeNames.Add(pointer);
+                extensionPointers[extensionCount++] = (byte*)pointer;
+            }
+            byte** layerNames = stackalloc byte*[1];
+            uint layerCount = 0;
 #if DEBUG
-                if (VulkanDebug.ValidationLayerAvailable())
-                {
-                    extensions[2] = (nint)debugUtilsPointer;
-                    extensionCount = 3;
-                    layerNames[0] = layerPointer;
-                    layerCount = 1;
-                    VulkanDebug.ConfigureMessenger(ref messengerInfo);
-                    createInfoNext = &messengerInfo;
-                }
+            if (validationAvailable)
+            {
+                IntPtr debugPointer = Marshal.StringToCoTaskMemUTF8("VK_EXT_debug_utils");
+                nativeNames.Add(debugPointer);
+                extensionPointers[extensionCount++] = (byte*)debugPointer;
+                layerNames[0] = (byte*)Marshal.StringToCoTaskMemUTF8("VK_LAYER_KHRONOS_validation");
+                layerCount = 1;
+                VulkanDebug.ConfigureMessenger(ref messengerInfo);
+                createInfoNext = &messengerInfo;
+            }
 #endif
+            fixed (byte* appPointer = appName, enginePointer = engineName)
+            {
                 VkApplicationInfo application = new()
                 {
                     pApplicationName = appPointer,
@@ -121,7 +128,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
                 {
                     pApplicationInfo = &application,
                     enabledExtensionCount = extensionCount,
-                    ppEnabledExtensionNames = (byte**)extensions,
+                    ppEnabledExtensionNames = (byte**)extensionPointers,
                     enabledLayerCount = layerCount,
                     ppEnabledLayerNames = layerNames,
                     pNext = createInfoNext
@@ -129,6 +136,10 @@ public sealed unsafe class VulkanRenderer : IRenderer
                 VkResult instanceResult = global::Vortice.Vulkan.Vulkan.vkCreateInstance(&createInfo, out _instance);
                 if (instanceResult != VkResult.Success) throw new InvalidOperationException($"Vulkan instance creation failed: {instanceResult}");
             }
+        }
+        finally
+        {
+            foreach (IntPtr pointer in nativeNames) Marshal.FreeCoTaskMem(pointer);
         }
         _instanceApi = global::Vortice.Vulkan.Vulkan.GetApi(_instance);
 #if DEBUG
@@ -142,12 +153,12 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
     private void CreateSurfaceAndDevice(in NativeWindowSurface surface)
     {
-        VkWin32SurfaceCreateInfoKHR surfaceInfo = new() { hinstance = surface.ModuleHandle, hwnd = surface.WindowHandle };
-        VkResult result = _instanceApi.vkCreateWin32SurfaceKHR(&surfaceInfo, out _surface);
-        if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan surface creation failed: {result}");
+        nint surfaceHandle = _surfaceFactory!.CreateSurface(_instance.Handle);
+        _surface = new VkSurfaceKHR((ulong)surfaceHandle);
+        if (_surface.IsNull) throw new InvalidOperationException("Vulkan surface creation failed.");
         Span<VkPhysicalDevice> devices = stackalloc VkPhysicalDevice[8];
         uint deviceCount = (uint)devices.Length;
-        result = _instanceApi.vkEnumeratePhysicalDevices(devices);
+        VkResult result = _instanceApi.vkEnumeratePhysicalDevices(devices);
         if (result != VkResult.Success || deviceCount == 0) throw new InvalidOperationException("No Vulkan physical device found.");
         _physicalDevice = devices[0];
         VkPhysicalDeviceMemoryProperties memoryProperties;
@@ -524,7 +535,11 @@ public sealed unsafe class VulkanRenderer : IRenderer
             if (_swapchain.IsNotNull && _device.IsNotNull) _deviceApi.vkDestroySwapchainKHR(_swapchain);
             if (_device.IsNotNull) _deviceApi.vkDestroyDevice();
         }
-        if (_surface.IsNotNull) _instanceApi.vkDestroySurfaceKHR(_surface);
+        if (_surface.IsNotNull)
+        {
+            _surfaceFactory?.DestroySurface(_instance.Handle, (nint)_surface.Handle);
+            _surface = VkSurfaceKHR.Null;
+        }
 #if DEBUG
         if (_debugMessenger.IsNotNull) _instanceApi.vkDestroyDebugUtilsMessengerEXT(_debugMessenger);
 #endif

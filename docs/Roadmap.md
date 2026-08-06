@@ -13,7 +13,7 @@
 9. **Animation and tile atlas support** — sprite animation, atlas metadata, and render batching.
 10. **Debug tools** — collision overlays, entity inspector, frame graph, and input visualization.
 11. **Minimal editor workflow** — only after runtime formats and asset loading are stable.
-12. **SDL3 platform backend (replaces SDL2)** — SDL2 is maintenance-only, so the cross-platform windowing/input surface targets **SDL3** (current stable) per `docs/LinuxSupportPlan.md`: X11/Wayland windowing and a Vulkan surface for Linux, macOS via SDL3 + MoltenVK later, and long-term the unification backend that also replaces the native Win32 path.
+12. ~~**SDL3 platform backend (replaces SDL2)**~~ — **DONE (SDL3 migration milestone):** windowing/input and the Vulkan surface now run on **SDL3** (`ppy.SDL3-CS`), the native Win32 path is deleted, and `GamePlatform.CreateWindow` uses SDL3 on all OSes. Remaining: verify X11/Wayland on Linux and macOS via SDL3 + MoltenVK (see `docs/LinuxSupportPlan.md`).
 13. **Shader compilation with progress + splash screen** — replace `tools\CompileShaders.ps1` (PowerShell + `glslc` subprocess) with in-process C# shader compilation that works on **all platforms** (see `docs/ShaderWorkflow.md`). At startup a splash screen checks whether any `assets/shaders/*.glsl` is newer than the committed `shaders/*.spv` (recompilation needed) and, when it is, recompiles them showing per-shader progress before the game window opens.
 14. **Virtual reality (VR) support** — OpenXR-based HMD integration (head tracking, per-eye rendering, VR input) layered on top of the Vulkan render path.
 15. **Mobile platforms support** — Android and iOS with the Vulkan renderer, SDL3 windowing, and touch input (promoted from the deferred list).

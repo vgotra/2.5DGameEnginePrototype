@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>Engine.Platform.SDL3</AssemblyName></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine.Platform\Engine.Platform.csproj" />
+    <PackageReference Include="ppy.SDL3-CS" />
+  </ItemGroup>
+</Project>
