@@ -3,31 +3,31 @@ using Engine.Ecs;
 
 namespace Engine.Benchmark.Benchmarks;
 
-internal static class SparseSetBenchmarks
+internal static class EcsBenchmarks
 {
     public static BenchmarkCase[] Create()
     {
         World world = new();
-        SparseSet<int> storage = world.Storage<int>();
         const int PoolSize = 256;
         EntityId[] pool = new EntityId[PoolSize];
         for (int i = 0; i < PoolSize; i++) pool[i] = world.Create();
+        world.AddComponent(pool[0], 1);
         int cursor = 0;
         bool hit = false;
 
         return
         [
-            new BenchmarkCase("SparseSet_AddRemove", 200_000,
+            new BenchmarkCase("Ecs_AddRemoveComponent", 200_000,
                 () =>
                 {
                     EntityId entity = pool[cursor++ & (PoolSize - 1)];
-                    storage.Add(entity, 1);
-                    storage.Remove(entity);
+                    world.AddComponent(entity, 1);
+                    world.RemoveComponent<int>(entity);
                 }),
-            new BenchmarkCase("SparseSet_TryGetHit", 200_000,
-                () => { hit ^= storage.TryGet(pool[0], out _); }),
-            new BenchmarkCase("SparseSet_RemoveMiss", 200_000,
-                () => { storage.Remove(new EntityId(999_999, 1)); }),
+            new BenchmarkCase("Ecs_TryGetHit", 200_000,
+                () => { hit ^= world.TryGetComponent(pool[0], out int _); }),
+            new BenchmarkCase("Ecs_RemoveMiss", 200_000,
+                () => { world.RemoveComponent<int>(new EntityId(999_999, 1)); }),
         ];
     }
 }

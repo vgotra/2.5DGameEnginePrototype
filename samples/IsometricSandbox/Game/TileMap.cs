@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using Engine.App;
 
 namespace IsometricSandbox.Game;
 
@@ -60,6 +61,9 @@ public sealed class TileMap
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2 TileToWorld(int x, int y) => IsInside(x, y) ? _centers[y * Width + x] : new(x + 0.5f, y + 0.5f);
+
+    // Shares the backing tile array with a render-only TileGrid.
+    public TileGrid ToTileGrid() => new(Width, Height, TileWidth, TileHeight, _tiles);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool CanOccupy(Vector2 position, float radius)

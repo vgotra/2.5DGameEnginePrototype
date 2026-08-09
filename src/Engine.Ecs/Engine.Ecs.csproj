@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><AssemblyName>Engine.Ecs</AssemblyName></PropertyGroup>
-  <ItemGroup><ProjectReference Include="..\Engine.Core\Engine.Core.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine.Core\Engine.Core.csproj" />
+    <ProjectReference Include="..\Engine.Threading\Engine.Threading.csproj" />
+  </ItemGroup>
 </Project>

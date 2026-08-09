@@ -10,7 +10,7 @@ How to measure performance and allocation behavior, and how to catch regressions
 - `Extraction_Iso128x128_Parallel` — banded tile extraction on the job system + ordered merge
 - `Jobs_ScheduleComplete_64` / `Jobs_ScheduleFor_1M` — `JobSystem` schedule→complete and parallel-for throughput (engine-scale batches; huge bursts churn BCL channel segments, see KnownIssues)
 - `Collision_TryMoveOpen` / `Collision_TryMoveBlocked` / `Movement_Move` — `TileMap` collision + `MovementSystem`
-- `SparseSet_AddRemove` / `SparseSet_TryGetHit` / `SparseSet_RemoveMiss`
+- `Ecs_AddRemoveComponent` / `Ecs_TryGetHit` / `Ecs_RemoveMiss` — archetype `World` component add/remove + lookup (add/remove allocates ~56 B/op — archetype move sorting, see KnownIssues)
 - `Buffer_AddClear` / `Buffer_Add64Clear` — `GrowableBuffer<T>`
 - `Math_ScreenTransformIso` / `Math_ScreenTransformFlat` / `Math_IsometricWorldToScreen`
 

@@ -12,10 +12,10 @@
 - **Asset loading (Initial)** — PNG decode + upload + `TextureHandle` + `assets/` convention; sync managed decode, sample-local `TextureLibrary`.
 - **Profiling and allocation metrics (Initial)** — `--metrics` frame/sim/sprites/alloc/GC; draw calls, jobs, Vulkan timestamps pending.
 - **Job dependencies and safe parallel work** — channels+work-stealing job scheduler with dependency graphs and parallel-for; async PNG decode, threshold-gated parallel map extraction, and parallel Vulkan secondary command recording.
+- **ECS queries and system scheduling** — archetype `World` with generation-safe handles, cached queries (1/2/3 components) with serial `ForEach` and parallel `ForEachParallel` dispatch, a `SystemScheduler` with read/write access-based conflict ordering, and a `WorldCommandBuffer` for deferred mutation; the sample runs on four ECS systems, and `--simulation` stresses 100k critters through parallel two-component queries.
 
 ## Planned
 
-- **ECS queries and system scheduling** — ECS systems + explicit read/write access replacing sample-local state; ~100k entities with parallel multi-component queries.
 - **Scene/save format** — non-reflection serialization for tile maps, entities, player state.
 - **Audio backend** — one-shot effects, music streaming, mixer buses, listener/emitter.
 - **Physics adapter** — Jolt for continuous collision, bodies, raycasts.

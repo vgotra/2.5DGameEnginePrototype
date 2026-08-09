@@ -19,6 +19,7 @@ dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj
 | `--cap <fps>` | Cap the frame rate (e.g. `--cap 60`); default is unpaced. |
 | `--metrics` | Print a rolling table every 120 frames: avg/max frame time, sim steps, sprites, avg allocated bytes/frame, GC collections (see [`Benchmarking.md`](Benchmarking.md)). |
 | `--parallel` | Force parallel tile extraction and parallel Vulkan draw recording even on small maps (normally gated by a ~10,000-visible-tile threshold). |
+| `--simulation` | Stress-test mode: a 128×128 procedural map with 100,000 critters running a parallel two-component ECS query (no splash). |
 
 Example:
 

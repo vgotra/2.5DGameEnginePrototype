@@ -15,7 +15,7 @@ public sealed class JobSystem : IDisposable
     private readonly SemaphoreSlim _workSignal = new(0);
     private readonly SemaphoreSlim _completion = new(0);
     private readonly CancellationTokenSource _shutdown = new();
-    private readonly ParallelForChunkPool _chunkPool = new();
+    private readonly ParallelForChunkPool _chunkPool = new(64);
     private readonly Task[] _workers;
     private int _slotCursor = -1;
     private int _outstanding;

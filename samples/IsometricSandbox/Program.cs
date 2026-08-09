@@ -3,17 +3,16 @@ using IsometricSandbox.Game;
 // ====================================================================
 //  IsometricSandbox — "Archer in the Forest"
 //  A small end-to-end sample of the engine. This file only parses the
-//  command line and runs a GameSession; the work lives in Game\:
-//    Options        — command-line flags (--2d, --cap, --fullscreen, --metrics)
-//    GameSession    — window/renderer/world wiring + the frame loop
-//    Player         — the archer's movement, jump, and aiming
-//    SceneRenderer  — the Vulkan render path + sprite extraction buffers
-//    SampleConfig   — the tunables (window size, animal count, ...)
+//  command line and runs the ECS game app; the work lives in Game\:
+//    Options       — command-line flags (--2d, --cap, --fullscreen, --metrics, --parallel, --simulation)
+//    ArcherGameApp — the GameHost: window/renderer/world wiring + frame loop
+//    SampleConfig  — the tunables (window size, speeds, sim scale, ...)
 //
 //  HOW TO RUN     : dotnet run --project samples\IsometricSandbox
+//  STRESS TEST    : dotnet run --project samples\IsometricSandbox -- --simulation
 //  MAKE CHANGES   : edit Game\SampleConfig.cs — the tunables live there.
 // ====================================================================
 
 Options options = Options.Parse(args);
-using GameSession session = new(options);
-session.Run();
+using ArcherGameApp app = ArcherGameApp.Create(options);
+app.Run();

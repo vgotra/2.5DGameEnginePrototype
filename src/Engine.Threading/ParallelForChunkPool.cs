@@ -4,6 +4,13 @@ internal sealed class ParallelForChunkPool
 {
     private ParallelForChunk? _head;
 
+    internal ParallelForChunkPool() { }
+
+    internal ParallelForChunkPool(int preallocate)
+    {
+        for (int i = 0; i < preallocate; i++) Return(new ParallelForChunk());
+    }
+
     internal ParallelForChunk Rent()
     {
         while (true)

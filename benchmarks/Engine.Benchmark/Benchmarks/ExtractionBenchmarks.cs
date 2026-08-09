@@ -1,7 +1,7 @@
 using System.Numerics;
+using Engine.App;
 using Engine.Rendering;
 using Engine.Threading;
-using IsometricSandbox.Game;
 
 namespace Engine.Benchmark.Benchmarks;
 
@@ -19,22 +19,24 @@ internal static class ExtractionBenchmarks
         ];
     }
 
+    private static TileGrid OpenGrid(int size) => new(size, size, 64, 32, new byte[size * size]);
+
     private static BenchmarkCase ExtractionCase(string name, int size, bool isometric)
     {
-        TileMap map = new(size, size);
+        TileGrid grid = OpenGrid(size);
         IsometricCamera camera = new(new Vector2(1920, 1080)) { Mode = isometric ? GameMode.Isometric : GameMode.TopDown };
-        camera.Follow(new Vector2(size * 0.5f, size * 0.5f), map);
+        camera.Follow(new Vector2(size * 0.5f, size * 0.5f), grid);
         SpritePacket[] sprites = new SpritePacket[size * size * 2];
         float sink = 0;
         return new BenchmarkCase(name, size >= 100 ? 5_000 : 50_000,
-            () => { sink += RenderExtractionSystem.ExtractMapSprites(map, camera, sprites); });
+            () => { sink += SpriteExtraction.ExtractTiles(grid, camera, null, null, sprites); });
     }
 
     private static BenchmarkCase ParallelExtractionCase(string name, int size, bool isometric)
     {
-        TileMap map = new(size, size);
+        TileGrid grid = OpenGrid(size);
         IsometricCamera camera = new(new Vector2(1920, 1080)) { Mode = isometric ? GameMode.Isometric : GameMode.TopDown };
-        camera.Follow(new Vector2(size * 0.5f, size * 0.5f), map);
+        camera.Follow(new Vector2(size * 0.5f, size * 0.5f), grid);
         JobSystem jobs = new();
         int bandCount = Math.Min(jobs.WorkerCount, size);
         int rowsPerBand = (size + bandCount - 1) / bandCount;
@@ -48,7 +50,7 @@ internal static class ExtractionBenchmarks
         float sink = 0;
         return new BenchmarkCase(name, 5_000, () =>
         {
-            JobHandle barrier = dispatch.Schedule(jobs, map, camera, null, bands, counts, flickers, bandCount, rowsPerBand);
+            JobHandle barrier = dispatch.Schedule(jobs, grid, camera, null, bands, counts, flickers, bandCount, rowsPerBand);
             jobs.Complete(barrier);
             int written = 0;
             for (int band = 0; band < bandCount; band++)

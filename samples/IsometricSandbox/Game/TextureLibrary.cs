@@ -1,5 +1,6 @@
 using System.IO;
 using System.Numerics;
+using Engine.App;
 using Engine.Rendering;
 using Engine.Threading;
 
@@ -9,7 +10,7 @@ namespace IsometricSandbox.Game;
 // at a time so the splash screen can show loading progress; with a JobSystem
 // attached (BeginAsyncLoad) all PNG decodes run on worker threads up front
 // while the main thread uploads the finished ones one step per splash frame.
-public sealed class TextureLibrary
+public sealed class TextureLibrary : ITileTextureProvider
 {
     private readonly IRenderer _renderer;
     private readonly Dictionary<string, TextureHandle> _tiles = new();
@@ -76,6 +77,8 @@ public sealed class TextureLibrary
     }
 
     public TextureHandle? TryGetTile(string name) => _tiles.TryGetValue(name, out TextureHandle handle) ? handle : null;
+
+    public TextureHandle? TryGet(string name) => TryGetTile(name);
 
     private void DecodeInto(int step)
     {

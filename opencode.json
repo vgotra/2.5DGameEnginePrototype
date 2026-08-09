@@ -5,14 +5,6 @@
   "instructions": [
     ".agents/context/*.md"
   ],
-  "tool_output": {
-    "max_lines": 500,
-    "max_bytes": 20000
-  },
-  "compaction": {
-    "auto": true,
-    "prune": true
-  },
   "mcp": {
     "vulkan": {
       "type": "local",

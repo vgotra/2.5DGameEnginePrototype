@@ -8,7 +8,7 @@ internal static class BenchmarkCatalog
         [
             .. ExtractionBenchmarks.Create(),
             .. CollisionBenchmarks.Create(),
-            .. SparseSetBenchmarks.Create(),
+            .. EcsBenchmarks.Create(),
             .. BufferBenchmarks.Create(),
             .. MathBenchmarks.Create(),
             .. JobsBenchmarks.Create(),
