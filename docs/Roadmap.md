@@ -11,11 +11,11 @@
 - **Texture sampling path (Initial)** — fragment-shader sampling + per-texture descriptor binds; `SpritePacket.Material`, atlases, sorting pending.
 - **Asset loading (Initial)** — PNG decode + upload + `TextureHandle` + `assets/` convention; sync managed decode, sample-local `TextureLibrary`.
 - **Profiling and allocation metrics (Initial)** — `--metrics` frame/sim/sprites/alloc/GC; draw calls, jobs, Vulkan timestamps pending.
+- **Job dependencies and safe parallel work** — channels+work-stealing job scheduler with dependency graphs and parallel-for; async PNG decode, threshold-gated parallel map extraction, and parallel Vulkan secondary command recording.
 
 ## Planned
 
 - **ECS queries and system scheduling** — ECS systems + explicit read/write access replacing sample-local state; ~100k entities with parallel multi-component queries.
-- **Job dependencies and safe parallel work** — dependency-aware jobs for asset loading, map extraction, uploads.
 - **Scene/save format** — non-reflection serialization for tile maps, entities, player state.
 - **Audio backend** — one-shot effects, music streaming, mixer buses, listener/emitter.
 - **Physics adapter** — Jolt for continuous collision, bodies, raycasts.

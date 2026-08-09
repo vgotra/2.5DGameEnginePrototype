@@ -6,6 +6,7 @@
     <ProjectReference Include="..\..\src\Engine.Ecs\Engine.Ecs.csproj" />
     <ProjectReference Include="..\..\src\Engine.Platform.Desktop\Engine.Platform.Desktop.csproj" />
     <ProjectReference Include="..\..\src\Engine.Rendering.Vulkan\Engine.Rendering.Vulkan.csproj" />
+    <ProjectReference Include="..\..\src\Engine.Threading\Engine.Threading.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\assets\textures\*.png">

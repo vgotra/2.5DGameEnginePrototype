@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using Engine.Platform;
 using Engine.Rendering;
+using Engine.Threading;
 using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
@@ -43,6 +44,9 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private DescriptorSetAllocator _descriptorAllocator = null!;
     private TextureUploader _textureUploader = null!;
     private BatchRenderer _batchRenderer = null!;
+    private ParallelDrawRecorder _drawRecorder = null!;
+    private JobSystem _jobSystem = null!;
+    private bool _ownsJobSystem;
 #if DEBUG
     private VkDebugUtilsMessengerEXT _debugMessenger;
 #endif
@@ -50,11 +54,11 @@ public sealed unsafe class VulkanRenderer : IRenderer
     public uint SwapchainImageCount => (uint)_swapchainImages.Length;
     public uint GraphicsQueueFamily { get; private set; }
 
-    public VulkanRenderer(in NativeWindowSurface surface)
+    public VulkanRenderer(in NativeWindowSurface surface, JobSystem? jobSystem = null)
     {
         try
         {
-            Initialize(surface);
+            Initialize(surface, jobSystem);
         }
         catch
         {
@@ -63,12 +67,14 @@ public sealed unsafe class VulkanRenderer : IRenderer
         }
     }
 
-    private void Initialize(in NativeWindowSurface surface)
+    private void Initialize(in NativeWindowSurface surface, JobSystem? jobSystem)
     {
         IVulkanSurfaceFactory? factory = surface.SurfaceFactory;
         if (factory == null)
             throw new InvalidOperationException("No Vulkan surface factory provided; the window must implement IVulkanSurfaceFactory.");
         _surfaceFactory = factory;
+        _ownsJobSystem = jobSystem == null;
+        _jobSystem = jobSystem ?? new JobSystem();
 
         CreateInstance(factory.RequiredInstanceExtensions);
         CreateSurfaceAndDevice(surface);
@@ -198,7 +204,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
         VkDescriptorSetLayout textureLayout = _descriptorAllocator.GetLayout(VkDescriptorType.CombinedImageSampler, VkShaderStageFlags.Fragment, 0);
         _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout);
         _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator);
-        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _textureUploader, _graphicsQueue, FramesInFlight);
+        _drawRecorder = new ParallelDrawRecorder(_deviceApi, GraphicsQueueFamily, _jobSystem.WorkerCount, FramesInFlight);
+        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _textureUploader, _graphicsQueue, FramesInFlight, _drawRecorder, _jobSystem);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
 
@@ -210,7 +217,13 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (_swapchain.IsNull) throw new InvalidOperationException("Swapchain is not ready.");
         _currentFrame = (_currentFrame + 1) % FramesInFlight;
         AcquireSwapchainImage(viewport);
-        BeginRenderPass(_commandBuffers[_imageIndex], viewport);
+        VkCommandBuffer primary = _commandBuffers[_imageIndex];
+        _deviceApi.vkResetCommandBuffer(primary, VkCommandBufferResetFlags.None);
+        VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
+        VkResult result = _deviceApi.vkBeginCommandBuffer(primary, &beginInfo);
+        if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer begin failed: {result}");
+        _drawRecorder.ResetFrameSlot(_currentFrame);
+        _batchRenderer.BeginFrame(new FrameRenderContext(_currentFrame, primary, _renderPass, _framebuffers[_imageIndex], _swapchainExtent, viewport));
         _inFrame = true;
     }
 
@@ -242,25 +255,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _imagesInFlight[_imageIndex] = slotFence;
     }
 
-    private void BeginRenderPass(VkCommandBuffer commandBuffer, Vector2 viewport)
-    {
-        _deviceApi.vkResetCommandBuffer(commandBuffer, VkCommandBufferResetFlags.None);
-        VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
-        VkResult result = _deviceApi.vkBeginCommandBuffer(commandBuffer, &beginInfo);
-        if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer begin failed: {result}");
-        VkClearValue clear = new(0.04f, 0.07f, 0.12f, 1f);
-        VkRenderPassBeginInfo renderPassBegin = new()
-        {
-            renderPass = _renderPass,
-            framebuffer = _framebuffers[_imageIndex],
-            renderArea = new VkRect2D(0, 0, _swapchainExtent.width, _swapchainExtent.height),
-            clearValueCount = 1,
-            pClearValues = &clear
-        };
-        _deviceApi.vkCmdBeginRenderPass(commandBuffer, &renderPassBegin, VkSubpassContents.Inline);
-        _batchRenderer.BeginFrame(_currentFrame, commandBuffer, viewport);
-    }
-
     public void Submit(ReadOnlySpan<SpritePacket> sprites)
     {
         if (!_inFrame) return;
@@ -270,15 +264,13 @@ public sealed unsafe class VulkanRenderer : IRenderer
     public void EndFrame()
     {
         if (!_inFrame) return;
-        VkCommandBuffer commandBuffer = _commandBuffers[_imageIndex];
-        _batchRenderer.EndFrame(commandBuffer);
-        SubmitAndPresent(commandBuffer);
+        _batchRenderer.EndFrame();
+        SubmitAndPresent(_commandBuffers[_imageIndex]);
         _inFrame = false;
     }
 
     private void SubmitAndPresent(VkCommandBuffer commandBuffer)
     {
-        _deviceApi.vkCmdEndRenderPass(commandBuffer);
         VkResult result = _deviceApi.vkEndCommandBuffer(commandBuffer);
         if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer end failed: {result}");
         VkPipelineStageFlags waitStage = VkPipelineStageFlags.ColorAttachmentOutput;
@@ -522,6 +514,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
         if (_device.IsNotNull && _deviceApi != null) _deviceApi.vkDeviceWaitIdle();
         _batchRenderer?.Dispose();
+        _drawRecorder?.Dispose();
         _textureUploader?.Dispose();
         _descriptorAllocator?.Dispose();
         if (_pipeline.Pipeline.IsNotNull) _pipeline.Dispose();
@@ -545,5 +538,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
 #endif
         if (_instance.IsNotNull) _instanceApi.vkDestroyInstance();
         if (_loaderInitialized) global::Vortice.Vulkan.Vulkan.vkShutdown();
+        if (_ownsJobSystem) _jobSystem?.Dispose();
     }
 }

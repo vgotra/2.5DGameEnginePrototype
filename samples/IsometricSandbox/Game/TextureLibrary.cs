@@ -1,18 +1,24 @@
 using System.IO;
 using System.Numerics;
 using Engine.Rendering;
+using Engine.Threading;
 
 namespace IsometricSandbox.Game;
 
 // Holds the entity/tile textures used by the sample. Textures load one step
-// at a time (LoadNextStep) so the splash screen can show loading progress;
-// SceneRenderer drains these steps during boot before the game starts.
+// at a time so the splash screen can show loading progress; with a JobSystem
+// attached (BeginAsyncLoad) all PNG decodes run on worker threads up front
+// while the main thread uploads the finished ones one step per splash frame.
 public sealed class TextureLibrary
 {
     private readonly IRenderer _renderer;
     private readonly Dictionary<string, TextureHandle> _tiles = new();
     private readonly string[] _tileNames = { "grass", "water", "tree", "bonfire", "wall" };
     private int _step;
+
+    private JobSystem? _jobs;
+    private JobHandle[] _decodeHandles = [];
+    private DecodedTexture[] _decoded = [];
 
     public TextureHandle Player { get; private set; }
     public TextureHandle Deer { get; private set; }
@@ -28,31 +34,92 @@ public sealed class TextureLibrary
         _renderer = renderer;
     }
 
-    // Loads the next texture; call repeatedly until IsComplete.
+    // Schedules every PNG decode on the job system; uploads stay on the main
+    // thread and happen in TryUploadNextStep as decodes finish.
+    public void BeginAsyncLoad(JobSystem jobs)
+    {
+        _jobs = jobs;
+        _decodeHandles = new JobHandle[StepCount];
+        _decoded = new DecodedTexture[StepCount];
+        for (int i = 0; i < StepCount; i++)
+        {
+            int step = i;
+            _decodeHandles[i] = jobs.Schedule(() => DecodeInto(step));
+        }
+    }
+
+    // Loads the next texture synchronously (decode + upload in one call).
     public void LoadNextStep()
     {
-        switch (_step++)
+        int step = _step++;
+        if (step >= StepCount) return;
+        PngImage? image = PngLoader.Decode(AssetPath(NameForStep(step)));
+        ApplyDecoded(step, ToDecoded(image));
+    }
+
+    // Advances one step once its decode is ready; returns false when the next
+    // decode is still in flight so the caller can keep animating the splash.
+    public bool TryUploadNextStep()
+    {
+        if (_jobs == null)
+        {
+            LoadNextStep();
+            return true;
+        }
+        if (IsComplete) return true;
+        int step = _step;
+        if (!_jobs.IsComplete(_decodeHandles[step])) return false;
+        ApplyDecoded(step, _decoded[step]);
+        _decoded[step].Rgba = null;
+        _step++;
+        return true;
+    }
+
+    public TextureHandle? TryGetTile(string name) => _tiles.TryGetValue(name, out TextureHandle handle) ? handle : null;
+
+    private void DecodeInto(int step)
+    {
+        PngImage? image = PngLoader.Decode(AssetPath(NameForStep(step)));
+        _decoded[step] = ToDecoded(image);
+    }
+
+    private void ApplyDecoded(int step, DecodedTexture decoded)
+    {
+        switch (step)
         {
             case 0:
-                Player = PngLoader.Load(_renderer, AssetPath("player")) ?? ProceduralTextures.UkraineFlag(_renderer);
+                Player = UploadOrNull(decoded) ?? ProceduralTextures.UkraineFlag(_renderer);
                 break;
             case 1:
-                Deer = PngLoader.Load(_renderer, AssetPath("deer")) ?? ProceduralTextures.Blob(_renderer, new(0.3f, 0.6f, 0.35f, 1f));
+                Deer = UploadOrNull(decoded) ?? ProceduralTextures.Blob(_renderer, new(0.3f, 0.6f, 0.35f, 1f));
                 break;
             case 2:
-                Rabbit = PngLoader.Load(_renderer, AssetPath("rabbit")) ?? ProceduralTextures.Blob(_renderer, new(0.95f, 0.55f, 0.65f, 1f));
+                Rabbit = UploadOrNull(decoded) ?? ProceduralTextures.Blob(_renderer, new(0.95f, 0.55f, 0.65f, 1f));
                 break;
             default:
-                int index = _step - 3 - 1;
+                int index = step - 3;
                 if (index >= _tileNames.Length) break;
-                string name = _tileNames[index];
-                TextureHandle? texture = PngLoader.Load(_renderer, AssetPath(name));
-                if (texture.HasValue) _tiles[name] = texture.Value;
+                TextureHandle? uploaded = UploadOrNull(decoded);
+                if (uploaded.HasValue) _tiles[_tileNames[index]] = uploaded.Value;
                 break;
         }
     }
 
-    public TextureHandle? TryGetTile(string name) => _tiles.TryGetValue(name, out TextureHandle handle) ? handle : null;
+    private TextureHandle? UploadOrNull(in DecodedTexture decoded)
+        => decoded.Rgba == null ? null : _renderer.UploadTexture(decoded.Rgba, decoded.Width, decoded.Height, TextureFilter.Nearest);
+
+    private string NameForStep(int step) => step switch
+    {
+        0 => "player",
+        1 => "deer",
+        2 => "rabbit",
+        _ => _tileNames[step - 3]
+    };
+
+    private static DecodedTexture ToDecoded(PngImage? image)
+        => image.HasValue
+            ? new DecodedTexture { Rgba = image.Value.Data, Width = image.Value.Width, Height = image.Value.Height }
+            : new DecodedTexture();
 
     private static string AssetPath(string name)
         => Path.Combine(AppContext.BaseDirectory, "textures", name + ".png");

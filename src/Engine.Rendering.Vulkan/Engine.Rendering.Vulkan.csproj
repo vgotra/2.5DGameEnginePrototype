@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Engine.Platform\Engine.Platform.csproj" />
     <ProjectReference Include="..\Engine.Rendering\Engine.Rendering.csproj" />
+    <ProjectReference Include="..\Engine.Threading\Engine.Threading.csproj" />
     <PackageReference Include="Vortice.Vulkan" />
   </ItemGroup>
   <ItemGroup>

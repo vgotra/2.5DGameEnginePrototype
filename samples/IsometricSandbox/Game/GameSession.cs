@@ -4,6 +4,7 @@ using Engine.Core;
 using Engine.Platform;
 using Engine.Platform.Desktop;
 using Engine.Rendering;
+using Engine.Threading;
 
 namespace IsometricSandbox.Game;
 
@@ -16,6 +17,7 @@ public sealed class GameSession : IDisposable
     private readonly PlatformSession _session;
     private readonly IGameWindow _window;
     private readonly IInputState _input;
+    private readonly JobSystem _jobSystem;
     private readonly ArcherGame _game;
     private readonly Player _player;
     private readonly IsometricCamera _camera;
@@ -40,9 +42,10 @@ public sealed class GameSession : IDisposable
         _session = GamePlatform.CreateWindow(SampleConfig.WindowTitle, SampleConfig.WindowWidth, SampleConfig.WindowHeight);
         _window = _session.Window;
         _input = _session.Input;
+        _jobSystem = new JobSystem();
 
         TileMap map = new();
-        _sceneRenderer = new SceneRenderer(_window.NativeSurface, map, _window.Size);
+        _sceneRenderer = new SceneRenderer(_window.NativeSurface, map, _window.Size, _jobSystem, options.ForceParallel);
         _font = new BitmapFont(_sceneRenderer.Renderer);
         _splash = new SplashScreen(_font, _window.Size);
         _game = new ArcherGame(map, SampleConfig.AnimalCount);
@@ -70,6 +73,7 @@ public sealed class GameSession : IDisposable
     {
         Stopwatch timer = Stopwatch.StartNew();
         FrameTimer splashTimer = new(SplashFramesPerSecond);
+        _sceneRenderer.BeginTextureLoad();
         while (!_window.ShouldClose)
         {
             splashTimer.Advance();
@@ -208,10 +212,12 @@ public sealed class GameSession : IDisposable
     }
 
     // Dispose order mirrors the old `using` declarations: the renderer is
-    // torn down before the platform session that owns the window/surface.
+    // torn down before the platform session that owns the window/surface,
+    // and the job system outlives the renderer that borrows it.
     public void Dispose()
     {
         _sceneRenderer.Dispose();
+        _jobSystem.Dispose();
         _session.Dispose();
     }
 }

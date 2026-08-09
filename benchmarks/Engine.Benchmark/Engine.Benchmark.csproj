@@ -7,5 +7,6 @@
     <ProjectReference Include="..\..\src\Engine.Ecs\Engine.Ecs.csproj" />
     <ProjectReference Include="..\..\src\Engine.Rendering\Engine.Rendering.csproj" />
     <ProjectReference Include="..\..\src\Engine.Rendering.Vulkan\Engine.Rendering.Vulkan.csproj" />
+    <ProjectReference Include="..\..\src\Engine.Threading\Engine.Threading.csproj" />
   </ItemGroup>
 </Project>

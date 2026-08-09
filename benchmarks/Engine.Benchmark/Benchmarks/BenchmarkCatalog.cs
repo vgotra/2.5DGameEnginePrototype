@@ -11,6 +11,7 @@ internal static class BenchmarkCatalog
             .. SparseSetBenchmarks.Create(),
             .. BufferBenchmarks.Create(),
             .. MathBenchmarks.Create(),
+            .. JobsBenchmarks.Create(),
         ];
         if (iterationsOverride is not int count) return cases;
         BenchmarkCase[] overridden = new BenchmarkCase[cases.Length];

@@ -7,6 +7,8 @@ How to measure performance and allocation behavior, and how to catch regressions
 `benchmarks/Engine.Benchmark` is a plain console app (like the smoke tests — **not** a test framework). It runs **Release-only, no GPU** CPU hot-path benchmarks:
 
 - `Extraction_Iso20x20` / `Extraction_Flat20x20` / `Extraction_Iso128x128` / `Extraction_Flat128x128` — `RenderExtractionSystem.ExtractMapSprites`
+- `Extraction_Iso128x128_Parallel` — banded tile extraction on the job system + ordered merge
+- `Jobs_ScheduleComplete_64` / `Jobs_ScheduleFor_1M` — `JobSystem` schedule→complete and parallel-for throughput (engine-scale batches; huge bursts churn BCL channel segments, see KnownIssues)
 - `Collision_TryMoveOpen` / `Collision_TryMoveBlocked` / `Movement_Move` — `TileMap` collision + `MovementSystem`
 - `SparseSet_AddRemove` / `SparseSet_TryGetHit` / `SparseSet_RemoveMiss`
 - `Buffer_AddClear` / `Buffer_Add64Clear` — `GrowableBuffer<T>`

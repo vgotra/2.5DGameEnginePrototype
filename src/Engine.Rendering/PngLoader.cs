@@ -5,7 +5,7 @@ namespace Engine.Rendering;
 
 public static class PngLoader
 {
-    public static TextureHandle? Load(IRenderer renderer, string path, TextureFilter filter = TextureFilter.Nearest)
+    public static PngImage? Decode(string path)
     {
         if (!File.Exists(path))
         {
@@ -16,14 +16,20 @@ public static class PngLoader
         try
         {
             ImageResult image = ImageResult.FromMemory(File.ReadAllBytes(path), ColorComponents.RedGreenBlueAlpha);
-            TextureHandle handle = renderer.UploadTexture(image.Data, image.Width, image.Height, filter);
             Console.WriteLine($"[assets] loaded {path} ({image.Width}x{image.Height})");
-            return handle;
+            return new PngImage(image.Data, image.Width, image.Height);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[assets] failed to load {path}: {ex.Message} — using fallback");
             return null;
         }
+    }
+
+    public static TextureHandle? Load(IRenderer renderer, string path, TextureFilter filter = TextureFilter.Nearest)
+    {
+        PngImage? image = Decode(path);
+        if (!image.HasValue) return null;
+        return renderer.UploadTexture(image.Value.Data, image.Value.Width, image.Value.Height, filter);
     }
 }

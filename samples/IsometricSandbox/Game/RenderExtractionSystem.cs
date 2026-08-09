@@ -29,6 +29,22 @@ public static class RenderExtractionSystem
         Span<SpritePacket> scratch)
     {
         int written = ExtractTiles(map, camera, sprites, textures, flicker);
+        written = ExtractEntities(map, camera, sprites, written, animals, arrows, playerWorld, jumpHeight, textures);
+        StableSortByKey(sprites, written, keyCounts, scratch);
+        return written;
+    }
+
+    public static int ExtractEntities(
+        TileMap map,
+        IsometricCamera camera,
+        Span<SpritePacket> sprites,
+        int written,
+        ReadOnlySpan<Animal> animals,
+        ReadOnlySpan<Arrow> arrows,
+        Vector2 playerWorld,
+        float jumpHeight,
+        TextureLibrary textures)
+    {
         written = ExtractEntity(map, camera, sprites, written, playerWorld, new(44, 56), textures.Player, jumpHeight, White);
         for (int i = 0; i < animals.Length; i++)
         {
@@ -49,24 +65,35 @@ public static class RenderExtractionSystem
             float sortKey = SortKey(map, arrow.Position);
             sprites[written++] = new SpritePacket(screen, new(10, 10), ArrowColor, default, default, sortKey, ShapeKind.Diamond);
         }
-        StableSortByKey(sprites, written, keyCounts, scratch);
         return written;
     }
 
     private static int ExtractTiles(TileMap map, IsometricCamera camera, Span<SpritePacket> sprites, TextureLibrary? textures, Random? flicker)
     {
+        ScreenTransform transform = camera.GetScreenTransform(map);
+        return ExtractTileRange(map, in transform, camera.Viewport, camera.Projection.TileShape, map.TileWidth, camera.Projection.GetTileHeight(map), 0, map.Height, sprites, textures, flicker);
+    }
+
+    internal static int ExtractTileRange(
+        TileMap map,
+        in ScreenTransform transform,
+        Vector2 viewport,
+        ShapeKind shape,
+        float tileWidth,
+        float tileHeight,
+        int yStart,
+        int yEnd,
+        Span<SpritePacket> sprites,
+        TextureLibrary? textures,
+        Random? flicker)
+    {
         bool textured = textures is not null && flicker is not null;
-        ShapeKind shape = camera.Projection.TileShape;
-        float tileWidth = map.TileWidth;
-        float tileHeight = camera.Projection.GetTileHeight(map);
         Vector2 tileSize = new(tileWidth, tileHeight);
         Vector2 borderSize = new(tileWidth + BorderWidth * 2, tileHeight + BorderWidth * 2);
         float halfWidth = tileWidth * 0.5f + BorderWidth;
         float halfHeight = tileHeight * 0.5f + BorderWidth;
-        Vector2 viewport = camera.Viewport;
-        ScreenTransform transform = camera.GetScreenTransform(map);
         int written = 0;
-        for (int y = 0; y < map.Height && written + 2 <= sprites.Length; y++)
+        for (int y = yStart; y < yEnd && written + 2 <= sprites.Length; y++)
             for (int x = 0; x < map.Width && written + 2 <= sprites.Length; x++)
             {
                 Vector2 screen = transform.ToScreen(x + 0.5f, y + 0.5f);
