@@ -38,4 +38,4 @@ Status tags: **Implemented** (describes shipped behavior), **Plan** (ordered fut
 
 ## Tooling
 
-- [`AgentTooling.md`](AgentTooling.md) — **Reference**. MCP servers used by AI agents: install (`tools/Setup-McpServers.ps1`), config in `opencode.json`, relative-path resolution, and per-server guardrails.
+- [`AgentTooling.md`](AgentTooling.md) — **Reference**. MCP servers used by AI agents (install, config in `opencode.json`, relative-path resolution, guardrails) and the agent skills in `.agents/skills/`.
