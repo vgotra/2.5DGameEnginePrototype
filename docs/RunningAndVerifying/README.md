@@ -12,5 +12,4 @@ Single reference for prerequisites, building, running, and verifying the engine 
 ## Related
 
 - GLSL shaders recompile automatically on the next build (`glslc`, incremental); see [`ShaderWorkflow.md`](../ShaderWorkflow.md).
-- GPU frame capture and debugging: [`RenderDocSetup.md`](../RenderDocSetup.md).
 - Coding and performance conventions: [`Conventions/`](../Conventions/).

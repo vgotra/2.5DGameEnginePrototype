@@ -21,6 +21,7 @@ tools/mcp/
 **/*.sqlite-shm
 **/*.sqlite-wal
 **/*.db
+**/.omo
 
 # User-specific files
 **/*.rsuser

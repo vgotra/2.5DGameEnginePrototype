@@ -58,4 +58,4 @@ Steady-state target: ~0 B/frame, 0 collections, ~16.6 ms pacing at `--cap 60`. E
 
 ## External tools
 
-For whole-process validation beyond the harness: `dotnet-counters` (runtime/GC rate counters), `dotnet-trace` / PerfView (ETW CPU + GC traces), `dotnet-gcdump` (heap snapshots), the Visual Studio profiler, and RenderDoc (GPU frame time, draw calls — see `RenderDocSetup.md`).
+For whole-process validation beyond the harness: `dotnet-counters` (runtime/GC rate counters), `dotnet-trace` / PerfView (ETW CPU + GC traces), `dotnet-gcdump` (heap snapshots), and the Visual Studio profiler.

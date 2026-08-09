@@ -5,6 +5,14 @@
   "instructions": [
     ".agents/context/*.md"
   ],
+  "tool_output": {
+    "max_lines": 500,
+    "max_bytes": 20000
+  },
+  "compaction": {
+    "auto": true,
+    "prune": true
+  },
   "mcp": {
     "vulkan": {
       "type": "local",
@@ -12,27 +20,9 @@
       "enabled": true,
       "timeout": 30000
     },
-    "renderdoc": {
-      "type": "local",
-      "command": ["uvx", "--python", "3.13", "--with", "mcp>=1.0,<2", "renderdoc-mcp"],
-      "enabled": true,
-      "timeout": 120000
-    },
     "mcp-repo-graph": {
       "type": "local",
       "command": ["uvx", "--python", "3.13", "--with", "mcp>=1.0,<2", "mcp-repo-graph", "--repo", "."],
-      "enabled": true,
-      "timeout": 120000
-    },
-    "csharp": {
-      "type": "local",
-      "command": ["dotnet", "run", "--no-build", "--project", "tools/mcp/csharp-language-server/src/CsharpMcp"],
-      "enabled": true,
-      "timeout": 120000
-    },
-    "dotnet": {
-      "type": "local",
-      "command": ["dotnet", "dnx", "Community.Mcp.DotNet@1.*", "--yes"],
       "enabled": true,
       "timeout": 120000
     }
