@@ -24,7 +24,10 @@ public struct PlayerMoveBody : IForEach<Position, Velocity, PlayerState, PlayerM
         }
         else
         {
-            velocity.Value = body.Direction * SampleConfig.PlayerSpeed;
+            Vector2 direction = body.Direction;
+            if (direction.LengthSquared() > 1f)
+                direction = Vector2.Normalize(direction);
+            velocity.Value = direction * SampleConfig.PlayerSpeed;
         }
     }
 

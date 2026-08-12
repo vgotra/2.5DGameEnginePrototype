@@ -11,6 +11,6 @@ public struct IntegrateBody : IForEach<Position, Velocity, Collider, IntegrateBo
 
     public static void Execute(ref IntegrateBody body, EntityId entity, ref Position position, ref Velocity velocity, ref Collider collider)
     {
-        position.Value = MovementSystem.Move(body.Map, position.Value, velocity.Value, 1f, collider.Radius, body.DeltaSeconds);
+        position.Value = MovementSystem.Move(body.Map, position.Value, velocity.Value, velocity.Value.Length(), collider.Radius, body.DeltaSeconds);
     }
 }

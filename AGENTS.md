@@ -25,9 +25,33 @@ Develop code with **SOLID**, **KISS**, and **DRY**:
 ## Roadmap
 - Next roadmap features: see the next actions in `.agents/context/Roadmap.md`. Shipped milestones live in `.agents/context/Implemented.md`.
 
-## Milestone / Plan Workflow
-- `.ai_workflow_logs/` (local-only, git-ignored) tracks implementation of any multi-step plan — a roadmap milestone, a feature, a refactor, or a plan approved for implementation — for AI + user continuity; keep the files terse and human-readable.
-- At plan/milestone start, fill `current_milestone.md` with the checklist (one concrete, verifiable item per line) and note the status/date.
-- When starting an item, move it to `in_progress.md` and record context/decisions/blockers under `Notes`.
-- When an item is complete and verified, move it to `completed_items.md` (newest on top) with a one-line verification note.
-- Context-loss/recovery rule: on any new or resumed session, read `in_progress.md` first, then `current_milestone.md`; never redo anything already in `completed_items.md`.
+## Mandatory Implementation Workflow
+
+All multi-step implementation work MUST follow the repository workflow defined in: `./AI_WORKFLOW.md`
+
+This includes:
+- roadmap milestones;
+- features;
+- refactors;
+- migrations;
+- architectural changes;
+- bug-fix plans containing multiple implementation steps;
+- any implementation plan approved by the user.
+
+Before modifying code for any such task:
+
+1. Read `./AI_WORKFLOW.md`.
+2. Read `./.ai_workflow_logs/in_progress.md`.
+3. Read `./.ai_workflow_logs/current_milestone.md`.
+4. Consult `./.ai_workflow_logs/completed_items.md` before repeating or reimplementing existing work.
+5. Resume existing in-progress work unless it is blocked or the user explicitly changes priority.
+
+The workflow files are authoritative execution state.
+
+Do NOT:
+- start multi-step implementation without initializing/updating the workflow state;
+- mark work complete before verification;
+- redo work already recorded as verified;
+- postpone workflow-log updates until the end of the session.
+
+Keep `./.ai_workflow_logs/` synchronized with actual repository state throughout implementation.
