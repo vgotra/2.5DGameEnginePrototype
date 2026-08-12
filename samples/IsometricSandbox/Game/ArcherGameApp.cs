@@ -1,13 +1,13 @@
 using System.Numerics;
 using Engine.App;
-using Engine.Core;
-using Engine.Ecs;
+using Engine.Ecs.Sparse;
 using Engine.Platform;
 using Engine.Platform.Desktop;
 using Engine.Rendering;
 using Engine.Rendering.Vulkan;
 using Engine.Threading;
 using RuntimeWorld = Engine.App.World;
+using SparseWorld = Engine.Ecs.Sparse.World;
 
 namespace IsometricSandbox.Game;
 
@@ -30,10 +30,10 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly JobSystem _jobs;
     private readonly VulkanRenderer _renderer;
     private readonly TileMap _map;
-    private Engine.Ecs.World EcsWorld => _runtimeWorld!.EcsWorld;
+    private SparseWorld EcsWorld => _runtimeWorld!.EcsWorld;
     private RuntimeWorld? _runtimeWorld;
     private Scene? _scene;
-    private readonly SystemScheduler _scheduler = new();
+    private readonly FrameScheduler _scheduler;
     private readonly WorldCommandBuffer _buffer = new();
     private readonly TextureLibrary _textures;
     private readonly BitmapFont _font;
@@ -48,7 +48,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly bool _forceParallel;
     private int _simulationFrames;
 
-    private EntityId _player;
+    private Entity _player;
     private Vector2 _playerStart;
     private int _score;
     private int _lastScore = -1;
@@ -74,6 +74,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _options = options;
         _session = session;
         _jobs = jobs;
+        _scheduler = new FrameScheduler(jobs);
         _renderer = renderer;
         _simulation = options.Simulation;
         _forceParallel = options.ForceParallel;
@@ -89,7 +90,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _splash = new SplashScreen(_font, Viewport);
 
         _playerMove = new PlayerMoveSystem(_map, Input);
-        _critters = new CritterSystem(_map, Jobs, _simulation);
+        _critters = new CritterSystem(_map, _simulation);
         _integrate = new IntegrateSystem(_map);
         _projectiles = new ProjectileSystem(_map) { Buffer = _buffer };
         _scheduler.Register(_playerMove);
@@ -184,7 +185,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             Vector2 direction = state.AimTarget - origin;
             if (direction.LengthSquared() >= 0.0001f && EcsWorld.Query<Position, ArrowProjectile>().Count < SampleConfig.MaxArrows)
             {
-                EntityId arrow = EcsWorld.Create();
+                Entity arrow = EcsWorld.Create();
                 EcsWorld.AddComponent(arrow, new Position(origin));
                 EcsWorld.AddComponent(arrow, new ArrowProjectile
                 {
@@ -284,7 +285,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             {
                 Vector2 position = new(1f + _random.NextSingle() * (grid.Width - 3f), 1f + _random.NextSingle() * (grid.Height - 3f));
                 AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
-                EntityId entity = EcsWorld.Create();
+                Entity entity = EcsWorld.Create();
                 _scene!.Register(entity, EntityLifetime.Scene);
                 EcsWorld.AddComponent(entity, new Position(position));
                 EcsWorld.AddComponent(entity, CritterSystem.Create(species, position));
@@ -296,7 +297,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         {
             AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
             Vector2 position = CritterSystem.FindSpawn(_map, _random, _playerStart);
-            EntityId entity = EcsWorld.Create();
+            Entity entity = EcsWorld.Create();
             _scene!.Register(entity, EntityLifetime.Scene);
             EcsWorld.AddComponent(entity, new Position(position));
             EcsWorld.AddComponent(entity, CritterSystem.Create(species, position));

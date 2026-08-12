@@ -1,17 +1,17 @@
-using Engine.Core;
+using Engine.Ecs.Sparse;
 
 namespace Engine.App;
 
 public sealed class World
 {
     private readonly Dictionary<string, Scene> _scenes = new(StringComparer.Ordinal);
-    private readonly Engine.Ecs.World _ecsWorld = new();
+    private readonly Engine.Ecs.Sparse.World _ecsWorld = new();
 
     internal World(string name) => Name = name;
 
     public string Name { get; }
     public Scene? ActiveScene { get; private set; }
-    public Engine.Ecs.World EcsWorld => _ecsWorld;
+    public Engine.Ecs.Sparse.World EcsWorld => _ecsWorld;
 
     public Scene LoadScene(string name)
     {
@@ -43,9 +43,9 @@ public sealed class World
         if (ReferenceEquals(ActiveScene, scene)) ActiveScene = null;
     }
 
-    public EntityId CreateEntity(EntityLifetime lifetime = EntityLifetime.Transient)
+    public Entity CreateEntity(EntityLifetime lifetime = EntityLifetime.Transient)
     {
-        EntityId entity = _ecsWorld.Create();
+        Entity entity = _ecsWorld.Create();
         if (lifetime == EntityLifetime.Scene)
         {
             if (ActiveScene is null) throw new InvalidOperationException("A scene is required for scene-owned entities.");

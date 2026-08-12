@@ -1,11 +1,10 @@
 using System.Numerics;
 using Engine.App;
-using Engine.Core;
-using Engine.Ecs;
+using Engine.Ecs.Sparse;
 
 namespace IsometricSandbox.Game;
 
-public struct CritterWanderBody : IForEach<Position, Critter, CritterWanderBody>
+public struct CritterWanderBody : IQueryAction<Position, Critter, CritterWanderBody>
 {
     private const float FleeRadiusSquared = SampleConfig.FleeRadius * SampleConfig.FleeRadius;
 
@@ -14,7 +13,7 @@ public struct CritterWanderBody : IForEach<Position, Critter, CritterWanderBody>
     public Vector2 Player;
     public float DeltaSeconds;
 
-    public static void Execute(ref CritterWanderBody body, EntityId entity, ref Position position, ref Critter critter)
+    public static void Execute(ref CritterWanderBody body, Entity entity, ref Position position, ref Critter critter)
     {
         Vector2 away = position.Value - body.Player;
         if (away.LengthSquared() < FleeRadiusSquared)

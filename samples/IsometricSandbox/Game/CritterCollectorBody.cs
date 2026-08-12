@@ -1,7 +1,6 @@
 using System.Numerics;
 using Engine.App;
-using Engine.Core;
-using Engine.Ecs;
+using Engine.Ecs.Sparse;
 
 namespace IsometricSandbox.Game;
 
@@ -9,14 +8,14 @@ namespace IsometricSandbox.Game;
 // whole flight sees the same herd state (and a critter can die at most once
 // per step). Sized to the normal-mode population; simulation critters have
 // no Health component so they are skipped entirely.
-public struct CritterCollectorBody : IForEach<Position, Critter, Health, CritterCollectorBody>
+public struct CritterCollectorBody : IQueryAction<Position, Critter, Health, CritterCollectorBody>
 {
-    public EntityId[] Entities;
+    public Entity[] Entities;
     public Vector2[] Positions;
     public float[] Radii;
     public int Count;
 
-    public static void Execute(ref CritterCollectorBody body, EntityId entity, ref Position position, ref Critter critter, ref Health health)
+    public static void Execute(ref CritterCollectorBody body, Entity entity, ref Position position, ref Critter critter, ref Health health)
     {
         if (body.Count >= body.Entities.Length) return;
         body.Entities[body.Count] = entity;

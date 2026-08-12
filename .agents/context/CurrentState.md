@@ -2,67 +2,26 @@
 
 ## Status
 
-The engine is a Windows-first .NET 10 prototype for 2D/2.5D isometric games. The MVP vertical slice is complete: SDK/build policy, core entity and clock types, isometric math, an archetype ECS (queries, system scheduler, command buffers), backend-neutral contracts (rendering/audio/physics/platform), a deterministic tile map, continuous movement with collision and jump, camera following, SDL3 window/input, and the Vulkan render path.
+- Windows-first .NET 10 2D/2.5D isometric engine prototype.
+- Vulkan is the only renderer; SDL3 provides windowing, input, and Vulkan surfaces.
+- Engine.Ecs.Sparse is the canonical ECS implementation.
+- IsometricSandbox runs on sparse entities, serial sparse queries, deferred mutation, and the sparse frame scheduler.
+- Rendering remains separate from gameplay through sprite extraction and Vulkan submission.
 
-Rendering is split between a backend-neutral `IRenderer` contract (`BeginFrame`/`Submit(SpritePacket)`/`EndFrame`/`UploadTexture`) and a single Vulkan backend:
+## Active Constraints
 
-- **Vulkan (`Engine.Rendering.Vulkan`)** — swapchain, render pass, per-swapchain framebuffers, SPIR-V shape shaders (GLSL compiled to committed `.spv` at **build time** by the incremental `ShaderCompile.targets`/`glslc` and copied to `shaders/` in output), graphics pipeline, descriptor pool allocator, texture uploader, and a batch renderer that accumulates submitted packets and issues per-texture-range indexed draws.
-- **Texture sampling (Milestone A slice)** — `ShapeVertex` carries `Uv` (attribute location 2); the shape pipeline binds descriptor set 0 as a combined image sampler and the fragment shader samples `texture × inColor`. `TextureUploader` seeds a 1×1 white texture at handle 0 (default = identity) and uploads with a per-texture filter (`TextureFilter.Linear`/`Nearest`). `SpritePacket.Texture` is honored by the batch renderer; `Material` is still ignored. Atlases, bindless, and per-frame uploads are out of scope.
-- **Asset loading (PNG)** — `PngLoader.Load(IRenderer, path, filter)` (StbImageSharp) decodes `assets/textures/*.png` (copied to output `textures/`) at startup and returns a `TextureHandle`; missing/corrupt files log `[assets] ...` and fall back to procedural/colored art. Texture names, the placeholder generator, and the RGBA/Nearest authorship conventions are in `ProjectConfig.md` (Assets) and the `assets-io` skill.
+- Sparse queries support one-, two-, and three-component intersections; parallel query execution is not implemented yet.
+- Fixed-step movement and collision remain deterministic and main-thread driven.
+- Asset decoding and texture ownership remain sample-local and managed.
+- Vulkan validation and real Linux/macOS runs remain environment-dependent.
 
-The sample is now the **"Archer in the Forest" mini-game** (`samples/IsometricSandbox`): a 20×20 tile map (grass, river with bridges, forest, bonfire, wall border), an archer player who aims at the mouse cursor and shoots arrows (left click), and exactly 10 deer/rabbits (no respawn — killed animals stay dead until the run is restarted with R) that wander, flee the player, and are killed by arrows (+score in the window title). At startup it shows a **splash screen** (game name, progress bar, NN%, ~0.8 s minimum at 30 fps) while the 8 world textures load stepwise, then the frame timer is reset before the game loop. Entities render as upright textured quads (bottom-center anchored) in both iso and `--2d`; the scene is depth-sorted with a stable counting sort by SortKey (the renderer draws in submission order). Bonfire flicker is a per-frame color/tint modulation.
+## Next Actions
 
-Sample tunables (window title/size, animal count, player speed/radius, jump duration/height) live in `Game/SampleConfig.cs`, and `SampleConfig.MaxAnimals` (10) caps the population. The sample is split into small named types: `Program.cs` is a thin entry point (`Options.Parse` → `ArcherGameApp.Create`); `ArcherGameApp` (a `GameHost`) wires window/renderer/world/job-system and drives the frame loop; four ECS systems (`PlayerMoveSystem`, `CritterSystem`, `IntegrateSystem`, `ProjectileSystem`) run through a `SystemScheduler`; `Options` parses `--2d`/`--cap`/`--fullscreen`/`--metrics`/`--parallel`/`--simulation`. Tile extraction is one shared loop (`RenderExtractionSystem.ExtractTiles`), with `ExtractMapSprites` (used by tests/benchmarks) forwarding to it with no texture handling.
+- Milestone 7: add deliberate multithreaded sparse queries with serial/parallel parity, determinism, and benchmark thresholds.
+- Roadmap follow-ups remain in Roadmap.md.
 
-Windowing/input (`Engine.Platform.SDL3`): the window opens centered on the primary screen at 800x600 via SDL3 (`ppy.SDL3-CS`; `SdlRuntime` refcounts `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)`/`SDL_Quit`, `SdlWindow` owns the `SDL_Window*`, `SdlInput` polls `SDL_GetKeyboardState`/`SDL_GetMouseState`). `IInputState` exposes `MousePosition` (client px), `IsMouseDown`, `MousePressed`, and the `Restart` (R) key. `IsometricCamera` has `ScreenToWorld` (affine inverse of `ScreenTransform`) for mouse aiming.
+## Resume Rules
 
-Aiming reliability: `SdlWindow` latches a left-click `SDL_EVENT_MOUSE_BUTTON_DOWN` (event-driven, so quick clicks that land entirely between two polls are still captured) and `SdlInput.MousePressed` consumes that latch each `Update()`; the sample freshens the camera transform (`camera.Follow`) immediately before `ScreenToWorld` at click time so the aim target matches the player's current position even after frame hitches.
-
-The Vulkan renderer is surface-factory driven: `IVulkanSurfaceFactory` (implemented by `SdlWindow`) supplies required instance extensions from `SDL_Vulkan_GetInstanceExtensions` and creates/destroys the surface via `SDL_Vulkan_CreateSurface`/`SDL_Vulkan_DestroySurface`, bridged through `VkInstance.Handle`/`new VkSurfaceKHR((ulong)handle)`.
-
-Vulkan is the only renderer.
-
-The platform layer is cross-platform-ready: SDL3 (window/input/surface) is the backend on every OS, so Linux (X11/Wayland) and macOS (SDL3 + MoltenVK) are verification exercises rather than new backend code. See the `platform-neutrality` skill and `Roadmap.md`.
-
-## Codebase refactor (milestone)
-
-Behavior-preserving refactor, whole repo (excluding `tools/mcp/`):
-
-- **Rendering simplification** (`Engine.Rendering.Vulkan`): the large methods in `VulkanRenderer`/`BatchRenderer`/`TextureUploader`/`VulkanPipeline` were split into small named helpers; shared, single-responsibility helper types extracted and given their own files — `CameraPushConstants`, `FrameGeometryCache` (per-slot byte-snapshot dirty gate), `OneShotCommandBuffer` (immediate uploads), `VulkanImage` (layout transitions), `VulkanDebug` (object labels/names).
-- **1 type = 1 file**, repo-wide, strict (enums and 1-line handles included): every contract bundle was split (`RenderContracts`, `AudioContracts`, `PhysicsContracts`, `PlatformContracts`, `InputContracts`), plus sample `CameraProjection`/`CameraSystem`/`Animal`/`TileMap` into `ICameraProjection`/`IsometricProjection`/`OrthographicProjection`/`ScreenTransform`/`IsometricCamera`, `AnimalSpecies`/`AnimalSystem`, `TileType`; tests `SmokeTestRunner` → `TestCase`/`TestAssert`; benchmarks `BenchResult`/`BenchmarkComparer`/`BenchRunner` → per-type files; Win32 interop structs `POINT`/`RECT`/`MONITORINFO`/`MSG` split from `Win32Types.cs`.
-- Verified after refactor: `dotnet build Engine.slnx` 0 errors/0 warnings, smoke tests print `Smoke tests passed`, sample boots clean, benchmark comparison vs baseline = PASS 15 / WARN 0 / FAIL 0 (no new allocations).
-
-## SDL3 platform migration (milestone)
-
-Replaced the native Win32 windowing/input path with SDL3 (`ppy.SDL3-CS` pinned `2026.722.0`) and removed `Engine.Platform.Win32` entirely:
-
-- **Contracts** (`Engine.Platform`): `IVulkanSurfaceFactory` (required instance extensions + `CreateSurface`/`DestroySurface` as `nint` handles) is carried on `NativeWindowSurface.SurfaceFactory`; `PlatformKind.Win32` renamed to `PlatformKind.Sdl3` (`Sdl3, X11, Wayland, MacOs`). `IGameWindow`/`IInputState`/`GameKey` are unchanged.
-- **SDL3 backend** (`Engine.Platform.SDL3`): `SdlRuntime` (refcounted `SDL_Init`/`SDL_Quit`), `SdlWindow : IGameWindow, IVulkanSurfaceFactory` (Vulkan/resizable/high-DPI window; pumps QUIT/CLOSE_REQUESTED → ShouldClose, RESIZED → Size, left-button-down latch; fullscreen via `SDL_SetWindowFullscreen`), `SdlInput` (key bitmask edges from `SDL_GetKeyboardState` + mouse state + consumed click latch).
-- **Renderer** (`Engine.Rendering.Vulkan`): `VulkanRenderer` no longer knows any OS surface struct — instance extensions come from the factory, the surface comes from `factory.CreateSurface(_instance.Handle)`, teardown via `factory.DestroySurface`. The `VK_KHR_win32_surface`/`VkWin32SurfaceCreateInfoKHR` branch is gone.
-- **Wiring**: `Engine.slnx` + `Engine.Platform.Desktop.csproj` reference SDL3 instead of Win32; `GamePlatform.CreateWindow` is SDL3 on all OSes (no more `PlatformNotSupportedException`). `Engine.Platform.Win32` directory deleted.
-- Verified: `dotnet build Engine.slnx` 0 errors/0 warnings, smoke tests print `Smoke tests passed`, sample boots clean (iso, `--2d`, `--cap 60`, `--fullscreen`), `SDL3.dll` win-x64 + `SDL3-CS.dll` present in sample output.
-
-## Build-time shader compilation + splash screen (milestone)
-
-- **Build-time GLSL compilation** (`Engine.Rendering.Vulkan`): `ShaderCompile.targets` (imported by `Engine.Rendering.Vulkan.csproj`) runs an incremental `CompileShaders` target before `Build` — any `assets/shaders/*.glsl` newer than its committed `.spv` is recompiled with `glslc`. `glslc` is probed as `/p:GlslcPath` → `$(VULKAN_SDK)/Bin/glslc.exe` → `$(VULKAN_SDK)/bin/glslc` → `/usr/bin/glslc` → `/opt/homebrew/bin/glslc` → PATH. Missing compiler → high-importance `[shaders] glslc not found; skipping...` + fallback to committed `.spv`; `/p:ShadersRequired=true` makes it a hard error. Output is deterministic (recompile of unchanged source is byte-identical). `tools\CompileShaders.ps1` remains as a manual fallback. See the `shader-workflow` skill.
-- **Splash screen** (`samples/IsometricSandbox/Game`): driven by `GameHost.Run` — `RunSplash` (30 fps via `GameHostConfig.SplashFramesPerSecond`, min `SampleConfig.SplashMinimumSeconds = 0.8` s) then **resets `_frameTimer`** (avoids `GameClock.Advance`'s 0.25 s clamp bursting the sim after the splash) before the game loop. `ArcherGameApp.ShowSplash = !_simulation`; per splash frame `OnSplashFrame(percent)` uploads the next ready decode (`TextureLibrary.TryUploadNextStep`) and `SplashScreen.Render` draws the `BitmapFont` (procedural 5×7 glyph-per-texture, `TextureFilter.Nearest`, A–Z/0–9/`%`/`.`/space) + `BitmapGlyph` backdrop/progress/title, then `Present`s that slice. `TextureLibrary` loads stepwise (`StepCount = 8`: player, deer, rabbit, grass, water, tree, bonfire, wall; `Progress`/`IsComplete`); `SplashPercent = 5 + progress*95/steps`.
-- **Fixed bug (fullscreen crash)**: `TextureUploader` used to borrow `VulkanRenderer`'s per-frame `VkCommandPool`, which `Resize()` destroys/recreates — the fullscreen startup resize invalidated the pool before splash texture uploads, crashing `vkAllocateCommandBuffers` (0xC0000005). `TextureUploader` now creates and owns its own one-shot command pool (destroyed in `Dispose`).
-- Verified: `dotnet build Engine.slnx` 0/0, smoke tests pass, sample boots clean under default/`--2d`/`--cap 60`/`--fullscreen`/`--metrics` (8 `[assets] loaded` lines, steady-state `alloc=0.0 B/frame`, `sim=120`), shader recompile proof done (touched `.glsl` → regenerated `.spv`, byte-identical). Benchmark gate intentionally not re-run (no hot-path/extraction change).
-
-## Job dependencies + parallel Vulkan command recording (milestone)
-
-- **JobSystem rewritten** (`Engine.Threading`): per-worker unbounded `Channel<int>` queues + work stealing + dependency gating, lock-free (no `lock`, semaphore sleep/wake, no busy-wait). API: `Schedule(action[, deps])` (≤8 deps, inline slot storage), `ScheduleFor(count, minChunk, body)` → barrier handle (countdown promotion), `IsComplete`/`Complete` (rethrows job exceptions as `AggregateException`; chunk errors reach the barrier), `DrainAsync` kept. 4096-slot ring with generation-checked handles; pooled `ParallelForChunk` closures → steady-state dispatch is allocation-free. Existing tests unchanged + 9 new dependency/exception/stress tests.
-- **Parallel Vulkan recording**: `ParallelDrawRecorder` (one transient command pool per chunk slot × 3 frame slots, reset after the slot fence) records draws into secondary command buffers; chunks are contiguous texture-range partitions executed in order via `vkCmdExecuteCommands` (painter order preserved exactly). Render pass now always uses `SecondaryCommandBuffers` and begins in `BatchRenderer.EndFrame` — geometry copies/barriers moved before the pass (fixes the copy-inside-render-pass VUID violation). Chunk count: `ranges < 512 → 1` (inline, uniform path), else `min(ranges/256, workers)`. `VulkanRenderer` ctor takes an optional `JobSystem` (creates+owns one when null); `BatchRenderer`/`ParallelDrawRecorder`/`FrameRenderContext`/`TextureDrawRange` are internal.
-- **Sample wiring**: `ArcherGameApp` (a `GameHost`) owns the shared `JobSystem` and a `PlatformSession` (`GamePlatform.CreateWindow` → SDL3 window/input; `VulkanRenderer(surface, jobs)`). Splash decodes all 8 PNGs on workers up front (`TextureLibrary.BeginAsyncLoad`); uploads stay main-thread, one ready decode per splash frame (`TryUploadNextStep`). Parallel tile extraction (row bands via `TileExtractionDispatch`, per-band flicker `Random`s, deterministic band-order merge, entities+sort on main) is hosted in `ArcherGameApp.UseParallelExtraction` and engages when tiles ≥ 10,000 or `--parallel`; fence/acquire overlaps the band jobs. `--parallel` flag added (`Options.ForceParallel`).
-- Verified: `dotnet build Engine.slnx` 0/0, all smoke tests pass (incl. new job tests), sample boots clean under default/`--2d`/`--parallel`/`--fullscreen`/`--metrics --cap 60`/`--metrics --parallel --2d` (8 `[assets] loaded` lines, steady-state `alloc=0.0 B/frame` even with `--parallel`, `sim=120`). Benchmark vs baseline: PASS 15 / WARN 0 / FAIL 0; new `Jobs_ScheduleComplete_64` (~0 B/op), `Jobs_ScheduleFor_1M` (0 B/op), `Extraction_Iso128x128_Parallel` (≈serial at 16k tiles — overhead ≈ savings there; value is frame overlap + larger scales).
-
-## ECS queries + system scheduling (milestone)
-
-- **Archetype ECS** (`Engine.Ecs`): `World` with generation-safe `EntityId` handles (index recycling), sorted-archetype storage, archetype moves on add/remove, versioned query-cache invalidation; `AddComponent`/`RemoveComponent`/`SetComponent`/`Get`/`TryGetComponent`/`HasComponent`.
-- **Queries**: cached `Query<T1>`/`Query<T1,T2>`/`Query<T1,T2,T3>` with `Count`, serial `ForEach`, and `ForEachParallel` (JobSystem chunk dispatch across archetypes via pooled static dispatchers; race-free per-row writes).
-- **`SystemScheduler`**: `ISystem` + `ComponentAccess` read/write declarations; a newly registered system is placed after the last conflicting one; read/read does not conflict.
-- **`WorldCommandBuffer`**: deferred `AddComponent`/`RemoveComponent`/`Destroy` applied after a system run (adds → removes → destroys); `ProjectileSystem` uses it for arrow/critter kills.
-- **Sample**: `ArcherGameApp` (`GameHost`) replaces `GameSession`/`Player`/`SceneRenderer`; four systems (`PlayerMoveSystem`, `CritterSystem`, `IntegrateSystem`, `ProjectileSystem`) drive the world. New `--simulation` stress mode: 128×128 procedural map + 100,000 critters through `Query<Position, Critter>.ForEachParallel` (deterministic, shared-state-free `SimCritterBody`).
-- **Tests**: `EcsTests` grew 8 → 25 cases — query iteration 1/2/3, parallel-vs-serial parity + determinism at 20k entities across archetypes, scheduler ordering/conflicts, command-buffer apply/clear, add/remove/set/get/has, recycle+move stress.
-- **Benchmarks**: `Ecs_AddRemoveComponent` (~56 B/op — archetype-move type sorting), `Ecs_TryGetHit`/`Ecs_RemoveMiss` (0 B).
-- Verified: `dotnet build Engine.slnx` 0/0, smoke tests pass (all 25 ECS cases), sample boots clean default/`--2d`/`--simulation` (8 `[assets] loaded`, no stderr). Benchmark vs baseline: PASS 12 / WARN 0 / FAIL 0 (first run flagged `Buffer_Add64Clear` +54% — re-run showed +4.6% PASS; transient machine noise, no buffer code change since baseline).
+- Read CompletedMilestones.md for milestone history.
+- Read Implemented.md for the brief shipped-feature inventory.
+- Read KnownIssues.md for active limitations.

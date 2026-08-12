@@ -5,8 +5,7 @@ internal static class SmokeTestRunner
     private static readonly (string Name, TestCase[] Tests)[] Suites =
     [
         (nameof(IsometricMathTests), IsometricMathTests.Tests),
-        (nameof(EcsTests), EcsTests.Tests),
-        (nameof(FrameSchedulerTests), FrameSchedulerTests.Tests),
+        (nameof(SparseFrameSchedulerTests), SparseFrameSchedulerTests.Tests),
         (nameof(SparseEcsTests), SparseEcsTests.Tests),
         (nameof(RuntimeContractsTests), RuntimeContractsTests.Tests),
         (nameof(TileMapTests), TileMapTests.Tests),

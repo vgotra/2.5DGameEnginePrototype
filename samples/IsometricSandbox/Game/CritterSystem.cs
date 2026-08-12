@@ -1,9 +1,8 @@
 using System.Numerics;
 using Engine.App;
 using Engine.Core;
-using Engine.Ecs;
-using World = Engine.Ecs.World;
-using Engine.Threading;
+using Engine.Ecs.Sparse;
+using World = Engine.Ecs.Sparse.World;
 
 namespace IsometricSandbox.Game;
 
@@ -11,34 +10,19 @@ namespace IsometricSandbox.Game;
 // wander/flee logic as the original animals; simulation mode runs a
 // deterministic, allocation-free wander in parallel so a huge herd is a
 // real job-system stress test.
-public sealed class CritterSystem(TileMap map, JobSystem jobs, bool simulation) : ISystem
+public sealed class CritterSystem(TileMap map, bool simulation) : ISystem
 {
     private readonly Random _random = new(1337);
     private float _time;
-    private long _critterAlloc;
-    private int _critterCalls;
-
-    public EntityId Player { get; set; }
-
-    public ComponentAccess Access => ComponentAccess.Write<Position, Critter>();
+    public Entity Player { get; set; }
 
     public void Update(World world, float deltaSeconds)
     {
         if (simulation)
         {
             SimCritterBody body = new() { Map = map, Time = _time, DeltaSeconds = deltaSeconds };
-            Query<Position, Critter> query = world.Query<Position, Critter>();
-            int minChunk = Math.Max(64, query.Count / jobs.WorkerCount);
-            long before = GC.GetAllocatedBytesForCurrentThread();
-            query.ForEachParallel(jobs, ref body, minChunk);
-            long after = GC.GetAllocatedBytesForCurrentThread();
-            _critterAlloc += after - before;
-            if (++_critterCalls >= 180)
-            {
-                Console.WriteLine($"critterparallel alloc={(double)_critterAlloc / _critterCalls:F1} B/call");
-                _critterCalls = 0;
-                _critterAlloc = 0;
-            }
+            world.Query<Position, Critter>().ForEach(ref body);
+            _time += deltaSeconds;
             return;
         }
         else

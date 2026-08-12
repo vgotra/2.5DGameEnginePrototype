@@ -1,5 +1,5 @@
 using Engine.App;
-using Engine.Core;
+using SparseEntity = Engine.Ecs.Sparse.Entity;
 
 namespace Engine.Tests;
 
@@ -35,9 +35,9 @@ internal static class RuntimeContractsTests
         TestGame game = new();
         World world = game.Create("Sanctuary");
         Scene scene = world.LoadScene("Forest");
-        EntityId sceneEntity = world.CreateEntity(EntityLifetime.Scene);
-        EntityId transientEntity = world.CreateEntity();
-        EntityId worldEntity = world.EcsWorld.Create();
+        SparseEntity sceneEntity = world.CreateEntity(EntityLifetime.Scene);
+        SparseEntity transientEntity = world.CreateEntity();
+        SparseEntity worldEntity = world.EcsWorld.Create();
         world.UnloadScene(scene.Name);
         TestAssert.True(!world.EcsWorld.IsAlive(sceneEntity), "scene entity is destroyed on unload");
         TestAssert.True(world.EcsWorld.IsAlive(transientEntity) && world.EcsWorld.IsAlive(worldEntity), "non-scene entities survive unload");

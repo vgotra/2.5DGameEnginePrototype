@@ -1,15 +1,14 @@
 using Engine.App;
-using Engine.Core;
-using Engine.Ecs;
+using Engine.Ecs.Sparse;
 
 namespace IsometricSandbox.Game;
 
-public struct IntegrateBody : IForEach<Position, Velocity, Collider, IntegrateBody>
+public struct IntegrateBody : IQueryAction<Position, Velocity, Collider, IntegrateBody>
 {
     public TileMap Map;
     public float DeltaSeconds;
 
-    public static void Execute(ref IntegrateBody body, EntityId entity, ref Position position, ref Velocity velocity, ref Collider collider)
+    public static void Execute(ref IntegrateBody body, Entity entity, ref Position position, ref Velocity velocity, ref Collider collider)
     {
         position.Value = MovementSystem.Move(body.Map, position.Value, velocity.Value, velocity.Value.Length(), collider.Radius, body.DeltaSeconds);
     }

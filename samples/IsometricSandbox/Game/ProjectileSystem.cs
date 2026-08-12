@@ -1,8 +1,8 @@
 using System.Numerics;
 using Engine.App;
 using Engine.Core;
-using Engine.Ecs;
-using World = Engine.Ecs.World;
+using Engine.Ecs.Sparse;
+using World = Engine.Ecs.Sparse.World;
 
 namespace IsometricSandbox.Game;
 
@@ -12,7 +12,7 @@ namespace IsometricSandbox.Game;
 // map contact exactly like the original.
 public sealed class ProjectileSystem(TileMap map) : ISystem
 {
-    private readonly EntityId[] _critters = new EntityId[SampleConfig.MaxAnimals];
+    private readonly Entity[] _critters = new Entity[SampleConfig.MaxAnimals];
     private readonly Vector2[] _critterPositions = new Vector2[SampleConfig.MaxAnimals];
     private readonly float[] _critterRadii = new float[SampleConfig.MaxAnimals];
     private Query<Position, ArrowProjectile>? _arrowQuery;
@@ -21,7 +21,6 @@ public sealed class ProjectileSystem(TileMap map) : ISystem
     public WorldCommandBuffer Buffer { get; set; } = new();
     public int LastKills { get; private set; }
 
-    public ComponentAccess Access => ComponentAccess.ReadWrite<ArrowProjectile, Position>();
 
     public void Update(World world, float deltaSeconds)
     {

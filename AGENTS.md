@@ -2,7 +2,7 @@
 
 - Windows-first (at current moment) .NET 10 isometric game engine prototype. 
 - Vulkan is the renderer. 
-- Before starting work, read `.agents/context/*` (CurrentState, KnownIssues, ProjectConfig, Roadmap, Implemented) — these are auto-loaded into every session and are the resumable-state convention; keep updates brief (terse bullets only).
+- Before starting work, read `.agents/context/*` (CurrentState, KnownIssues, ProjectConfig, Roadmap, Implemented, CompletedMilestones) — these are auto-loaded into every session; `CurrentState` is the present snapshot, `Implemented` is the brief feature inventory, and `CompletedMilestones` is the milestone history.
 - For the codebase structure map, use the `mcp-repo-graph` MCP server (`orient` first; then `find`/`impact`/`trace`/`read`). MCP and tooling details: `.agents/README.md`.
 - For conventions and workflows, load the relevant skill from `.agents/skills/` (index + placeholder glossary: `.agents/skills/README.md`). Skills are placeholder-based; substitute concrete values from `.agents/context/ProjectConfig.md`.
 

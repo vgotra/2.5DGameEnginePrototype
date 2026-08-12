@@ -1,18 +1,17 @@
 using System.Numerics;
 using Engine.App;
-using Engine.Core;
-using Engine.Ecs;
+using Engine.Ecs.Sparse;
 
 namespace IsometricSandbox.Game;
 
-public struct PlayerMoveBody : IForEach<Position, Velocity, PlayerState, PlayerMoveBody>
+public struct PlayerMoveBody : IQueryAction<Position, Velocity, PlayerState, PlayerMoveBody>
 {
     public TileMap Map;
     public Vector2 Direction;
     public bool JumpRequested;
     public float DeltaSeconds;
 
-    public static void Execute(ref PlayerMoveBody body, EntityId entity, ref Position position, ref Velocity velocity, ref PlayerState state)
+    public static void Execute(ref PlayerMoveBody body, Entity entity, ref Position position, ref Velocity velocity, ref PlayerState state)
     {
         if (body.Direction.LengthSquared() > 0) state.Facing = Vector2.Normalize(body.Direction);
         if (body.JumpRequested && !state.IsJumping) TryStartJump(ref body, ref position, ref state);

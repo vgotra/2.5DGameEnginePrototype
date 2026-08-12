@@ -1,8 +1,8 @@
 using System.Numerics;
 using Engine.App;
 using Engine.Core;
-using Engine.Ecs;
-using World = Engine.Ecs.World;
+using World = Engine.Ecs.Sparse.World;
+using Engine.Ecs.Sparse;
 using Engine.Platform;
 
 namespace IsometricSandbox.Game;
@@ -12,9 +12,7 @@ namespace IsometricSandbox.Game;
 // Actual collision-aware movement happens later in IntegrateSystem.
 public sealed class PlayerMoveSystem(TileMap map, IInputState input) : ISystem
 {
-    public EntityId Player { get; set; }
-
-    public ComponentAccess Access => ComponentAccess.Write<Velocity, PlayerState>();
+    public Entity Player { get; set; }
 
     public void Update(World world, float deltaSeconds)
     {

@@ -1,7 +1,6 @@
-namespace Engine.Ecs;
+namespace Engine.Ecs.Sparse;
 
 public interface ISystem
 {
-    ComponentAccess Access { get; }
     void Update(World world, float deltaSeconds);
 }

@@ -6,7 +6,7 @@ How the AI-agent tooling in this repo is configured and used. All agent instruct
 
 | Path | Purpose |
 |---|---|
-| `.agents/context/*.md` | Auto-loaded into every session's instructions (`opencode.json` → `instructions`). Resumable state (`CurrentState.md`, `KnownIssues.md`, `Roadmap.md`, `Implemented.md`) and the concrete placeholder values (`ProjectConfig.md`). Keep these terse — they are the session's working memory. |
+| `.agents/context/*.md` | Auto-loaded into every session's instructions (`opencode.json` → `instructions`). `CurrentState.md` is the present-state snapshot; `Implemented.md` is the brief shipped-feature inventory; `CompletedMilestones.md` is the authoritative milestone history; `KnownIssues.md`, `Roadmap.md`, and `ProjectConfig.md` provide active limitations, next actions, and concrete configuration. Keep snapshots and inventories terse. |
 | `.agents/skills/` | Portable, placeholder-based skills. The local `.agents/skills/README.md` is the index and placeholder glossary; the `SKILL.md` files are self-contained sources of truth. |
 | `.agents/README.md` | This file: agent-tooling reference. |
 | `opencode.json` | opencode config: `instructions` auto-loads `.agents/context/*`; `mcp` registers the `mcp-repo-graph` server. Config is loaded only at startup — after editing it, restart opencode. |

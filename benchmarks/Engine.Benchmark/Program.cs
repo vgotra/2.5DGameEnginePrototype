@@ -17,9 +17,6 @@ internal static class Program
         bool save = false;
         string compare = "last";
         double allocTolerance = DefaultAllocTolerance;
-        bool milestone0 = false;
-        int? workers = null;
-        int? chunkSize = null;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -29,9 +26,6 @@ internal static class Program
                 case "--machine": machine = NextValue(args, ref i); break;
                 case "--iterations": iterations = int.Parse(NextValue(args, ref i), CultureInfo.InvariantCulture); break;
                 case "--alloc-tolerance": allocTolerance = double.Parse(NextValue(args, ref i), CultureInfo.InvariantCulture); break;
-                case "--milestone0": milestone0 = true; break;
-                case "--workers": workers = int.Parse(NextValue(args, ref i), CultureInfo.InvariantCulture); break;
-                case "--chunk-size": chunkSize = int.Parse(NextValue(args, ref i), CultureInfo.InvariantCulture); break;
                 case "--compare": compare = NextValue(args, ref i); break;
                 case "--help": PrintUsage(); return 0;
                 default:
@@ -40,8 +34,6 @@ internal static class Program
                     return 2;
             }
         }
-
-        if (milestone0) return Milestone0Benchmark.Run(iterations, workers, chunkSize);
 
         string resultsDir = Path.Combine(Directory.GetCurrentDirectory(), "benchmarks", "results");
         Directory.CreateDirectory(resultsDir);
@@ -103,9 +95,6 @@ internal static class Program
               --save                  Write results as the committed baseline (benchmarks/results/baseline.json).
               --compare <target>      Compare against 'last' (default), 'baseline', or 'none'.
               --iterations <count>    Override per-benchmark iteration counts.
-              --milestone0             Run the baseline ECS serial/parallel workload matrix.
-              --workers <count>        Worker count for --milestone0.
-              --chunk-size <count>     Parallel chunk size for --milestone0.
               --machine <name>        Machine tag recorded in results (default: machine name).
               --alloc-tolerance <B>   Average bytes/op above which allocations FAIL (default: 0.5).
               --help                  Show this help.

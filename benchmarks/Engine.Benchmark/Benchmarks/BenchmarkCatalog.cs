@@ -8,7 +8,6 @@ internal static class BenchmarkCatalog
         [
             .. ExtractionBenchmarks.Create(),
             .. CollisionBenchmarks.Create(),
-            .. EcsBenchmarks.Create(),
             .. SparseEcsBenchmarks.Create(),
             .. SparseQueryBenchmarks.Create(),
             .. FrameSchedulerBenchmarks.Create(),

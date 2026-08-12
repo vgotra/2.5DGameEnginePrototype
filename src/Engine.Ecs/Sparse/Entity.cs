@@ -17,4 +17,5 @@ public readonly struct Entity : IEquatable<Entity>
     public override int GetHashCode() => HashCode.Combine(Id, Generation);
     public static bool operator ==(Entity left, Entity right) => left.Equals(right);
     public static bool operator !=(Entity left, Entity right) => !left.Equals(right);
+
 }

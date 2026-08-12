@@ -1,5 +1,28 @@
 # Completed Milestones
 
+## 2026-08-12 — Milestone 6: Remove Archetype ECS
+
+Completed:
+
+- Deleted archetype storage, migration, cached-query, old scheduler, command-buffer, and parallel-dispatch infrastructure.
+- Removed archetype-only tests and benchmarks; converted remaining runtime contracts to sparse entities.
+- Sparse ECS is now the only ECS implementation.
+
+Verification:
+
+- Debug/Release builds, console smoke tests, bounded isometric/2D sample launches, and benchmark comparison passed.
+
+## 2026-08-12 — Milestone 5: Port IsometricSandbox to Sparse ECS
+
+Completed:
+
+- Migrated sample gameplay, rendering queries, scene ownership, restart cleanup, deferred mutation, and system execution to sparse ECS.
+- Kept execution serial while preserving normal and simulation behavior.
+
+Verification:
+
+- Debug/Release builds, console smoke tests, isometric/2D simulation launches, and benchmark comparison passed.
+
 ## 2026-08-12 — Milestone 4: Explicit Frame Scheduler
 
 Implemented an additive explicit frame scheduler over the existing archetype ECS.

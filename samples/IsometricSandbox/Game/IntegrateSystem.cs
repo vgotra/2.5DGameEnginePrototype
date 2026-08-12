@@ -1,7 +1,7 @@
 using Engine.App;
 using Engine.Core;
-using Engine.Ecs;
-using World = Engine.Ecs.World;
+using Engine.Ecs.Sparse;
+using World = Engine.Ecs.Sparse.World;
 
 namespace IsometricSandbox.Game;
 
@@ -9,9 +9,7 @@ namespace IsometricSandbox.Game;
 // carry a Collider participate; the archer is the sole user today.
 public sealed class IntegrateSystem(TileMap map) : ISystem
 {
-    public EntityId Player { get; set; }
-
-    public ComponentAccess Access => ComponentAccess.ReadWrite<Velocity, Position>();
+    public Entity Player { get; set; }
 
     public void Update(World world, float deltaSeconds)
     {

@@ -1,24 +1,23 @@
 using System.Numerics;
 using Engine.App;
-using Engine.Core;
-using Engine.Ecs;
+using Engine.Ecs.Sparse;
 
 namespace IsometricSandbox.Game;
 
-public struct ProjectileBody : IForEach<Position, ArrowProjectile, ProjectileBody>
+public struct ProjectileBody : IQueryAction<Position, ArrowProjectile, ProjectileBody>
 {
     private const float HomingRadiusSquared = SampleConfig.HomingRadius * SampleConfig.HomingRadius;
 
     public TileMap Map;
     public WorldCommandBuffer Buffer;
-    public EntityId[] Entities;
+    public Entity[] Entities;
     public Vector2[] Positions;
     public float[] Radii;
     public int CritterCount;
     public float DeltaSeconds;
     public int Kills;
 
-    public static void Execute(ref ProjectileBody body, EntityId entity, ref Position position, ref ArrowProjectile arrow)
+    public static void Execute(ref ProjectileBody body, Entity entity, ref Position position, ref ArrowProjectile arrow)
     {
         arrow.Lifetime -= body.DeltaSeconds;
         Vector2 current = position.Value;
@@ -38,7 +37,7 @@ public struct ProjectileBody : IForEach<Position, ArrowProjectile, ProjectileBod
             {
                 body.Buffer.Destroy(entity);
                 body.Buffer.Destroy(body.Entities[i]);
-                body.Entities[i] = EntityId.Invalid;
+                body.Entities[i] = default;
                 body.Kills++;
                 return;
             }

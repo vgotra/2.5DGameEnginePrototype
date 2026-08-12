@@ -1153,49 +1153,7 @@ Application
 
 ---
 
-# 42. Milestone 5 — Port Existing Systems
-
-Move existing gameplay/sample systems onto:
-
-```text
-new World
-new ComponentStore
-new Query
-new FrameScheduler
-```
-
-Initially run serially.
-
-Compare against old behavior.
-
-Success:
-
-IsometricSandbox works correctly without archetypes.
-
----
-
-# 43. Milestone 6 — Remove Archetype ECS
-
-Delete:
-
-```text
-Archetype
-ArchetypeKey
-archetype migration
-archetype query cache
-old EntityLocation archetype tracking
-old QueryParallelDispatch architecture
-```
-
-Do NOT retain compatibility wrappers.
-
-Success:
-
-Production code contains no archetype dependency.
-
----
-
-# 44. Milestone 7 — Multithreaded Queries
+# 42. Milestone 7 — Multithreaded Queries
 
 Now add multithreading back deliberately.
 

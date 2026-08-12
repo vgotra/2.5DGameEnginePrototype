@@ -13,6 +13,9 @@ public sealed class World
 
     public Entity Create() => Entities.Create();
 
+    public void AddComponent<T>(Entity entity, in T component) where T : unmanaged => Add(entity, in component);
+    public void SetComponent<T>(Entity entity, in T component) where T : unmanaged => Add(entity, in component);
+
     public void Destroy(Entity entity)
     {
         if (!Entities.IsAlive(entity)) return;
@@ -33,6 +36,8 @@ public sealed class World
         if (!Entities.IsAlive(entity)) return;
         GetStore<T>().Remove(entity);
     }
+
+    public void RemoveComponent<T>(Entity entity) where T : unmanaged => Remove<T>(entity);
 
     public ref T Get<T>(Entity entity) where T : unmanaged
     {
