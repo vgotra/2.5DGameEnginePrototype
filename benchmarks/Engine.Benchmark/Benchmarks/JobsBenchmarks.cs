@@ -16,8 +16,8 @@ internal static class JobsBenchmarks
         _sink = new int[1 << 20];
         return
         [
-            new BenchmarkCase("Jobs_ScheduleComplete_64", 20_000, RunScheduleComplete),
-            new BenchmarkCase("Jobs_ScheduleFor_1M", 2_000, RunScheduleFor),
+            new BenchmarkCase("Jobs_RunWait_64", 20_000, RunRunWait),
+            new BenchmarkCase("Jobs_ParallelFor_1M", 2_000, RunParallelFor),
         ];
     }
 
@@ -26,16 +26,16 @@ internal static class JobsBenchmarks
         for (int i = lo; i < hi; i++) _sink[i] = i;
     }
 
-    private static void RunScheduleComplete()
+    private static void RunRunWait()
     {
         JobHandle last = JobHandle.None;
-        for (int i = 0; i < 64; i++) last = _jobs!.Schedule(_work);
-        _jobs!.Complete(last);
+        for (int i = 0; i < 64; i++) last = _jobs!.Run(_work);
+        _jobs!.Wait(last);
     }
 
-    private static void RunScheduleFor()
+    private static void RunParallelFor()
     {
-        JobHandle barrier = _jobs!.ScheduleFor(_sink.Length, 8192, _body);
-        _jobs.Complete(barrier);
+        JobHandle barrier = _jobs!.ParallelFor(_sink.Length, 8192, _body);
+        _jobs.Wait(barrier);
     }
 }

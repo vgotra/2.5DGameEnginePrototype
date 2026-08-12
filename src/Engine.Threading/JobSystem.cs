@@ -3,15 +3,20 @@ using System.Threading.Channels;
 
 namespace Engine.Threading;
 
+public interface IParallelForBody<TState, TBody>
+    where TState : struct
+    where TBody : struct, IParallelForBody<TState, TBody>
+{
+    static abstract void Execute(in TState state, int lo, int hi);
+}
+
 public sealed class JobSystem : IDisposable
 {
     private const int SlotCount = 4096;
     private const int SlotMask = SlotCount - 1;
-    internal const int MaxDependencies = 8;
 
     private readonly JobSlot[] _slots = new JobSlot[SlotCount];
     private readonly Channel<int>[] _channels;
-    private readonly ConcurrentQueue<int> _waiting = new();
     private readonly SemaphoreSlim _workSignal = new(0);
     private readonly SemaphoreSlim _completion = new(0);
     private readonly CancellationTokenSource _shutdown = new();
@@ -39,59 +44,20 @@ public sealed class JobSystem : IDisposable
 
     public int WorkerCount => _workers.Length;
 
-    public JobHandle Schedule(Action action)
+    public JobHandle Run(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
         int slotIndex = ClaimSlot();
         JobSlot slot = _slots[slotIndex];
         slot.Work = action;
         slot.Error = null;
-        slot.DepCount = 0;
         slot.ParentSlot = -1;
         Volatile.Write(ref slot.State, (int)JobSlotState.Ready);
         EnqueueReady(slotIndex);
         return new JobHandle(slotIndex, slot.Generation);
     }
 
-    public JobHandle Schedule(Action action, JobHandle dependency)
-    {
-        Span<JobHandle> dependencies = stackalloc JobHandle[1] { dependency };
-        return Schedule(action, dependencies);
-    }
-
-    public JobHandle Schedule(Action action, ReadOnlySpan<JobHandle> dependencies)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-        if (dependencies.Length > MaxDependencies)
-            throw new ArgumentException($"A job accepts at most {MaxDependencies} dependencies.", nameof(dependencies));
-        int slotIndex = ClaimSlot();
-        JobSlot slot = _slots[slotIndex];
-        slot.Work = action;
-        slot.Error = null;
-        slot.ParentSlot = -1;
-        int pending = 0;
-        for (int i = 0; i < dependencies.Length; i++)
-        {
-            JobHandle dependency = dependencies[i];
-            if (!dependency.IsValid || IsComplete(dependency)) continue;
-            WriteDep(slot, pending++, dependency);
-        }
-        slot.DepCount = pending;
-        if (pending == 0)
-        {
-            Volatile.Write(ref slot.State, (int)JobSlotState.Ready);
-            EnqueueReady(slotIndex);
-        }
-        else
-        {
-            Volatile.Write(ref slot.State, (int)JobSlotState.Waiting);
-            _waiting.Enqueue(slotIndex);
-            if (AllDepsComplete(slot)) TryPromote(slotIndex, slot);
-        }
-        return new JobHandle(slotIndex, slot.Generation);
-    }
-
-    public JobHandle ScheduleFor(int count, int minChunkSize, Action<int, int> body)
+    public JobHandle ParallelFor(int count, int minChunkSize, Action<int, int> body)
     {
         ArgumentNullException.ThrowIfNull(body);
         if (count <= 0) return JobHandle.None;
@@ -101,7 +67,6 @@ public sealed class JobSystem : IDisposable
         JobSlot barrier = _slots[barrierIndex];
         barrier.Work = null;
         barrier.Error = null;
-        barrier.DepCount = 0;
         barrier.ParentSlot = -1;
         Volatile.Write(ref barrier.PendingChildren, chunks);
         Volatile.Write(ref barrier.State, (int)JobSlotState.Waiting);
@@ -121,7 +86,45 @@ public sealed class JobSystem : IDisposable
             JobSlot chunkSlot = _slots[chunkSlotIndex];
             chunkSlot.Work = chunk.Run;
             chunkSlot.Error = null;
-            chunkSlot.DepCount = 0;
+            chunkSlot.ParentSlot = barrierIndex;
+            Volatile.Write(ref chunkSlot.State, (int)JobSlotState.Ready);
+            EnqueueReady(chunkSlotIndex);
+            lo = hi;
+        }
+        return barrierHandle;
+    }
+
+    public JobHandle ParallelFor<TState, TBody>(int count, int minChunkSize, in TState state)
+        where TState : struct
+        where TBody : struct, IParallelForBody<TState, TBody>
+    {
+        if (count <= 0) return JobHandle.None;
+        int chunkMin = Math.Max(1, minChunkSize);
+        int chunks = Math.Min((count + chunkMin - 1) / chunkMin, WorkerCount);
+        int barrierIndex = ClaimSlot();
+        JobSlot barrier = _slots[barrierIndex];
+        barrier.Work = null;
+        barrier.Error = null;
+        barrier.ParentSlot = -1;
+        Volatile.Write(ref barrier.PendingChildren, chunks);
+        Volatile.Write(ref barrier.State, (int)JobSlotState.Waiting);
+        JobHandle barrierHandle = new(barrierIndex, barrier.Generation);
+        int baseSize = count / chunks;
+        int remainder = count % chunks;
+        int lo = 0;
+        for (int i = 0; i < chunks; i++)
+        {
+            int hi = lo + baseSize + (i < remainder ? 1 : 0);
+            GenericParallelForChunk<TState, TBody> chunk = GenericParallelForChunk<TState, TBody>.Rent();
+            chunk.Owner = this;
+            chunk.State = state;
+            chunk.Lo = lo;
+            chunk.Hi = hi;
+            chunk.ParentSlot = barrierIndex;
+            int chunkSlotIndex = ClaimSlot();
+            JobSlot chunkSlot = _slots[chunkSlotIndex];
+            chunkSlot.Work = chunk.Run;
+            chunkSlot.Error = null;
             chunkSlot.ParentSlot = barrierIndex;
             Volatile.Write(ref chunkSlot.State, (int)JobSlotState.Ready);
             EnqueueReady(chunkSlotIndex);
@@ -138,7 +141,7 @@ public sealed class JobSystem : IDisposable
             || Volatile.Read(ref slot.State) == (int)JobSlotState.Done;
     }
 
-    public void Complete(JobHandle handle)
+    public void Wait(JobHandle handle)
     {
         if (!handle.IsValid) return;
         JobSlot slot = _slots[handle.Slot];
@@ -147,12 +150,6 @@ public sealed class JobSystem : IDisposable
             _completion.Wait();
         if (Volatile.Read(ref slot.Generation) == handle.Generation && slot.Error != null)
             throw new AggregateException(slot.Error);
-    }
-
-    public async ValueTask DrainAsync()
-    {
-        while (Volatile.Read(ref _outstanding) > 0)
-            await _completion.WaitAsync().ConfigureAwait(false);
     }
 
     private int ClaimSlot()
@@ -221,75 +218,9 @@ public sealed class JobSystem : IDisposable
         {
             JobSlot barrier = _slots[parent];
             if (error != null) Interlocked.CompareExchange(ref barrier.Error, error, null);
-            if (Interlocked.Decrement(ref barrier.PendingChildren) == 0) TryPromote(parent, barrier);
-        }
-        SweepWaiting();
-    }
-
-    private void SweepWaiting()
-    {
-        int budget = _waiting.Count;
-        while (budget-- > 0 && _waiting.TryDequeue(out int slotIndex))
-        {
-            JobSlot slot = _slots[slotIndex];
-            if (Volatile.Read(ref slot.State) != (int)JobSlotState.Waiting) continue;
-            if (AllDepsComplete(slot)) TryPromote(slotIndex, slot);
-            else _waiting.Enqueue(slotIndex);
+            if (Interlocked.Decrement(ref barrier.PendingChildren) == 0) EnqueueReady(parent);
         }
     }
-
-    private bool TryPromote(int slotIndex, JobSlot slot)
-    {
-        if (Interlocked.CompareExchange(ref slot.State, (int)JobSlotState.Ready, (int)JobSlotState.Waiting) != (int)JobSlotState.Waiting)
-            return false;
-        EnqueueReady(slotIndex);
-        return true;
-    }
-
-    private bool AllDepsComplete(JobSlot slot)
-    {
-        int count = Volatile.Read(ref slot.DepCount);
-        for (int i = 0; i < count; i++)
-        {
-            long packed = ReadDep(slot, i);
-            int depSlot = (int)(packed & 0xFFFFFFFFL);
-            int depGeneration = (int)((ulong)packed >> 32);
-            JobSlot dependency = _slots[depSlot];
-            if (Volatile.Read(ref dependency.Generation) != depGeneration) continue;
-            if (Volatile.Read(ref dependency.State) != (int)JobSlotState.Done) return false;
-        }
-        return true;
-    }
-
-    private static long PackDep(JobHandle handle) => ((long)(uint)handle.Generation << 32) | (uint)handle.Slot;
-
-    private static void WriteDep(JobSlot slot, int index, JobHandle dependency)
-    {
-        long packed = PackDep(dependency);
-        switch (index)
-        {
-            case 0: Volatile.Write(ref slot.D0, packed); break;
-            case 1: Volatile.Write(ref slot.D1, packed); break;
-            case 2: Volatile.Write(ref slot.D2, packed); break;
-            case 3: Volatile.Write(ref slot.D3, packed); break;
-            case 4: Volatile.Write(ref slot.D4, packed); break;
-            case 5: Volatile.Write(ref slot.D5, packed); break;
-            case 6: Volatile.Write(ref slot.D6, packed); break;
-            default: Volatile.Write(ref slot.D7, packed); break;
-        }
-    }
-
-    private static long ReadDep(JobSlot slot, int index) => index switch
-    {
-        0 => Volatile.Read(ref slot.D0),
-        1 => Volatile.Read(ref slot.D1),
-        2 => Volatile.Read(ref slot.D2),
-        3 => Volatile.Read(ref slot.D3),
-        4 => Volatile.Read(ref slot.D4),
-        5 => Volatile.Read(ref slot.D5),
-        6 => Volatile.Read(ref slot.D6),
-        _ => Volatile.Read(ref slot.D7),
-    };
 
     public void Dispose()
     {
@@ -299,5 +230,37 @@ public sealed class JobSystem : IDisposable
         _workSignal.Dispose();
         _completion.Dispose();
         _shutdown.Dispose();
+    }
+
+    private sealed class GenericParallelForChunk<TState, TBody>
+        where TState : struct
+        where TBody : struct, IParallelForBody<TState, TBody>
+    {
+        private static readonly ConcurrentStack<GenericParallelForChunk<TState, TBody>> Pool = new();
+        internal readonly Action Run;
+        internal JobSystem? Owner;
+        internal TState State;
+        internal int Lo;
+        internal int Hi;
+        internal int ParentSlot;
+
+        private GenericParallelForChunk() => Run = RunCore;
+
+        internal static GenericParallelForChunk<TState, TBody> Rent()
+            => Pool.TryPop(out GenericParallelForChunk<TState, TBody>? chunk) ? chunk : new GenericParallelForChunk<TState, TBody>();
+
+        private void RunCore()
+        {
+            try { TBody.Execute(in State, Lo, Hi); }
+            finally
+            {
+                Owner = null;
+                State = default;
+                Lo = 0;
+                Hi = 0;
+                ParentSlot = -1;
+                Pool.Push(this);
+            }
+        }
     }
 }

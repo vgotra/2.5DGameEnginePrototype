@@ -201,8 +201,8 @@ internal unsafe class BatchRenderer : IDisposable
         _recordVertexBuffer = vertexBuffer.Buffer;
         _recordIndexBuffer = indexBuffer.Buffer;
         _pendingChunks = chunks;
-        JobHandle barrier = _jobSystem.ScheduleFor(chunks, 1, _recordChunksBody);
-        _jobSystem.Complete(barrier);
+        JobHandle barrier = _jobSystem.ParallelFor(chunks, 1, _recordChunksBody);
+        _jobSystem.Wait(barrier);
     }
 
     private void RecordChunks(int lo, int hi)

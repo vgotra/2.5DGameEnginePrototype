@@ -39,7 +39,7 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider
         for (int i = 0; i < StepCount; i++)
         {
             int step = i;
-            _decodeHandles[i] = jobs.Schedule(() => DecodeInto(step));
+            _decodeHandles[i] = jobs.Run(() => DecodeInto(step));
         }
     }
 

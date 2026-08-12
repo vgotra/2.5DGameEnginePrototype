@@ -51,7 +51,7 @@ internal static class ExtractionBenchmarks
         return new BenchmarkCase(name, 5_000, () =>
         {
             JobHandle barrier = dispatch.Schedule(jobs, grid, camera, null, bands, counts, flickers, bandCount, rowsPerBand);
-            jobs.Complete(barrier);
+            jobs.Wait(barrier);
             int written = 0;
             for (int band = 0; band < bandCount; band++)
             {

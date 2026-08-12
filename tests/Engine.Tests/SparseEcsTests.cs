@@ -1,4 +1,5 @@
 using Engine.Ecs.Sparse;
+using Engine.Threading;
 
 namespace Engine.Tests;
 
@@ -19,6 +20,10 @@ internal static class SparseEcsTests
         new(nameof(QueryRefMutation_UpdatesComponents), QueryRefMutation_UpdatesComponents),
         new(nameof(Query_ReflectsStructuralChanges), Query_ReflectsStructuralChanges),
         new(nameof(QueryIteration_IsAllocationFree), QueryIteration_IsAllocationFree),
+        new(nameof(ParallelQueries_PreserveParityAndMutateDisjointRows), ParallelQueries_PreserveParityAndMutateDisjointRows),
+        new(nameof(ParallelQueries_FallbackForSmallWorkloads), ParallelQueries_FallbackForSmallWorkloads),
+        new(nameof(ParallelQueries_PropagateWorkerExceptions), ParallelQueries_PropagateWorkerExceptions),
+        new(nameof(ParallelQueries_WarmedDispatchIsAllocationFree), ParallelQueries_WarmedDispatchIsAllocationFree),
     ];
 
     private static void CreateDestroyRecycle_IsGenerationSafe()
@@ -183,6 +188,84 @@ internal static class SparseEcsTests
         TestAssert.True(query.Count == 0, "destroyed entities disappear from retained queries");
     }
 
+    private static void ParallelQueries_PreserveParityAndMutateDisjointRows()
+    {
+        World world = new();
+        for (int i = 0; i < 2048; i++)
+        {
+            Entity entity = world.Create();
+            world.Add(entity, new ValueComponent(i));
+            if ((i & 1) == 0) world.Add(entity, new OtherComponent(i));
+            if ((i & 3) == 0) world.Add(entity, new ThirdComponent(i));
+        }
+        SumValues serial = new();
+        world.Query<ValueComponent>().ForEach(ref serial);
+        using JobSystem jobs = new(4);
+        world.Query<ValueComponent>().ParallelForEach<IncrementParallel>(jobs, 64);
+        world.Query<ValueComponent, OtherComponent>().ParallelForEach<IncrementPairParallel>(jobs, 64);
+        world.Query<ValueComponent, OtherComponent, ThirdComponent>().ParallelForEach<IncrementTripleParallel>(jobs, 64);
+        SumValues parallel = new();
+        world.Query<ValueComponent>().ForEach(ref parallel);
+        TestAssert.True(parallel.Sum == serial.Sum + 2048 + 1024 + 512, "parallel query visits each matching row exactly once");
+        TestAssert.True(world.Query<ValueComponent, OtherComponent>().Count == 1024 && world.Query<ValueComponent, OtherComponent, ThirdComponent>().Count == 512, "parallel intersections preserve matching entities");
+    }
+
+    private static void ParallelQueries_FallbackForSmallWorkloads()
+    {
+        World world = new();
+        for (int i = 0; i < 32; i++)
+        {
+            Entity entity = world.Create();
+            world.Add(entity, new ValueComponent(i));
+        }
+        using JobSystem jobs = new(2);
+        world.Query<ValueComponent>().ParallelForEach<IncrementParallel>(jobs, 1);
+        TestAssert.True(world.Get<ValueComponent>(new Entity(1, 1)).Value == 2, "small parallel query uses the serial fallback");
+    }
+
+    private static void ParallelQueries_PropagateWorkerExceptions()
+    {
+        World world = new();
+        for (int i = 0; i < 1024; i++)
+        {
+            Entity entity = world.Create();
+            world.Add(entity, new ValueComponent(i));
+        }
+        using JobSystem jobs = new(2);
+        bool threw = false;
+        try { world.Query<ValueComponent>().ParallelForEach<ThrowParallel>(jobs, 32); }
+        catch (AggregateException) { threw = true; }
+        TestAssert.True(threw, "parallel query propagates worker exceptions through its barrier");
+    }
+
+    private static void ParallelQueries_WarmedDispatchIsAllocationFree()
+    {
+        World world = new();
+        for (int i = 0; i < 1024; i++)
+        {
+            Entity entity = world.Create();
+            world.Add(entity, new ValueComponent(i));
+            world.Add(entity, new OtherComponent(i));
+            world.Add(entity, new ThirdComponent(i));
+        }
+        Query<ValueComponent> query1 = world.Query<ValueComponent>();
+        Query<ValueComponent, OtherComponent> query2 = world.Query<ValueComponent, OtherComponent>();
+        Query<ValueComponent, OtherComponent, ThirdComponent> query3 = world.Query<ValueComponent, OtherComponent, ThirdComponent>();
+        using JobSystem jobs = new(4);
+        query1.ParallelForEach<IncrementParallel>(jobs, 64);
+        query2.ParallelForEach<IncrementPairParallel>(jobs, 64);
+        query3.ParallelForEach<IncrementTripleParallel>(jobs, 64);
+        long start = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 20; i++)
+        {
+            query1.ParallelForEach<IncrementParallel>(jobs, 64);
+            query2.ParallelForEach<IncrementPairParallel>(jobs, 64);
+            query3.ParallelForEach<IncrementTripleParallel>(jobs, 64);
+        }
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - start;
+        TestAssert.True(allocated == 0, $"warmed parallel query dispatch allocated {allocated} bytes");
+    }
+
     private struct ValueComponent(int value) { public int Value = value; }
     private struct OtherComponent(int value) { public int Value = value; }
     private readonly record struct ThirdComponent(int Value);
@@ -212,5 +295,28 @@ internal static class SparseEcsTests
     {
         public int Sum;
         public static void Execute(ref SumValues action, Entity entity, ref ValueComponent component) => action.Sum += component.Value;
+    }
+
+    private struct IncrementParallel : IParallelQueryAction<ValueComponent, IncrementParallel>
+    {
+        public static void Execute(Entity entity, ref ValueComponent component) => component.Value++;
+    }
+
+    private struct IncrementPairParallel : IParallelQueryAction<ValueComponent, OtherComponent, IncrementPairParallel>
+    {
+        public static void Execute(Entity entity, ref ValueComponent first, ref OtherComponent second) => first.Value++;
+    }
+
+    private struct IncrementTripleParallel : IParallelQueryAction<ValueComponent, OtherComponent, ThirdComponent, IncrementTripleParallel>
+    {
+        public static void Execute(Entity entity, ref ValueComponent first, ref OtherComponent second, ref ThirdComponent third) => first.Value++;
+    }
+
+    private struct ThrowParallel : IParallelQueryAction<ValueComponent, ThrowParallel>
+    {
+        public static void Execute(Entity entity, ref ValueComponent component)
+        {
+            if (entity.Id == 700) throw new InvalidOperationException("parallel query test failure");
+        }
     }
 }

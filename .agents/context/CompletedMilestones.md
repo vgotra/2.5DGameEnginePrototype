@@ -1,5 +1,34 @@
 # Completed Milestones
 
+## 2026-08-13 — Milestone 8: Simplify JobSystem
+
+Completed:
+
+- Replaced the public execution surface with `Run`, `ParallelFor`, `Wait`, and `IsComplete`.
+- Removed arbitrary dependency scheduling, waiting queues, packed dependency storage, and dependency-only tests.
+- Preserved worker channels, work stealing, pooled chunks, slot reuse, parent-child parallel barriers, exception propagation, and the 4096-job capacity guard.
+- Migrated renderer, tile extraction, texture loading, sparse queries, tests, and benchmarks.
+
+Verification:
+
+- Debug build and plain console smoke tests passed.
+- Release benchmark comparison passed with 12 PASS, 0 WARN, 0 FAIL.
+- Parallel-for range, exception, slot reuse, capacity, and sparse-query allocation coverage passed.
+
+## 2026-08-13 — Milestone 7: Multithreaded Sparse Queries
+
+Completed:
+
+- Added opt-in one-, two-, and three-component sparse `ParallelForEach` queries.
+- Added smallest-store chunk partitioning, measured serial fallback, static parallel callbacks, and pooled allocation-free dispatch after warm-up.
+- Added serial/parallel parity, deterministic visitation, disjoint-row mutation, stale-entity, exception, fallback, and allocation coverage.
+- Added serial/parallel sparse-query benchmarks for 100, 500, 1,000, 5,000, and 100,000 entities.
+
+Verification:
+
+- Debug build, plain console smoke tests, and `git diff --check` passed.
+- Release benchmark comparison passed with 12 PASS, 0 WARN, 0 FAIL.
+
 ## 2026-08-12 — Milestone 6: Remove Archetype ECS
 
 Completed:

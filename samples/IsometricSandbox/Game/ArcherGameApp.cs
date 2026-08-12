@@ -210,7 +210,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             int rowsPerBand = (grid.Height + bandCount - 1) / bandCount;
             JobHandle tiles = _tileWork!.Schedule(Jobs, grid, Camera, _textures, _bands!, _bandCounts!, _bandFlickers!, bandCount, rowsPerBand);
             Renderer.BeginFrame(Viewport);
-            Jobs.Complete(tiles);
+            Jobs.Wait(tiles);
             written = MergeBands(bandCount);
             written = DrawEntities(written, playerPosition.Value);
             SpriteExtraction.StableSortByKey(Sprites, written, SortKeyCounts, SortScratch);

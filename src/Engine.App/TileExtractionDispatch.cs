@@ -44,7 +44,7 @@ public sealed class TileExtractionDispatch
         _counts = counts;
         _flickers = flickers;
         _rowsPerBand = rowsPerBand;
-        return jobs.ScheduleFor(bandCount, 1, _runBody);
+        return jobs.ParallelFor(bandCount, 1, _runBody);
     }
 
     private void Run(int lo, int hi)

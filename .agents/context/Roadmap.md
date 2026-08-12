@@ -4,7 +4,7 @@ Implemented milestones live in `Implemented.md`.
 
 ## Planned
 
-- **Milestone 7 multithreaded sparse queries** — add deliberate parallel query APIs and verify serial/parallel parity and determinism.
+- **Milestone 8 simplify JobSystem** — remove unused dependency-graph machinery while retaining pooled workers, job handles, completion barriers, and parallel-for support.
 
 - **Scene/save format** — non-reflection serialization for tile maps, entities, player state.
 - **Desktop platform expansion** — Linux (X11/Wayland) and macOS (SDL3 + MoltenVK): run/verify on the real OSes; no new backend code (SDL3 windowing/input/surface already targets them).

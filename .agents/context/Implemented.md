@@ -21,7 +21,7 @@
 
 ## Jobs, Assets, and Diagnostics
 
-- Dependency-aware work-stealing JobSystem with parallel-for support for approved workloads.
+- Simplified work-stealing JobSystem with `Run`, `ParallelFor`, `Wait`, and `IsComplete`; arbitrary inter-job dependency scheduling removed.
 - PNG texture loading, procedural fallback assets, frame/simulation/allocation metrics, smoke tests, and Release benchmarks.
 
 For milestone history and verification results, see `CompletedMilestones.md`.

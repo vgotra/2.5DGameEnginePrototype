@@ -1,6 +1,7 @@
 using SparseEntity = Engine.Ecs.Sparse.Entity;
 using SparseWorld = Engine.Ecs.Sparse.World;
 using Engine.Ecs.Sparse;
+using Engine.Threading;
 
 namespace Engine.Benchmark.Benchmarks;
 
@@ -29,6 +30,7 @@ internal static class SparseQueryBenchmarks
         Query<Position> query1 = world.Query<Position>();
         Query<Position, Velocity> query2 = world.Query<Position, Velocity>();
         Query<Position, Velocity, Marker> query3 = world.Query<Position, Velocity, Marker>();
+        JobSystem jobs = new(4);
 
         benchmarks.Add(new BenchmarkCase($"SparseQuery_{count}_1", 1_000, () =>
         {
@@ -45,11 +47,14 @@ internal static class SparseQueryBenchmarks
             SumTriple action = new();
             query3.ForEach(ref action);
         }));
+        benchmarks.Add(new BenchmarkCase($"SparseQueryParallel_{count}_1", 1_000, () => query1.ParallelForEach<ParallelPosition>(jobs, 64)));
+        benchmarks.Add(new BenchmarkCase($"SparseQueryParallel_{count}_2", 1_000, () => query2.ParallelForEach<ParallelPair>(jobs, 64)));
+        benchmarks.Add(new BenchmarkCase($"SparseQueryParallel_{count}_3", 1_000, () => query3.ParallelForEach<ParallelTriple>(jobs, 64)));
     }
 
-    private readonly record struct Position(int Value);
-    private readonly record struct Velocity(int Value);
-    private readonly record struct Marker(int Value);
+    private struct Position(int value) { public int Value = value; }
+    private struct Velocity(int value) { public int Value = value; }
+    private struct Marker(int value) { public int Value = value; }
 
     private struct SumPosition : IQueryAction<Position, SumPosition>
     {
@@ -67,5 +72,20 @@ internal static class SparseQueryBenchmarks
     {
         public int Sum;
         public static void Execute(ref SumTriple action, SparseEntity entity, ref Position first, ref Velocity second, ref Marker third) => action.Sum += first.Value + second.Value + third.Value;
+    }
+
+    private struct ParallelPosition : IParallelQueryAction<Position, ParallelPosition>
+    {
+        public static void Execute(SparseEntity entity, ref Position component) => component.Value++;
+    }
+
+    private struct ParallelPair : IParallelQueryAction<Position, Velocity, ParallelPair>
+    {
+        public static void Execute(SparseEntity entity, ref Position first, ref Velocity second) => first.Value++;
+    }
+
+    private struct ParallelTriple : IParallelQueryAction<Position, Velocity, Marker, ParallelTriple>
+    {
+        public static void Execute(SparseEntity entity, ref Position first, ref Velocity second, ref Marker third) => first.Value++;
     }
 }
