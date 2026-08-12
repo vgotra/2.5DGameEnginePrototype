@@ -46,6 +46,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly ProjectileSystem _projectiles;
     private readonly bool _simulation;
     private readonly bool _forceParallel;
+    private int _simulationFrames;
 
     private EntityId _player;
     private Vector2 _playerStart;
@@ -155,6 +156,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnPerFrame()
     {
+        if (_simulation && ++_simulationFrames >= SampleConfig.SimulationFrames)
+        {
+            Window.Close();
+            return;
+        }
         if (!Input.MousePressed) return;
         ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
         Camera.Follow(playerPosition.Value, Grid!);

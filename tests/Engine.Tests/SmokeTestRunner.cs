@@ -6,6 +6,8 @@ internal static class SmokeTestRunner
     [
         (nameof(IsometricMathTests), IsometricMathTests.Tests),
         (nameof(EcsTests), EcsTests.Tests),
+        (nameof(FrameSchedulerTests), FrameSchedulerTests.Tests),
+        (nameof(SparseEcsTests), SparseEcsTests.Tests),
         (nameof(RuntimeContractsTests), RuntimeContractsTests.Tests),
         (nameof(TileMapTests), TileMapTests.Tests),
         (nameof(MovementTests), MovementTests.Tests),

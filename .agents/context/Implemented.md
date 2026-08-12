@@ -2,6 +2,8 @@
 
 Shipped milestones. Next actions live in `Roadmap.md`.
 
+- **Milestone 2 sparse ECS core** — added `Engine.Ecs.Sparse` entity generations, registry, dense/sparse component stores, and world component operations alongside the unchanged archetype ECS.
+
 - **Milestone 0 baseline runtime measurement** — added a dedicated Release benchmark matrix for current archetype ECS serial/parallel updates across 100–100,000 entities, including timing, allocations, GC, scheduler overhead, jobs/frame, worker participation, and utilization.
 
 - **Game / World / Scene runtime contracts** — added explicit game/world/scene ownership and lifetime boundaries while preserving the existing archetype ECS, scheduler, JobSystem, and renderer; scene-owned entities are cleaned up on scene unload.
@@ -17,3 +19,13 @@ Shipped milestones. Next actions live in `Roadmap.md`.
 - **Profiling and allocation metrics (Initial)** — `--metrics` frame/sim/sprites/alloc/GC; draw calls, jobs, Vulkan timestamps pending.
 - **Job dependencies and safe parallel work** — channels+work-stealing job scheduler with dependency graphs and parallel-for; async PNG decode, threshold-gated parallel map extraction, and parallel Vulkan secondary command recording.
 - **ECS queries and system scheduling** — archetype `World` with generation-safe handles, cached queries (1/2/3 components) with serial `ForEach` and parallel `ForEachParallel` dispatch, a `SystemScheduler` with read/write access-based conflict ordering, and a `WorldCommandBuffer` for deferred mutation; the sample runs on four ECS systems, and `--simulation` stresses 100k critters through parallel two-component queries.
+# Milestone 3 — Sparse ECS Queries
+
+- Added serial sparse queries for one, two, and three component intersections.
+- Added smallest-store-driven iteration and by-reference struct callbacks.
+- Added allocation-free query smoke coverage and isolated `SparseQuery_*` benchmarks.
+# Milestone 4 — Explicit Frame Scheduler
+
+- Added explicit stages, registrations, parallel groups, barriers, and plan diagnostics.
+- Added JobSystem-backed parallel-group execution with access conflict validation.
+- Preserved the existing scheduler and sample; migration remains Milestone 5 work.

@@ -44,4 +44,5 @@ public static class SampleConfig
     public const int SimulationWidth = 128;
     public const int SimulationHeight = 128;
     public const int SimulationCritters = 100_000;
+    public const int SimulationFrames = 10;
 }
