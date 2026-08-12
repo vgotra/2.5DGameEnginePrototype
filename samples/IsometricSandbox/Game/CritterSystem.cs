@@ -10,11 +10,8 @@ namespace IsometricSandbox.Game;
 // wander/flee logic as the original animals; simulation mode runs a
 // deterministic, allocation-free wander in parallel so a huge herd is a
 // real job-system stress test.
-public sealed class CritterSystem : ISystem
+public sealed class CritterSystem(TileMap map, JobSystem jobs, bool simulation) : ISystem
 {
-    private readonly TileMap _map;
-    private readonly JobSystem _jobs;
-    private readonly bool _simulation;
     private readonly Random _random = new(1337);
     private float _time;
     private long _critterAlloc;
@@ -22,24 +19,17 @@ public sealed class CritterSystem : ISystem
 
     public EntityId Player { get; set; }
 
-    public CritterSystem(TileMap map, JobSystem jobs, bool simulation)
-    {
-        _map = map;
-        _jobs = jobs;
-        _simulation = simulation;
-    }
-
     public ComponentAccess Access => ComponentAccess.Write<Position, Critter>();
 
     public void Update(World world, float deltaSeconds)
     {
-        if (_simulation)
+        if (simulation)
         {
-            SimCritterBody body = new() { Map = _map, Time = _time, DeltaSeconds = deltaSeconds };
+            SimCritterBody body = new() { Map = map, Time = _time, DeltaSeconds = deltaSeconds };
             Query<Position, Critter> query = world.Query<Position, Critter>();
-            int minChunk = Math.Max(64, query.Count / _jobs.WorkerCount);
+            int minChunk = Math.Max(64, query.Count / jobs.WorkerCount);
             long before = GC.GetAllocatedBytesForCurrentThread();
-            query.ForEachParallel(_jobs, ref body, minChunk);
+            query.ForEachParallel(jobs, ref body, minChunk);
             long after = GC.GetAllocatedBytesForCurrentThread();
             _critterAlloc += after - before;
             if (++_critterCalls >= 180)
@@ -56,7 +46,7 @@ public sealed class CritterSystem : ISystem
             // scheduling keeps this system after the player writes it.
             CritterWanderBody body = new()
             {
-                Map = _map,
+                Map = map,
                 Random = _random,
                 Player = world.Get<Position>(Player).Value,
                 DeltaSeconds = deltaSeconds,

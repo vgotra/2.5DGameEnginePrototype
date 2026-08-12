@@ -10,9 +10,8 @@ namespace IsometricSandbox.Game;
 // at a time so the splash screen can show loading progress; with a JobSystem
 // attached (BeginAsyncLoad) all PNG decodes run on worker threads up front
 // while the main thread uploads the finished ones one step per splash frame.
-public sealed class TextureLibrary : ITileTextureProvider
+public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider
 {
-    private readonly IRenderer _renderer;
     private readonly Dictionary<string, TextureHandle> _tiles = new();
     private readonly string[] _tileNames = { "grass", "water", "tree", "bonfire", "wall" };
     private int _step;
@@ -29,11 +28,6 @@ public sealed class TextureLibrary : ITileTextureProvider
     public int StepCount => 3 + _tileNames.Length;
     public int Progress => Math.Min(_step, StepCount);
     public bool IsComplete => _step >= StepCount;
-
-    public TextureLibrary(IRenderer renderer)
-    {
-        _renderer = renderer;
-    }
 
     // Schedules every PNG decode on the job system; uploads stay on the main
     // thread and happen in TryUploadNextStep as decodes finish.
@@ -91,13 +85,13 @@ public sealed class TextureLibrary : ITileTextureProvider
         switch (step)
         {
             case 0:
-                Player = UploadOrNull(decoded) ?? ProceduralTextures.UkraineFlag(_renderer);
+                Player = UploadOrNull(decoded) ?? ProceduralTextures.UkraineFlag(renderer);
                 break;
             case 1:
-                Deer = UploadOrNull(decoded) ?? ProceduralTextures.Blob(_renderer, new(0.3f, 0.6f, 0.35f, 1f));
+                Deer = UploadOrNull(decoded) ?? ProceduralTextures.Blob(renderer, new(0.3f, 0.6f, 0.35f, 1f));
                 break;
             case 2:
-                Rabbit = UploadOrNull(decoded) ?? ProceduralTextures.Blob(_renderer, new(0.95f, 0.55f, 0.65f, 1f));
+                Rabbit = UploadOrNull(decoded) ?? ProceduralTextures.Blob(renderer, new(0.95f, 0.55f, 0.65f, 1f));
                 break;
             default:
                 int index = step - 3;
@@ -109,7 +103,7 @@ public sealed class TextureLibrary : ITileTextureProvider
     }
 
     private TextureHandle? UploadOrNull(in DecodedTexture decoded)
-        => decoded.Rgba == null ? null : _renderer.UploadTexture(decoded.Rgba, decoded.Width, decoded.Height, TextureFilter.Nearest);
+        => decoded.Rgba == null ? null : renderer.UploadTexture(decoded.Rgba, decoded.Width, decoded.Height, TextureFilter.Nearest);
 
     private string NameForStep(int step) => step switch
     {

@@ -152,20 +152,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         state.PendingShot = true;
     }
 
-    private long _profileSchedulerBytes;
-    private long _profileBufferBytes;
-    private long _profileOtherBytes;
-    private int _profileFrames;
-
     protected override void OnFixedStep(float deltaSeconds)
     {
-        long before = GC.GetAllocatedBytesForCurrentThread();
         _scheduler.Run(_world, deltaSeconds);
-        long afterScheduler = GC.GetAllocatedBytesForCurrentThread();
         _buffer.Apply(_world);
-        long afterApply = GC.GetAllocatedBytesForCurrentThread();
         _buffer.Clear();
-        long afterClear = GC.GetAllocatedBytesForCurrentThread();
         _score += _projectiles.LastKills;
 
         ref PlayerState state = ref _world.Get<PlayerState>(_player);
@@ -186,10 +177,6 @@ public sealed class ArcherGameApp : GameHost, IDisposable
                 });
             }
         }
-        long after = GC.GetAllocatedBytesForCurrentThread();
-        _profileSchedulerBytes += afterScheduler - before;
-        _profileBufferBytes += afterClear - afterScheduler;
-        _profileOtherBytes += after - afterClear;
     }
 
     protected override void OnRender()
@@ -222,19 +209,6 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             Renderer.Submit(Sprites.Slice(0, written));
             Renderer.EndFrame();
             _lastSpriteCount = written;
-        }
-
-        if (++_profileFrames >= 120)
-        {
-            double s = (double)_profileSchedulerBytes / _profileFrames;
-            double b = (double)_profileBufferBytes / _profileFrames;
-            double o = (double)_profileOtherBytes / _profileFrames;
-            Console.WriteLine($"fixedphases scheduler={s,7:F1} buffer={b,7:F1} other={o,7:F1}");
-            _scheduler.PrintAndResetCumulative();
-            _profileFrames = 0;
-            _profileSchedulerBytes = 0;
-            _profileBufferBytes = 0;
-            _profileOtherBytes = 0;
         }
     }
 

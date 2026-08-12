@@ -55,3 +55,17 @@ dotnet_naming_style.underscore_camel_case.required_prefix = _
 dotnet_naming_style.underscore_camel_case.capitalization = camel_case
 dotnet_naming_style.interface_prefix.required_prefix = I
 dotnet_naming_style.interface_prefix.capitalization = pascal_case
+
+dotnet_style_prefer_simplified_object_initialization = true:suggestion
+dotnet_style_prefer_primary_constructors = true:suggestion
+dotnet_style_prefer_simplified_new_expression = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:silent
+csharp_prefer_braces = false:suggestion
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_prefer_is_null_check_over_reference_equality_method = true:suggestion
+csharp_preferred_modifier_order = public,private,protected,internal,file,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,required,volatile,async:suggestion

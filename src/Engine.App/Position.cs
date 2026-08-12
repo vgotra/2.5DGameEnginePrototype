@@ -2,9 +2,7 @@ using System.Numerics;
 
 namespace Engine.App;
 
-public struct Position
+public struct Position(Vector2 value)
 {
-    public Vector2 Value;
-
-    public Position(Vector2 value) => Value = value;
+    public Vector2 Value = value;
 }

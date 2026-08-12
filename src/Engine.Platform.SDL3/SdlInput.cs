@@ -5,21 +5,14 @@ using Sdl = SDL.SDL3;
 
 namespace Engine.Platform.SDL3;
 
-public sealed unsafe class SdlInput : IInputState
+public sealed unsafe class SdlInput(SdlWindow window) : IInputState
 {
-    private readonly SdlWindow _window;
-    private readonly SDLBool* _keyboardState;
+    private readonly SDLBool* _keyboardState = Sdl.SDL_GetKeyboardState(null);
     private uint _current;
     private uint _previous;
     private bool _mouseDown;
     private bool _mousePressed;
     private Vector2 _mousePosition;
-
-    public SdlInput(SdlWindow window)
-    {
-        _window = window;
-        _keyboardState = Sdl.SDL_GetKeyboardState(null);
-    }
 
     public void Update()
     {
@@ -28,9 +21,9 @@ public sealed unsafe class SdlInput : IInputState
         float x, y;
         SDL_MouseButtonFlags mouseFlags = Sdl.SDL_GetMouseState(&x, &y);
         _mouseDown = (mouseFlags & SDL_MouseButtonFlags.SDL_BUTTON_LMASK) != 0;
-        _mousePressed = _window.ConsumeMousePressed();
+        _mousePressed = window.ConsumeMousePressed();
         _mousePosition = new Vector2(x, y);
-        if ((Sdl.SDL_GetWindowFlags(_window.Handle) & SDL_WindowFlags.SDL_WINDOW_INPUT_FOCUS) == 0) return;
+        if ((Sdl.SDL_GetWindowFlags(window.Handle) & SDL_WindowFlags.SDL_WINDOW_INPUT_FOCUS) == 0) return;
         Set(GameKey.Up, IsDown(SDL_Scancode.SDL_SCANCODE_W) || IsDown(SDL_Scancode.SDL_SCANCODE_UP));
         Set(GameKey.Down, IsDown(SDL_Scancode.SDL_SCANCODE_S) || IsDown(SDL_Scancode.SDL_SCANCODE_DOWN));
         Set(GameKey.Left, IsDown(SDL_Scancode.SDL_SCANCODE_A) || IsDown(SDL_Scancode.SDL_SCANCODE_LEFT));

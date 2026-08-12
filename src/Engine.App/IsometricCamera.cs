@@ -3,14 +3,12 @@ using System.Runtime.CompilerServices;
 
 namespace Engine.App;
 
-public sealed class IsometricCamera
+public sealed class IsometricCamera(Vector2 viewport)
 {
     public Vector2 Position { get; private set; }
-    public Vector2 Viewport { get; private set; }
+    public Vector2 Viewport { get; private set; } = viewport;
     public float Zoom { get; set; } = 1f;
     public GameMode Mode { get; set; } = GameMode.Isometric;
-
-    public IsometricCamera(Vector2 viewport) => Viewport = viewport;
 
     public void Resize(Vector2 viewport) => Viewport = viewport;
 

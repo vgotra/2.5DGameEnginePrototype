@@ -3,24 +3,14 @@ using System.Runtime.CompilerServices;
 
 namespace Engine.App;
 
-public readonly struct ScreenTransform
+public readonly struct ScreenTransform(float originX, float originY, float scaleX, float scaleY, float shearX, float shearY)
 {
-    public readonly float OriginX;
-    public readonly float OriginY;
-    public readonly float ScaleX;
-    public readonly float ScaleY;
-    public readonly float ShearX;
-    public readonly float ShearY;
-
-    public ScreenTransform(float originX, float originY, float scaleX, float scaleY, float shearX, float shearY)
-    {
-        OriginX = originX;
-        OriginY = originY;
-        ScaleX = scaleX;
-        ScaleY = scaleY;
-        ShearX = shearX;
-        ShearY = shearY;
-    }
+    public readonly float OriginX = originX;
+    public readonly float OriginY = originY;
+    public readonly float ScaleX = scaleX;
+    public readonly float ScaleY = scaleY;
+    public readonly float ShearX = shearX;
+    public readonly float ShearY = shearY;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2 ToScreen(float worldX, float worldY)

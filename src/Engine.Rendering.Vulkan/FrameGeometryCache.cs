@@ -2,20 +2,12 @@ using System.Runtime.CompilerServices;
 
 namespace Engine.Rendering.Vulkan;
 
-public sealed class FrameGeometryCache
+public sealed class FrameGeometryCache(int framesInFlight)
 {
-    private readonly byte[]?[] _vertexSnapshots;
-    private readonly byte[]?[] _indexSnapshots;
-    private readonly nuint[] _vertexSnapshotSizes;
-    private readonly nuint[] _indexSnapshotSizes;
-
-    public FrameGeometryCache(int framesInFlight)
-    {
-        _vertexSnapshots = new byte[]?[framesInFlight];
-        _indexSnapshots = new byte[]?[framesInFlight];
-        _vertexSnapshotSizes = new nuint[framesInFlight];
-        _indexSnapshotSizes = new nuint[framesInFlight];
-    }
+    private readonly byte[]?[] _vertexSnapshots = new byte[]?[framesInFlight];
+    private readonly byte[]?[] _indexSnapshots = new byte[]?[framesInFlight];
+    private readonly nuint[] _vertexSnapshotSizes = new nuint[framesInFlight];
+    private readonly nuint[] _indexSnapshotSizes = new nuint[framesInFlight];
 
     public bool HasGeometryChanged(int frameIndex, nuint vertexBytes, nuint indexBytes, ReadOnlySpan<byte> vertexData, ReadOnlySpan<byte> indexData)
     {

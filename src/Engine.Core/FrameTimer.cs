@@ -2,16 +2,10 @@ using System.Diagnostics;
 
 namespace Engine.Core;
 
-public sealed class FrameTimer
+public sealed class FrameTimer(double targetFramesPerSecond = 0)
 {
-    private readonly double _targetFrameSeconds;
-    private long _previousTick;
-
-    public FrameTimer(double targetFramesPerSecond = 0)
-    {
-        _targetFrameSeconds = targetFramesPerSecond > 0 ? 1.0 / targetFramesPerSecond : 0;
-        _previousTick = Stopwatch.GetTimestamp();
-    }
+    private readonly double _targetFrameSeconds = targetFramesPerSecond > 0 ? 1.0 / targetFramesPerSecond : 0;
+    private long _previousTick = Stopwatch.GetTimestamp();
 
     public double Advance()
     {

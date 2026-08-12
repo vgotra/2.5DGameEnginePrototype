@@ -1,8 +1,6 @@
 namespace IsometricSandbox.Game;
 
-public struct Collider
+public struct Collider(float radius)
 {
-    public float Radius;
-
-    public Collider(float radius) => Radius = radius;
+    public float Radius = radius;
 }

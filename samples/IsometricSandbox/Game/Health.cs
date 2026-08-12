@@ -1,8 +1,6 @@
 namespace IsometricSandbox.Game;
 
-public struct Health
+public struct Health(int value)
 {
-    public int Value;
-
-    public Health(int value) => Value = value;
+    public int Value = value;
 }

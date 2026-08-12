@@ -3,12 +3,9 @@ using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
 
-public sealed unsafe class ShaderModuleLoader
+public sealed unsafe class ShaderModuleLoader(VkDeviceApi device)
 {
-    private readonly VkDeviceApi _device;
     private readonly List<VkShaderModule> _modules = new();
-
-    public ShaderModuleLoader(VkDeviceApi device) => _device = device;
 
     public VkShaderModule Load(string path)
     {
@@ -18,7 +15,7 @@ public sealed unsafe class ShaderModuleLoader
         fixed (byte* data = bytes)
         {
             VkShaderModuleCreateInfo info = new() { codeSize = (nuint)bytes.Length, pCode = (uint*)data };
-            VkResult result = _device.vkCreateShaderModule(&info, out VkShaderModule module);
+            VkResult result = device.vkCreateShaderModule(&info, out VkShaderModule module);
             if (result != VkResult.Success) throw new InvalidOperationException($"Shader module creation failed: {result}");
             _modules.Add(module);
             return module;
@@ -27,7 +24,7 @@ public sealed unsafe class ShaderModuleLoader
 
     public void Dispose()
     {
-        for (int i = _modules.Count - 1; i >= 0; i--) _device.vkDestroyShaderModule(_modules[i]);
+        for (int i = _modules.Count - 1; i >= 0; i--) device.vkDestroyShaderModule(_modules[i]);
         _modules.Clear();
     }
 }

@@ -424,16 +424,14 @@ internal static class EcsTests
     internal readonly record struct TestComponent2(int Value);
     internal readonly record struct TestComponent3(int Value);
 
-    private struct MutableComponent
+    private struct MutableComponent(int value)
     {
-        public int Value;
-        public MutableComponent(int value) => Value = value;
+        public int Value = value;
     }
 
-    private struct CollectValues : IForEach<TestComponent, CollectValues>
+    private struct CollectValues() : IForEach<TestComponent, CollectValues>
     {
-        public readonly List<int> Values;
-        public CollectValues() => Values = new List<int>();
+        public readonly List<int> Values = new();
         public static void Execute(ref CollectValues body, EntityId entity, ref TestComponent a) => body.Values.Add(a.Value);
     }
 
@@ -462,18 +460,10 @@ internal static class EcsTests
             => body.Sums[entity.Index] = a.Value * 1_000_000L + b.Value;
     }
 
-    private sealed class RecordingSystem : ISystem
+    private sealed class RecordingSystem(string name, ComponentAccess access, List<string> log) : ISystem
     {
-        private readonly string _name;
-        private readonly List<string> _log;
-        public RecordingSystem(string name, ComponentAccess access, List<string> log)
-        {
-            _name = name;
-            Access = access;
-            _log = log;
-        }
-        public ComponentAccess Access { get; }
-        public void Update(World world, float deltaSeconds) => _log.Add(_name);
+        public ComponentAccess Access { get; } = access;
+        public void Update(World world, float deltaSeconds) => log.Add(name);
     }
 
     private sealed class WriteSystem : ISystem
