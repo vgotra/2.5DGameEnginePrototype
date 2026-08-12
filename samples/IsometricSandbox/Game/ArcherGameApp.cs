@@ -46,7 +46,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly ProjectileSystem _projectiles;
     private readonly bool _simulation;
     private readonly bool _forceParallel;
+    private readonly bool _arpg;
+    private readonly ArpgWorkload? _arpgWorkload;
+    private readonly int? _frameLimit;
     private int _simulationFrames;
+    private int _frameCount;
 
     private Entity _player;
     private Vector2 _playerStart;
@@ -78,6 +82,9 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _renderer = renderer;
         _simulation = options.Simulation;
         _forceParallel = options.ForceParallel;
+        _arpg = options.Arpg;
+        _arpgWorkload = _arpg ? new ArpgWorkload(1337, jobs) : null;
+        _frameLimit = options.FrameLimit;
 
         _map = _simulation ? BuildSimulationMap() : new TileMap();
         if (!_simulation) _map.LoadLayout(MapLayout.Rows);
@@ -93,10 +100,10 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _critters = new CritterSystem(_map, _simulation);
         _integrate = new IntegrateSystem(_map);
         _projectiles = new ProjectileSystem(_map);
-        _scheduler.Register(_playerMove);
-        _scheduler.Register(_critters);
-        _scheduler.Register(_integrate);
-        _scheduler.Register(_projectiles);
+        _scheduler.Register(_playerMove, new("Input.PlayerMovement", ExecutionPolicy.Serial, 0, true, true, false));
+        _scheduler.Register(_critters, new("AI.MonsterMovement", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
+        _scheduler.Register(_integrate, new("Collision.Integration", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
+        _scheduler.Register(_projectiles, new("Combat.Projectiles", ExecutionPolicy.Adaptive, SampleConfig.ProjectileParallelThreshold, true, true, false));
 
         if (_simulation)
         {
@@ -157,6 +164,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnPerFrame()
     {
+        if (_frameLimit is int limit && ++_frameCount >= limit)
+        {
+            Window.Close();
+            return;
+        }
         if (_simulation && ++_simulationFrames >= SampleConfig.SimulationFrames)
         {
             Window.Close();
@@ -172,6 +184,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnFixedStep(float deltaSeconds)
     {
+        if (_arpg) _arpgWorkload!.Tick(_forceParallel ? ArpgExecutionMode.ForcedParallel : ArpgExecutionMode.AdaptiveParallel);
         _scheduler.Run(EcsWorld, deltaSeconds);
         _runtimeWorld!.ApplyCommands();
         _score += _projectiles.LastKills;
@@ -191,6 +204,17 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnRender()
     {
+        if (_arpg)
+        {
+            Renderer.BeginFrame(Viewport);
+            Camera.Follow(new Vector2(10, 10), Grid!);
+            int arpgCount = _arpgWorkload!.Extract(Camera, Grid!, SpriteArray);
+            SpriteExtraction.StableSortByKey(SpriteArray, arpgCount, SortKeyCounts, SortScratch);
+            Renderer.Submit(SpriteArray.AsSpan(0, arpgCount));
+            Renderer.EndFrame();
+            _lastSpriteCount = arpgCount;
+            return;
+        }
         TileGrid grid = Grid!;
         ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
         Camera.Follow(playerPosition.Value, grid);
@@ -251,7 +275,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         WindowTitle: SampleConfig.WindowTitle,
         RenderResolution: new Vector2(SampleConfig.WindowWidth, SampleConfig.WindowHeight),
         FrameCap: options.FrameCap,
-        SpriteCapacity: options.Simulation ? SampleConfig.SimulationSpriteCapacity : SampleConfig.NormalSpriteCapacity,
+        SpriteCapacity: options.Simulation ? SampleConfig.SimulationSpriteCapacity : options.Arpg ? SampleConfig.ArpgSpriteCapacity : SampleConfig.NormalSpriteCapacity,
         StartFullscreen: options.StartFullscreen,
         ShowMetrics: options.ShowMetrics,
         SplashFramesPerSecond: SplashFramesPerSecond,

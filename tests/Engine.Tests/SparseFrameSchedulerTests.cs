@@ -11,6 +11,8 @@ internal static class SparseFrameSchedulerTests
         new(nameof(EntityCommands_DeferredStructuralMutations), EntityCommands_DeferredStructuralMutations),
         new(nameof(EntityCommands_ReservedCreateAndFifoApply), EntityCommands_ReservedCreateAndFifoApply),
         new(nameof(EntityCommands_ReservedDestroyIsHarmless), EntityCommands_ReservedDestroyIsHarmless),
+        new(nameof(PolicyDiagnostics_ReportDecisionWithoutChangingOrder), PolicyDiagnostics_ReportDecisionWithoutChangingOrder),
+        new(nameof(BackgroundSystems_AreSkipped), BackgroundSystems_AreSkipped),
     ];
 
     private static void SerialSystems_RunInRegistrationOrder()
@@ -67,6 +69,30 @@ internal static class SparseFrameSchedulerTests
         buffer.Remove<ValueComponent>(entity);
         buffer.Apply(world);
         TestAssert.True(!world.IsAlive(entity), "stale destroy and remove are harmless");
+    }
+
+    private static void PolicyDiagnostics_ReportDecisionWithoutChangingOrder()
+    {
+        using JobSystem jobs = new(1);
+        FrameScheduler scheduler = new(jobs) { DiagnosticsEnabled = true };
+        RecordingSystem system = new([], 1);
+        scheduler.Register(system, new("AI", ExecutionPolicy.Adaptive, 1, true, true, false));
+        World world = new();
+        world.Create();
+        scheduler.Run(world, 0.016f);
+        SystemDiagnostic diagnostic = scheduler.Diagnostics[0];
+        TestAssert.True(diagnostic.Name == "AI" && diagnostic.ParallelSelected && diagnostic.ItemCount == 1, "policy diagnostics report adaptive selection");
+        TestAssert.True(diagnostic.AllocatedBytes >= 0, "policy diagnostics report allocations");
+    }
+
+    private static void BackgroundSystems_AreSkipped()
+    {
+        using JobSystem jobs = new(1);
+        FrameScheduler scheduler = new(jobs) { DiagnosticsEnabled = true };
+        List<int> order = new();
+        scheduler.Register(new RecordingSystem(order, 1), new("AssetLoading", ExecutionPolicy.Background, 0, false, false, true));
+        scheduler.Run(new World(), 0.016f);
+        TestAssert.True(order.Count == 0, "background systems do not run in the fixed-step scheduler");
     }
 
     private struct ValueComponent(int value)

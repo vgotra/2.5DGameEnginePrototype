@@ -10,6 +10,7 @@ public sealed class World
     }
 
     public EntityRegistry Entities { get; }
+    public int EntityCount => Entities.AliveCount;
 
     public Entity Create() => Entities.Create();
 

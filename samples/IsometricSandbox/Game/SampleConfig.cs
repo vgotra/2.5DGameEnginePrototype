@@ -24,6 +24,7 @@ public static class SampleConfig
 
     // Weapon and projectile tuning.
     public const int MaxArrows = 32;
+    public const int ProjectileParallelThreshold = 64;
     public const float ArrowSpeed = 14f;
     public const float ArrowLifetime = 1.5f;
     public const float ArrowRadius = 0.15f;
@@ -39,6 +40,7 @@ public static class SampleConfig
     // Sprite buffer sizing (capacity is enforced per run mode).
     public const int NormalSpriteCapacity = 1024;
     public const int SimulationSpriteCapacity = 262_144;
+    public const int ArpgSpriteCapacity = 1024;
 
     // Simulation mode: an open stress-test map with a large critter herd.
     public const int SimulationWidth = 128;

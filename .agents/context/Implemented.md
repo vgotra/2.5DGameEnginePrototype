@@ -1,13 +1,27 @@
 # Implemented Features
 
-## Milestone 10 — Gameplay API
+## Milestone 12 — Tune Multithreading
+
+- Added explicit `Serial`, `Adaptive`, `Parallel`, and `Background` execution policies with stable system metadata.
+- Added optional allocation/GC/timing diagnostics to the sparse frame scheduler.
+- Classified sample input, AI, movement, collision, and projectile systems with fixed adaptive thresholds.
+- Added policy benchmark cases and clean benchmark JobSystem ownership.
+
+## Realistic ARPG Benchmark
+
+- Added a deterministic workload with 1 player, 250 monsters, 100 projectiles, and 500 pooled effects.
+- Added serial, adaptive-parallel, and forced-parallel gameplay benchmark cases with CPU sprite extraction.
+- Added `--arpg` sample mode with camera-projected gameplay-sized rendering and bounded `--frames` runs.
+- Added console coverage for population, determinism, mode parity, adaptive policy, extraction, and option parsing.
+
+## Gameplay API
 
 - Added reusable immutable hero, monster, weapon, skill, projectile, and item definitions in `Engine.App`.
 - Added deferred `World.SpawnHero`, `SpawnMonster`, `SpawnProjectile`, and `SpawnItem` APIs with scene ownership and reserved entity handles.
 - Added shared gameplay state components and smoke coverage for deferred activation and scene cleanup.
 - Added the sample-owned `SampleEntitySpawner`, routing sample-specific PlayerState, Critter, and ArrowProjectile components through the runtime command buffer.
 
-## Milestone 9 — Structural Command Buffer
+## Structural Command Buffer
 
 - Replaced `WorldCommandBuffer` with FIFO `EntityCommands` supporting deferred Create, Destroy, Add, and Remove operations.
 - Added reserved-entity lifecycle support with stale-operation safety and generation validation.

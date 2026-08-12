@@ -17,7 +17,6 @@
 
 ## Next Actions
 
-- Milestone 8: simplify the JobSystem while retaining worker pooling, job handles, completion barriers, and parallel-for support.
 - Roadmap follow-ups remain in Roadmap.md.
 
 ## Resume Rules

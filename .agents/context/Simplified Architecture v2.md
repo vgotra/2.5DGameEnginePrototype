@@ -1157,44 +1157,6 @@ Application
 
 ---
 
-# 48. Milestone 11 — Realistic ARPG Benchmark
-
-Build a representative workload:
-
-```text
-1 player
-
-250 monsters
-
-100 projectiles
-
-500 particles/effects
-
-AI
-
-movement
-
-collision
-
-combat
-
-animation
-
-rendering
-```
-
-Measure:
-
-```text
-serial gameplay
-adaptive parallel gameplay
-forced parallel gameplay
-```
-
-This benchmark becomes more important than the 100k Critter benchmark.
-
----
-
 # 49. Milestone 12 — Tune Multithreading
 
 For each system classify:
@@ -1224,9 +1186,23 @@ Example expected result:
 | Pathfinding | Background/Parallel |
 | Render preparation | Adaptive |
 
-These are starting assumptions only.
+Measured Milestone 12 policy classification:
 
-Benchmark before finalizing.
+| System | Policy | Threshold |
+|---|---|---:|
+| Input / player movement | Serial | 0 |
+| Player collision/combat decisions | Serial | 0 |
+| Scene management | Serial | 0 |
+| Monster AI / movement | Adaptive | 128 |
+| Monster collision / integration | Adaptive | 128 |
+| Animation updates | Adaptive | 128 |
+| Particle/effect updates | Parallel | 0 |
+| Projectile batch updates | Adaptive | 64 |
+| Render preparation/extraction | Adaptive | 10,000 visible tiles |
+| Asset loading / texture decoding | Background | 0 |
+| Pathfinding | Background/Parallel | workload-dependent |
+
+These policies are fixed and deterministic for the current runtime. Parallel work must operate on disjoint ranges; input, player decisions, collision resolution, scene changes, and command application remain main-thread owned.
 
 ---
 

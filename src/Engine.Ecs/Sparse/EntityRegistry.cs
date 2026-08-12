@@ -7,18 +7,22 @@ public sealed class EntityRegistry
     private readonly List<bool> _reserved = new();
     private readonly Stack<int> _free = new();
 
+    public int AliveCount { get; private set; }
+
     public Entity Create()
     {
         if (_free.Count > 0)
         {
             int id = _free.Pop();
             _alive[id] = true;
+            AliveCount++;
             return new Entity(id, _generations[id]);
         }
 
         int next = _generations.Count;
         _generations.Add(1);
         _alive.Add(true);
+        AliveCount++;
         _reserved.Add(false);
         return new Entity(next, 1);
     }
@@ -45,13 +49,16 @@ public sealed class EntityRegistry
             return false;
         _reserved[entity.Id] = false;
         _alive[entity.Id] = true;
+        AliveCount++;
         return true;
     }
 
     public void Destroy(Entity entity)
     {
         if (!IsAlive(entity) && !IsReserved(entity)) return;
+        bool wasAlive = _alive[entity.Id];
         _alive[entity.Id] = false;
+        if (wasAlive) AliveCount--;
         _reserved[entity.Id] = false;
         _generations[entity.Id]++;
         _free.Push(entity.Id);

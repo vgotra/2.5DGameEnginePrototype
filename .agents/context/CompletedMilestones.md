@@ -1,5 +1,67 @@
 # Completed Milestones
 
+## 2026-08-13 — Milestone 12: Tune Multithreading
+
+Completed:
+
+- Added sparse scheduler execution-policy metadata for Serial, Adaptive, Parallel, and Background systems.
+- Added optional per-system timing, item-count, allocation, GC, and parallel-decision diagnostics.
+- Classified sample input/player movement as Serial, monster AI/movement and integration collision as Adaptive, and projectile combat as Adaptive with a 64-item threshold.
+- Added policy benchmark cases while preserving the existing ARPG and ECS/query/job benchmark matrix.
+- Ensured benchmark-owned JobSystem instances are disposed after execution.
+
+Verification:
+
+- Solution build passed with 0 errors and 0 warnings.
+- Plain console smoke tests passed, including policy diagnostics and background-system tests.
+- Release benchmark matrix passed; policy and ARPG cases reported 0 B/op and 0 gen0 collections.
+- Normal, ARPG, 2D ARPG, and forced-parallel bounded sample runs exited cleanly.
+- `git diff --check` passed.
+
+## 2026-08-13 — Milestone 11: Realistic ARPG Benchmark
+
+Completed:
+
+- Added deterministic ARPG workload and camera-projected sample rendering.
+- Added serial, adaptive-parallel, and forced-parallel benchmark cases.
+- Added fixed-capacity effect reuse, animation state progression, projectile combat checks, and stable extraction coverage.
+- Added bounded `--frames` sample execution for automated Vulkan verification.
+
+Verification:
+
+- Solution build passed with 0 errors and 0 warnings.
+- Plain console smoke tests passed, including dedicated ARPG assertions.
+- Release benchmark cases reported 0 B/op and 0 gen0 collections.
+- Isometric, top-down, and forced-parallel ARPG sample runs exited cleanly after 10 frames.
+- `git diff --check` passed.
+
+## 2026-08-13 — Milestone 10: Gameplay API
+
+Completed:
+
+- Added immutable hero, monster, weapon, skill, projectile, and item definitions in `Engine.App`.
+- Added deferred `World.SpawnHero`, `SpawnMonster`, `SpawnProjectile`, and `SpawnItem` APIs with scene ownership and reserved entity handles.
+- Added shared gameplay state components and migrated the sample through `SampleEntitySpawner`.
+
+Verification:
+
+- Deferred activation, component preservation, deterministic grouping, and scene cleanup passed in console coverage.
+- Debug build, plain console tests, bounded isometric/2D sample runs, Release benchmark comparison, direct-spawn search, and diff checks passed.
+
+## 2026-08-13 — Milestone 9: Structural Command Buffer
+
+Completed:
+
+- Replaced `WorldCommandBuffer` with FIFO `EntityCommands` supporting deferred Create, Destroy, Add, Remove, Clear, and Apply operations.
+- Added reserved-entity lifecycle support with generation validation and stale-operation safety.
+- Migrated sparse sample callers and command-buffer smoke coverage.
+
+Verification:
+
+- Reserved entities remained hidden until Create was applied.
+- Stale Remove/Destroy operations were harmless and reserved destruction recycled safely.
+- Debug build, plain console tests, bounded isometric/2D sample runs, Release benchmark comparison, API searches, and diff checks passed.
+
 ## 2026-08-13 — Milestone 8: Simplify JobSystem
 
 Completed:

@@ -48,12 +48,21 @@ internal static class Program
             return 2;
         }
 
-        BenchRunResult run = new(
-            SchemaVersion,
-            machine ?? Environment.MachineName,
-            TryGetCommit(),
-            DateTime.UtcNow,
-            BenchmarkCatalog.Create(iterations).Select(BenchRunner.Run).ToList());
+        BenchRunResult run;
+        try
+        {
+            run = new(
+                SchemaVersion,
+                machine ?? Environment.MachineName,
+                TryGetCommit(),
+                DateTime.UtcNow,
+                BenchmarkCatalog.Create(iterations).Select(BenchRunner.Run).ToList());
+        }
+        finally
+        {
+            ArpgBenchmarks.Dispose();
+            PolicyBenchmarks.Dispose();
+        }
 
         PrintResults(run);
         WriteResults(lastPath, run);
