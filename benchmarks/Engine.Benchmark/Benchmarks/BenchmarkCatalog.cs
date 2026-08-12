@@ -16,6 +16,7 @@ internal static class BenchmarkCatalog
             .. JobsBenchmarks.Create(),
             .. ArpgBenchmarks.Create(),
             .. PolicyBenchmarks.Create(),
+            .. RenderingAuditBenchmarks.Create(),
         ];
         if (iterationsOverride is not int count) return cases;
         BenchmarkCase[] overridden = new BenchmarkCase[cases.Length];

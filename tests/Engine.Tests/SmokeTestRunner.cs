@@ -16,6 +16,7 @@ internal static class SmokeTestRunner
         (nameof(FrameTimerTests), FrameTimerTests.Tests),
         (nameof(GameClockTests), GameClockTests.Tests),
         (nameof(ArpgWorkloadTests), ArpgWorkloadTests.Tests),
+        (nameof(RenderingAuditTests), [new TestCase("Renderer command preparation", RenderingAuditTests.Run)]),
     ];
 
     public static bool RunAll()

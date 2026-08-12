@@ -1,5 +1,30 @@
 # Completed Milestones
 
+## 2026-08-13 — Milestone 14: Delete and Document
+
+Verified:
+- current architecture guidance now matches the shipped sparse-set ECS and explicit scheduler;
+- obsolete archetype migration, automatic dependency-graph, and mandatory-parallel instructions were removed;
+- README, AGENTS.md, Roadmap.md, Implemented.md, and architecture guidance were synchronized;
+- historical milestone records were preserved where needed for accurate history.
+
+## 2026-08-13 — Milestone 13: Rendering Audit
+
+Completed:
+
+- Added renderer-owned command-preparation audit coverage for serial and parallel execution.
+- Added deterministic chunk-count and checksum parity checks for empty, small, 512+, ARPG-sized, and large workloads.
+- Added `RenderingAudit_Serial` and `RenderingAudit_Parallel` Release benchmark cases.
+- Simplified live renderer command recording to one serial secondary command buffer because the representative audit measured parallel preparation overhead above serial work; audit cases reported 0 B/op after warm-up.
+
+Verification:
+
+- Solution build passed with 0 errors and 0 warnings.
+- Plain console smoke tests passed, including rendering-audit coverage.
+- Release renderer audit cases reported 0 B/op and 0 gen0 collections.
+- Normal, ARPG, 2D ARPG, and forced-parallel bounded Vulkan sample runs exited cleanly.
+- `git diff --check` passed.
+
 ## 2026-08-13 — Milestone 12: Tune Multithreading
 
 Completed:

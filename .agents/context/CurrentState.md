@@ -14,10 +14,11 @@
 - Fixed-step movement and collision remain deterministic and main-thread driven.
 - Asset decoding and texture ownership remain sample-local and managed.
 - Vulkan validation and real Linux/macOS runs remain environment-dependent.
+- Live batch command recording is serial after the Milestone 13 rendering audit; parallel extraction remains available where measured useful.
 
 ## Next Actions
 
-- Roadmap follow-ups remain in Roadmap.md.
+- Known limitations and their follow-up candidates are recorded in KnownIssues.md and Roadmap.md.
 
 ## Resume Rules
 

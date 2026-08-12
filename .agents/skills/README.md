@@ -62,7 +62,7 @@ Other concrete contracts (types, projects, seams) are defined in `.agents/contex
 - `determinism` — fixed-step simulation determinism.
 - `ecs` — architecture & ECS (DOD): struct components, Entity IDs, command buffers.
 - `game-loop-frame` — system execution order, fixed-step + render interpolation, pacing.
-- `job-system` — dependency graphs, shared/exclusive access, lock-free threading.
+- `job-system` — explicit barriers, disjoint parallel work, lock-free threading, and worker ownership.
 - `physics-native` — native physics via C-API wrappers, Entity IDs in body user data.
 - `pre-generation-checklist` — pre-generation verification for runtime code.
 - `scenes-memory` — zero-alloc serializers, arena allocators.

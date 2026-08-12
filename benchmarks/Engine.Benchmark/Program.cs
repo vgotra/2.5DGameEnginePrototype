@@ -62,6 +62,7 @@ internal static class Program
         {
             ArpgBenchmarks.Dispose();
             PolicyBenchmarks.Dispose();
+            RenderingAuditBenchmarks.Dispose();
         }
 
         PrintResults(run);

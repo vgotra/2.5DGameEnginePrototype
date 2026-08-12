@@ -238,7 +238,7 @@ KEEP ECS.
 
 KEEP data-oriented components.
 
-REMOVE archetype ECS.
+The sparse-set ECS is canonical and implemented.
 
 Target:
 
@@ -256,42 +256,11 @@ Do NOT replace ECS with inheritance-heavy GameObjects.
 
 ---
 
-# 9. Remove Archetype ECS
+# 9. Sparse-set ECS
 
-Remove:
+The runtime uses independent component stores and simple queries.
 
-```text
-Archetype
-ArchetypeKey
-EntityLocation → Archetype
-archetype migration
-archetype table management
-archetype query cache
-component-signature migration
-```
-
-Changing components must become trivial.
-
-Instead of:
-
-```text
-Entity
-  ↓
-Archetype A
-
-Add<Poisoned>()
-
-  ↓
-find/create Archetype B
-  ↓
-move entity
-  ↓
-copy components
-  ↓
-update EntityLocation
-```
-
-target:
+Changing components is a direct typed-store operation:
 
 ```text
 Add<Poisoned>()
@@ -321,7 +290,7 @@ Generation protects against stale handles.
 
 No component signature should live in `Entity`.
 
-No archetype reference.
+No storage-layout reference is kept in the entity handle.
 
 No Scene object reference.
 
@@ -358,7 +327,7 @@ This gives:
 - cheap add/remove
 - cheap lookup
 - simple implementation
-- no archetype migration
+- no entity-wide component migration
 
 ---
 
@@ -426,20 +395,9 @@ For hundreds or a few thousand entities this is sufficient.
 
 ---
 
-# 14. No Archetype Query Cache
+# 14. Simple Sparse Queries
 
-Do NOT rebuild archetype complexity through another mechanism.
-
-Avoid:
-
-```text
-QuerySignature
-QueryPlan
-CachedArchetypeSet
-ArchetypeMask
-```
-
-A query should be cheap and obvious.
+A query should be cheap and obvious; optimize a measured hot query rather than rebuilding a global query graph.
 
 If profiling eventually shows that a particular query is expensive:
 
@@ -487,21 +445,9 @@ No mandatory base class should be required unless it provides real value.
 
 ---
 
-# 16. Scheduler: KEEP It, Remove Intelligence
+# 16. Explicit Scheduler
 
-Do NOT delete the scheduler.
-
-Replace the current intelligent scheduler concept with a small explicit frame scheduler.
-
-REMOVE:
-
-```text
-automatic component read/write inference
-automatic dependency graph construction
-runtime conflict analysis
-complex system DAG
-scheduler deciding gameplay semantics
-```
+The runtime uses a small explicit frame scheduler. Systems provide their ordering, execution policy, and safe parallel grouping directly; the scheduler does not infer gameplay semantics.
 
 KEEP:
 
@@ -1206,49 +1152,7 @@ These policies are fixed and deterministic for the current runtime. Parallel wor
 
 ---
 
-# 50. Milestone 13 — Rendering Audit
-
-Only after runtime simplification is stable:
-
-benchmark Vulkan command preparation.
-
-Keep renderer multithreading if useful.
-
-Simplify it if realistic workloads show that threading overhead exceeds benefit.
-
-Do NOT couple this milestone with ECS refactoring.
-
----
-
-# 51. Milestone 14 — Delete and Document
-
-Perform final deletion pass.
-
-Update:
-
-```text
-README
-GameEngineDesign
-Roadmap
-AGENTS.md
-.agents/context
-```
-
-New architectural statement:
-
-> The engine uses a simple sparse-set ECS with explicit frame scheduling and adaptive multithreading.
-
-Remove documentation that instructs AI agents to recreate:
-
-```text
-archetypes
-automatic component dependency analysis
-mandatory parallel execution
-```
-
----
-
-# 52. Final Design Rule
+# 50. Final Design Rule
 
 The engine is:
 
@@ -1278,36 +1182,3 @@ worker thread
 
 Multithreading is selected because it improves frame time, not because the architecture requires demonstrating multithreading.
 
----
-
-# 53. First Task for Coding Agent
-
-Start with Milestone 0.
-
-Before changing anything:
-
-1. Inspect current ECS.
-2. Inspect current scheduler.
-3. Inspect current JobSystem.
-4. Identify every archetype dependency.
-5. Identify every `ComponentAccess` dependency.
-6. Identify every parallel ECS query.
-7. Identify every caller of `EntityCommands`.
-8. Benchmark scheduler overhead.
-9. Benchmark serial vs parallel execution at realistic entity counts.
-10. Produce a file-level migration map.
-
-Classify current types:
-
-```text
-KEEP
-SIMPLIFY
-REPLACE
-DELETE
-```
-
-Then propose exact Milestone 1 changes.
-
-STOP.
-
-Do not implement the refactor until the migration map has been reviewed.

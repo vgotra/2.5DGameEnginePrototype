@@ -1,6 +1,6 @@
 ---
 name: job-system
-description: Applies job system and parallelism conventions: dependency graphs, shared-read/exclusive-write access rules, no locks (lock-free queues, TLS, Interlocked), per-thread arenas, single ownership, and main-thread ownership of window/simulation/present state. Use when writing or reviewing parallel jobs or threading code in a game engine. Do not use for tooling, tests, or single-threaded application code.
+description: Applies JobSystem and parallelism conventions: explicit barriers, disjoint partitions, no locks (lock-free queues, TLS, Interlocked), per-thread arenas, single ownership, and main-thread ownership of window/simulation/present state. Use when writing or reviewing parallel jobs or threading code in a game engine. Do not use for tooling, tests, or single-threaded application code.
 ---
 
 # Job System & Parallelism
@@ -9,7 +9,7 @@ description: Applies job system and parallelism conventions: dependency graphs, 
 - Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
 
 ## Rules
-- ENFORCE dependency graphs for job execution (schedule jobs with dependencies and barriers; a bounded number of dependencies per job). Parallel jobs write disjoint partitions (bands/chunks); merges happen once on the main thread after the barrier.
+- ENFORCE caller-owned ordering with explicit waits and completion barriers. Do not infer dependency graphs or require a general DAG. Parallel jobs write disjoint partitions (bands/chunks); merges happen once on the main thread after the barrier.
 - ENFORCE strict data access rules: Read-Only (Shared) OR Read-Write (Exclusive). NEVER both simultaneously on the same data.
 - FORBID `lock` statements. USE lock-free queues, thread-local storage, or `Interlocked` atomic operations.
 - USE pre-allocated memory arenas per thread for temporary job allocations. REUSE cached delegates and pooled closures so steady-state dispatch allocates nothing.

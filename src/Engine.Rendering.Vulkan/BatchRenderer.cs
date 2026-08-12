@@ -23,7 +23,6 @@ internal unsafe class BatchRenderer : IDisposable
     private readonly uint _framesInFlight;
     private readonly ParallelDrawRecorder _drawRecorder;
     private readonly JobSystem _jobSystem;
-    private readonly Action<int, int> _recordChunksBody;
 
     private VulkanBuffer[] _vertexBuffers;
     private VulkanBuffer[] _indexBuffers;
@@ -37,9 +36,6 @@ internal unsafe class BatchRenderer : IDisposable
     private readonly List<TextureDrawRange> _textureRanges = new();
 
     private FrameRenderContext _context;
-    private VkBuffer _recordVertexBuffer;
-    private VkBuffer _recordIndexBuffer;
-    private int _pendingChunks;
 
     public BatchRenderer(
         VkDevice device,
@@ -65,7 +61,6 @@ internal unsafe class BatchRenderer : IDisposable
         _framesInFlight = framesInFlight;
         _drawRecorder = drawRecorder;
         _jobSystem = jobSystem;
-        _recordChunksBody = RecordChunks;
 
         _vertexBuffers = new VulkanBuffer[framesInFlight];
         _indexBuffers = new VulkanBuffer[framesInFlight];
@@ -174,7 +169,7 @@ internal unsafe class BatchRenderer : IDisposable
         if (_vertices.Count > 0 && _indices.Count > 0)
         {
             UploadGeometry(context.Primary);
-            chunks = ComputeChunkCount(_textureRanges.Count);
+            chunks = 1;
             RecordDrawChunks(context, chunks);
         }
         BeginRenderPass(context);
@@ -192,35 +187,8 @@ internal unsafe class BatchRenderer : IDisposable
     {
         VulkanBuffer vertexBuffer = _vertexBuffers[_frameIndex];
         VulkanBuffer indexBuffer = _indexBuffers[_frameIndex];
-        if (chunks <= 1)
-        {
-            _drawRecorder.RecordChunk(0, in context, _pipeline.Pipeline, _pipeline.Layout,
-                vertexBuffer.Buffer, indexBuffer.Buffer, _textureRanges, 0, _textureRanges.Count, _textureUploader);
-            return;
-        }
-        _recordVertexBuffer = vertexBuffer.Buffer;
-        _recordIndexBuffer = indexBuffer.Buffer;
-        _pendingChunks = chunks;
-        JobHandle barrier = _jobSystem.ParallelFor(chunks, 1, _recordChunksBody);
-        _jobSystem.Wait(barrier);
-    }
-
-    private void RecordChunks(int lo, int hi)
-    {
-        for (int chunk = lo; chunk < hi; chunk++)
-        {
-            ChunkBounds(_textureRanges.Count, _pendingChunks, chunk, out int start, out int end);
-            _drawRecorder.RecordChunk(chunk, in _context, _pipeline.Pipeline, _pipeline.Layout,
-                _recordVertexBuffer, _recordIndexBuffer, _textureRanges, start, end, _textureUploader);
-        }
-    }
-
-    private static void ChunkBounds(int total, int chunks, int chunk, out int start, out int end)
-    {
-        int baseSize = total / chunks;
-        int remainder = total % chunks;
-        start = chunk * baseSize + Math.Min(chunk, remainder);
-        end = start + baseSize + (chunk < remainder ? 1 : 0);
+        _drawRecorder.RecordChunk(0, in context, _pipeline.Pipeline, _pipeline.Layout,
+            vertexBuffer.Buffer, indexBuffer.Buffer, _textureRanges, 0, _textureRanges.Count, _textureUploader);
     }
 
     private void BeginRenderPass(in FrameRenderContext context)

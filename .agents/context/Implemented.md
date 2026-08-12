@@ -1,11 +1,22 @@
 # Implemented Features
 
-## Milestone 12 — Tune Multithreading
+## Delete and Document
+
+- Documentation now describes the shipped sparse-set ECS, explicit frame scheduler, adaptive/targeted multithreading, and serial live renderer command recording.
+- Obsolete archetype, automatic dependency-inference, mandatory-parallel, and migration-plan instructions were removed from current architecture guidance.
+
+## Tune Multithreading
 
 - Added explicit `Serial`, `Adaptive`, `Parallel`, and `Background` execution policies with stable system metadata.
 - Added optional allocation/GC/timing diagnostics to the sparse frame scheduler.
 - Classified sample input, AI, movement, collision, and projectile systems with fixed adaptive thresholds.
 - Added policy benchmark cases and clean benchmark JobSystem ownership.
+
+## Rendering Audit
+
+- Added renderer-owned serial/parallel command-preparation audit helpers with deterministic chunking and checksums.
+- Added representative 128, 512, 1,350, and 10,000-range benchmark cases and smoke parity coverage.
+- Simplified live renderer command recording to one serial secondary command buffer after the audit measured parallel preparation overhead above serial work; the audit path reports zero steady-state benchmark allocations after warm-up.
 
 ## Realistic ARPG Benchmark
 
@@ -30,7 +41,7 @@
 ## ECS and Runtime
 
 - Sparse ECS with generation-safe entities, dense/sparse component stores, serial queries, deferred mutation, scene ownership, and an explicit frame scheduler.
-- Fixed-step game loop, deterministic movement/collision, camera following, and job-system dependency scheduling.
+- Fixed-step game loop, deterministic movement/collision, camera following, and explicit frame scheduling with caller-owned JobSystem barriers.
 
 ## Game and Sample
 

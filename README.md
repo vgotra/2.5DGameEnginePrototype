@@ -1,6 +1,6 @@
 # 2D/2.5D Isometric Game Engine
 
-Windows-first (at current moment) .NET 10 prototype using Vortice.Vulkan. The first target is a small Diablo-like isometric vertical slice with explicit ownership, data-oriented ECS, mandatory multithreading, and low-allocation frame execution.
+Windows-first (at current moment) .NET 10 prototype using Vortice.Vulkan. The engine uses a simple sparse-set ECS with explicit frame scheduling, adaptive/targeted multithreading, and low-allocation frame execution.
 
 See [.agents/context/CurrentState.md](.agents/context/CurrentState.md) for the architecture and resumable implementation state.
 

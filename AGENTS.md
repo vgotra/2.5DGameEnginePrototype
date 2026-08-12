@@ -14,6 +14,7 @@
 
 ## Architecture
 - Vulkan is the only renderer (white/black diamonds in iso, boxes in `--2d`); changing `IRenderer` means updating `VulkanRenderer`.
+- `Engine.Ecs.Sparse` is the canonical ECS; frame order is explicit and multithreading is opt-in/adaptive rather than mandatory or parallel-by-default.
 
 ## Principles
 Develop code with **SOLID**, **KISS**, and **DRY**:
