@@ -842,7 +842,7 @@ should normally occur at synchronization points.
 
 # 27. Keep a Tiny Command Buffer
 
-Therefore DO NOT necessarily delete `WorldCommandBuffer`.
+Therefore DO NOT necessarily delete the structural command buffer.
 
 Instead simplify it radically.
 
@@ -1157,51 +1157,6 @@ Application
 
 ---
 
-# 46. Milestone 9 — Structural Command Buffer
-
-Simplify `WorldCommandBuffer`.
-
-Target:
-
-```text
-EntityCommands
-```
-
-Only:
-
-```text
-Create
-Destroy
-Add
-Remove
-```
-
-Use it when structural ECS mutations must be deferred across parallel execution.
-
-Serial gameplay code may perform immediate structural changes when safe.
-
----
-
-# 47. Milestone 10 — Gameplay API
-
-Introduce:
-
-```text
-HeroDefinition
-MonsterDefinition
-WeaponDefinition
-SkillDefinition
-
-SpawnHero
-SpawnMonster
-SpawnProjectile
-SpawnItem
-```
-
-Game code should stop looking like an ECS test.
-
----
-
 # 48. Milestone 11 — Realistic ARPG Benchmark
 
 Build a representative workload:
@@ -1361,7 +1316,7 @@ Before changing anything:
 4. Identify every archetype dependency.
 5. Identify every `ComponentAccess` dependency.
 6. Identify every parallel ECS query.
-7. Identify every caller of `WorldCommandBuffer`.
+7. Identify every caller of `EntityCommands`.
 8. Benchmark scheduler overhead.
 9. Benchmark serial vs parallel execution at realistic entity counts.
 10. Produce a file-level migration map.

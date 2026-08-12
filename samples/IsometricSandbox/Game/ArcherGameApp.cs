@@ -34,7 +34,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private RuntimeWorld? _runtimeWorld;
     private Scene? _scene;
     private readonly FrameScheduler _scheduler;
-    private readonly WorldCommandBuffer _buffer = new();
+    private SampleEntitySpawner? _spawner;
     private readonly TextureLibrary _textures;
     private readonly BitmapFont _font;
     private readonly SplashScreen _splash;
@@ -92,7 +92,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _playerMove = new PlayerMoveSystem(_map, Input);
         _critters = new CritterSystem(_map, _simulation);
         _integrate = new IntegrateSystem(_map);
-        _projectiles = new ProjectileSystem(_map) { Buffer = _buffer };
+        _projectiles = new ProjectileSystem(_map);
         _scheduler.Register(_playerMove);
         _scheduler.Register(_critters);
         _scheduler.Register(_integrate);
@@ -173,8 +173,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnFixedStep(float deltaSeconds)
     {
         _scheduler.Run(EcsWorld, deltaSeconds);
-        _buffer.Apply(EcsWorld);
-        _buffer.Clear();
+        _runtimeWorld!.ApplyCommands();
         _score += _projectiles.LastKills;
 
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
@@ -185,14 +184,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             Vector2 direction = state.AimTarget - origin;
             if (direction.LengthSquared() >= 0.0001f && EcsWorld.Query<Position, ArrowProjectile>().Count < SampleConfig.MaxArrows)
             {
-                Entity arrow = EcsWorld.Create();
-                EcsWorld.AddComponent(arrow, new Position(origin));
-                EcsWorld.AddComponent(arrow, new ArrowProjectile
-                {
-                    Direction = Vector2.Normalize(direction),
-                    Speed = SampleConfig.ArrowSpeed,
-                    Lifetime = SampleConfig.ArrowLifetime,
-                });
+                _spawner!.SpawnProjectile(origin, direction);
             }
         }
     }
@@ -232,12 +224,12 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnRestart()
     {
-        WorldCommandBuffer reset = new();
+        EntityCommands reset = _runtimeWorld!.Commands;
         ArrowCollectBody arrowBody = new() { Buffer = reset };
         EcsWorld.Query<ArrowProjectile>().ForEach(ref arrowBody);
         CritterCollectBody critterBody = new() { Buffer = reset };
         EcsWorld.Query<Critter>().ForEach(ref critterBody);
-        reset.Apply(EcsWorld);
+        _runtimeWorld.ApplyCommands();
 
         _score = 0;
         _lastScore = -1;
@@ -267,13 +259,13 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     private void CreateWorld()
     {
-        _player = EcsWorld.Create();
-        EcsWorld.AddComponent(_player, new Position(_playerStart));
-        EcsWorld.AddComponent(_player, new Velocity(Vector2.Zero));
-        EcsWorld.AddComponent(_player, new Collider(SampleConfig.PlayerRadius));
-        EcsWorld.AddComponent(_player, PlayerState.At(_playerStart));
+        RuntimeWorld runtimeWorld = _runtimeWorld!;
+        _spawner = new SampleEntitySpawner(runtimeWorld, _textures);
+        _projectiles.Buffer = runtimeWorld.Commands;
+        _player = _spawner.SpawnHero(_playerStart);
         _critters.Player = _player;
         RespawnCritters();
+        runtimeWorld.ApplyCommands();
     }
 
     private void RespawnCritters()
@@ -285,11 +277,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             {
                 Vector2 position = new(1f + _random.NextSingle() * (grid.Width - 3f), 1f + _random.NextSingle() * (grid.Height - 3f));
                 AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
-                Entity entity = EcsWorld.Create();
-                _scene!.Register(entity, EntityLifetime.Scene);
-                EcsWorld.AddComponent(entity, new Position(position));
-                EcsWorld.AddComponent(entity, CritterSystem.Create(species, position));
-                EcsWorld.AddComponent(entity, new Renderable(_textures.Deer, new Vector2(10, 10), SimColor(i)));
+                _spawner!.SpawnMonster(species, position, new Vector2(10, 10), SimColor(i));
             }
             return;
         }
@@ -297,15 +285,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         {
             AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
             Vector2 position = CritterSystem.FindSpawn(_map, _random, _playerStart);
-            Entity entity = EcsWorld.Create();
-            _scene!.Register(entity, EntityLifetime.Scene);
-            EcsWorld.AddComponent(entity, new Position(position));
-            EcsWorld.AddComponent(entity, CritterSystem.Create(species, position));
-            EcsWorld.AddComponent(entity, new Health(1));
-            EcsWorld.AddComponent(entity, new Renderable(
-                species == AnimalSpecies.Deer ? _textures.Deer : _textures.Rabbit,
+            _spawner!.SpawnMonster(
+                species,
+                position,
                 species == AnimalSpecies.Deer ? new Vector2(36, 44) : new Vector2(28, 36),
-                species == AnimalSpecies.Deer ? DeerColor : RabbitColor));
+                species == AnimalSpecies.Deer ? DeerColor : RabbitColor);
         }
     }
 

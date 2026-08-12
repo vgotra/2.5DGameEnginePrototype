@@ -14,7 +14,7 @@ Concrete values for the placeholder-based skills (see `.agents/skills/README.md`
 - `<ClockType>` — `GameClock` (`Engine.Core`)
 - `<JobSystemType>` — `JobSystem` (`Engine.Threading`)
 - `<EntityId>` — `EntityId` (`Engine.Core`)
-- `<CommandBuffer>` — `WorldCommandBuffer` (`Engine.Ecs`)
+- `<CommandBuffer>` — `EntityCommands` (`Engine.Ecs.Sparse`)
 - `<SpritePacket>` — `SpritePacket` (`Engine.Rendering`)
 - `<PresentMode>` — MAILBOX (Vulkan swapchain present mode)
 

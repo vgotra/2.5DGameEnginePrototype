@@ -18,7 +18,7 @@ public sealed class ProjectileSystem(TileMap map) : ISystem
     private Query<Position, ArrowProjectile>? _arrowQuery;
     private Query<Position, Critter, Health>? _critterQuery;
 
-    public WorldCommandBuffer Buffer { get; set; } = new();
+    public EntityCommands Buffer { get; set; } = new();
     public int LastKills { get; private set; }
 
 

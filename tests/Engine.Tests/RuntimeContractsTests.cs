@@ -1,4 +1,7 @@
 using Engine.App;
+using Engine.Rendering;
+using System.Numerics;
+using Entity = Engine.Ecs.Sparse.Entity;
 using SparseEntity = Engine.Ecs.Sparse.Entity;
 
 namespace Engine.Tests;
@@ -10,6 +13,7 @@ internal static class RuntimeContractsTests
         new(nameof(Game_CreatesAndOwnsActiveWorld), Game_CreatesAndOwnsActiveWorld),
         new(nameof(World_SwitchesScenesWithoutRecreatingWorld), World_SwitchesScenesWithoutRecreatingWorld),
         new(nameof(Scene_UnloadDestroysSceneEntitiesOnly), Scene_UnloadDestroysSceneEntitiesOnly),
+        new(nameof(GameplaySpawns_AreDeferredAndSceneOwned), GameplaySpawns_AreDeferredAndSceneOwned),
     ];
 
     private static void Game_CreatesAndOwnsActiveWorld()
@@ -42,6 +46,26 @@ internal static class RuntimeContractsTests
         TestAssert.True(!world.EcsWorld.IsAlive(sceneEntity), "scene entity is destroyed on unload");
         TestAssert.True(world.EcsWorld.IsAlive(transientEntity) && world.EcsWorld.IsAlive(worldEntity), "non-scene entities survive unload");
         TestAssert.True(!scene.IsLoaded && world.ActiveScene is null, "unloaded scene is inactive");
+    }
+
+    private static void GameplaySpawns_AreDeferredAndSceneOwned()
+    {
+        TestGame game = new();
+        World world = game.Create("Sanctuary");
+        Scene scene = world.LoadScene("Forest");
+        HeroDefinition hero = new(HeroType.Archer, new Vector2(3, 4), 5, new TextureHandle(1), new Vector2(8, 9), Vector4.One);
+        MonsterDefinition monster = new(MonsterType.Deer, new Vector2(7, 8), 2, 3, 4, new TextureHandle(2), new Vector2(10, 11), Vector4.One);
+        Entity heroEntity = world.SpawnHero(hero);
+        Entity monsterEntity = world.SpawnMonster(monster);
+        Entity itemEntity = world.SpawnItem(new ItemDefinition(ItemType.Gold, new Vector2(9, 10), new TextureHandle(3), Vector2.One, Vector4.One));
+
+        TestAssert.True(!world.EcsWorld.IsAlive(heroEntity), "gameplay spawns are deferred");
+        world.ApplyCommands();
+        TestAssert.True(world.EcsWorld.IsAlive(heroEntity) && world.EcsWorld.IsAlive(monsterEntity) && world.EcsWorld.IsAlive(itemEntity), "gameplay spawns activate together");
+        TestAssert.True(world.EcsWorld.Get<Position>(heroEntity).Value == hero.Position, "hero definition position is preserved");
+        TestAssert.True(world.EcsWorld.Get<MonsterState>(monsterEntity).Type == monster.Type, "monster definition type is preserved");
+        world.UnloadScene(scene.Name);
+        TestAssert.True(!world.EcsWorld.IsAlive(heroEntity) && !world.EcsWorld.IsAlive(monsterEntity) && !world.EcsWorld.IsAlive(itemEntity), "scene-owned spawns unload together");
     }
 
     private sealed class TestGame : Game

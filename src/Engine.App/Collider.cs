@@ -1,4 +1,4 @@
-namespace IsometricSandbox.Game;
+namespace Engine.App;
 
 public struct Collider(float radius)
 {

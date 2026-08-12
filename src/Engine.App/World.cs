@@ -1,17 +1,65 @@
 using Engine.Ecs.Sparse;
 
+using System.Numerics;
 namespace Engine.App;
 
 public sealed class World
 {
     private readonly Dictionary<string, Scene> _scenes = new(StringComparer.Ordinal);
     private readonly Engine.Ecs.Sparse.World _ecsWorld = new();
+    private readonly EntityCommands _commands = new();
 
     internal World(string name) => Name = name;
 
     public string Name { get; }
     public Scene? ActiveScene { get; private set; }
     public Engine.Ecs.Sparse.World EcsWorld => _ecsWorld;
+    public EntityCommands Commands => _commands;
+
+    public Entity SpawnHero(in HeroDefinition definition)
+    {
+        Entity entity = _commands.Create(_ecsWorld);
+        _commands.Add(entity, new Position(definition.Position));
+        _commands.Add(entity, new Velocity(Vector2.Zero));
+        _commands.Add(entity, new Collider(definition.ColliderRadius));
+        _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        _commands.Add(entity, new HeroState { Type = definition.Type });
+        return RegisterSpawn(entity);
+    }
+
+    public Entity SpawnMonster(in MonsterDefinition definition)
+    {
+        Entity entity = _commands.Create(_ecsWorld);
+        _commands.Add(entity, new Position(definition.Position));
+        _commands.Add(entity, new MonsterState { Type = definition.Type, Speed = definition.Speed, Radius = definition.ColliderRadius });
+        _commands.Add(entity, new Health(definition.Health));
+        _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        return RegisterSpawn(entity);
+    }
+
+    public Entity SpawnProjectile(in ProjectileDefinition definition)
+    {
+        Entity entity = _commands.Create(_ecsWorld);
+        _commands.Add(entity, new Position(definition.Position));
+        _commands.Add(entity, new ProjectileState { Direction = definition.Direction, Speed = definition.Speed, Lifetime = definition.Lifetime, Radius = definition.Radius });
+        if (definition.Texture.Value != 0) _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        return RegisterSpawn(entity);
+    }
+
+    public Entity SpawnItem(in ItemDefinition definition)
+    {
+        Entity entity = _commands.Create(_ecsWorld);
+        _commands.Add(entity, new Position(definition.Position));
+        _commands.Add(entity, new ItemState { Type = definition.Type });
+        _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        return RegisterSpawn(entity);
+    }
+
+    public void ApplyCommands()
+    {
+        _commands.Apply(_ecsWorld);
+        _commands.Clear();
+    }
 
     public Scene LoadScene(string name)
     {
@@ -51,6 +99,12 @@ public sealed class World
             if (ActiveScene is null) throw new InvalidOperationException("A scene is required for scene-owned entities.");
             ActiveScene.Register(entity, lifetime);
         }
+        return entity;
+    }
+
+    private Entity RegisterSpawn(Entity entity)
+    {
+        if (ActiveScene is not null) ActiveScene.Register(entity, EntityLifetime.Scene);
         return entity;
     }
 }

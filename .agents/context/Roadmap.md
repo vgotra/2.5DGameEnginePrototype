@@ -4,6 +4,8 @@ Implemented milestones live in `Implemented.md`.
 
 ## Planned
 
+- **Milestone 10 gameplay API** — completed; reusable definitions and deferred spawn façade are implemented in `Engine.App`.
+
 - **Milestone 8 simplify JobSystem** — remove unused dependency-graph machinery while retaining pooled workers, job handles, completion barriers, and parallel-for support.
 
 - **Scene/save format** — non-reflection serialization for tile maps, entities, player state.
