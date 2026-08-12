@@ -2,6 +2,10 @@
 
 Shipped milestones. Next actions live in `Roadmap.md`.
 
+- **Milestone 0 baseline runtime measurement** — added a dedicated Release benchmark matrix for current archetype ECS serial/parallel updates across 100–100,000 entities, including timing, allocations, GC, scheduler overhead, jobs/frame, worker participation, and utilization.
+
+- **Game / World / Scene runtime contracts** — added explicit game/world/scene ownership and lifetime boundaries while preserving the existing archetype ECS, scheduler, JobSystem, and renderer; scene-owned entities are cleaned up on scene unload.
+
 - **SDL3 platform backend** — SDL3 windowing/input + Vulkan surface on all OSes; native Win32 path removed.
 - **Build-time shader compilation + splash screen** — incremental MSBuild `glslc` compile to committed `.spv`; startup splash with progress bar while textures load.
 - **Isometric 2.5D render path** — iso diamond view + `--2d` flat mode, upright textured entities, stable depth sorting, camera follow.

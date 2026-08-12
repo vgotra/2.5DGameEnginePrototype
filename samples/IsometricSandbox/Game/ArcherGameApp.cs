@@ -7,6 +7,7 @@ using Engine.Platform.Desktop;
 using Engine.Rendering;
 using Engine.Rendering.Vulkan;
 using Engine.Threading;
+using RuntimeWorld = Engine.App.World;
 
 namespace IsometricSandbox.Game;
 
@@ -29,7 +30,9 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly JobSystem _jobs;
     private readonly VulkanRenderer _renderer;
     private readonly TileMap _map;
-    private readonly World _world = new();
+    private Engine.Ecs.World EcsWorld => _runtimeWorld!.EcsWorld;
+    private RuntimeWorld? _runtimeWorld;
+    private Scene? _scene;
     private readonly SystemScheduler _scheduler = new();
     private readonly WorldCommandBuffer _buffer = new();
     private readonly TextureLibrary _textures;
@@ -136,40 +139,48 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnSplashComplete()
     {
+        _runtimeWorld = base.CreateWorld("Sanctuary");
+        _scene = _runtimeWorld.LoadScene("Forest");
         CreateWorld();
         _playerMove.Player = _player;
         _integrate.Player = _player;
-        Camera.Follow(_world.Get<Position>(_player).Value, Grid!);
+        Camera.Follow(EcsWorld.Get<Position>(_player).Value, Grid!);
+    }
+
+    protected override void OnResize()
+    {
+        _splash.Resize(Viewport);
+        _renderer.Resize((int)Viewport.X, (int)Viewport.Y);
     }
 
     protected override void OnPerFrame()
     {
         if (!Input.MousePressed) return;
-        ref Position playerPosition = ref _world.Get<Position>(_player);
+        ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
         Camera.Follow(playerPosition.Value, Grid!);
-        ref PlayerState state = ref _world.Get<PlayerState>(_player);
+        ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
         state.AimTarget = Camera.ScreenToWorld(Input.MousePosition, Grid!);
         state.PendingShot = true;
     }
 
     protected override void OnFixedStep(float deltaSeconds)
     {
-        _scheduler.Run(_world, deltaSeconds);
-        _buffer.Apply(_world);
+        _scheduler.Run(EcsWorld, deltaSeconds);
+        _buffer.Apply(EcsWorld);
         _buffer.Clear();
         _score += _projectiles.LastKills;
 
-        ref PlayerState state = ref _world.Get<PlayerState>(_player);
+        ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
         if (state.PendingShot)
         {
             state.PendingShot = false;
-            Vector2 origin = _world.Get<Position>(_player).Value;
+            Vector2 origin = EcsWorld.Get<Position>(_player).Value;
             Vector2 direction = state.AimTarget - origin;
-            if (direction.LengthSquared() >= 0.0001f && _world.Query<Position, ArrowProjectile>().Count < SampleConfig.MaxArrows)
+            if (direction.LengthSquared() >= 0.0001f && EcsWorld.Query<Position, ArrowProjectile>().Count < SampleConfig.MaxArrows)
             {
-                EntityId arrow = _world.Create();
-                _world.AddComponent(arrow, new Position(origin));
-                _world.AddComponent(arrow, new ArrowProjectile
+                EntityId arrow = EcsWorld.Create();
+                EcsWorld.AddComponent(arrow, new Position(origin));
+                EcsWorld.AddComponent(arrow, new ArrowProjectile
                 {
                     Direction = Vector2.Normalize(direction),
                     Speed = SampleConfig.ArrowSpeed,
@@ -182,7 +193,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnRender()
     {
         TileGrid grid = Grid!;
-        ref Position playerPosition = ref _world.Get<Position>(_player);
+        ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
         Camera.Follow(playerPosition.Value, grid);
 
         int written;
@@ -216,16 +227,16 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     {
         WorldCommandBuffer reset = new();
         ArrowCollectBody arrowBody = new() { Buffer = reset };
-        _world.Query<ArrowProjectile>().ForEach(ref arrowBody);
+        EcsWorld.Query<ArrowProjectile>().ForEach(ref arrowBody);
         CritterCollectBody critterBody = new() { Buffer = reset };
-        _world.Query<Critter>().ForEach(ref critterBody);
-        reset.Apply(_world);
+        EcsWorld.Query<Critter>().ForEach(ref critterBody);
+        reset.Apply(EcsWorld);
 
         _score = 0;
         _lastScore = -1;
-        _world.Get<Position>(_player).Value = _playerStart;
-        _world.Get<Velocity>(_player).Value = Vector2.Zero;
-        _world.SetComponent(_player, PlayerState.At(_playerStart));
+        EcsWorld.Get<Position>(_player).Value = _playerStart;
+        EcsWorld.Get<Velocity>(_player).Value = Vector2.Zero;
+        EcsWorld.SetComponent(_player, PlayerState.At(_playerStart));
         RespawnCritters();
         Camera.Follow(_playerStart, Grid!);
     }
@@ -249,11 +260,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     private void CreateWorld()
     {
-        _player = _world.Create();
-        _world.AddComponent(_player, new Position(_playerStart));
-        _world.AddComponent(_player, new Velocity(Vector2.Zero));
-        _world.AddComponent(_player, new Collider(SampleConfig.PlayerRadius));
-        _world.AddComponent(_player, PlayerState.At(_playerStart));
+        _player = EcsWorld.Create();
+        EcsWorld.AddComponent(_player, new Position(_playerStart));
+        EcsWorld.AddComponent(_player, new Velocity(Vector2.Zero));
+        EcsWorld.AddComponent(_player, new Collider(SampleConfig.PlayerRadius));
+        EcsWorld.AddComponent(_player, PlayerState.At(_playerStart));
         _critters.Player = _player;
         RespawnCritters();
     }
@@ -267,10 +278,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             {
                 Vector2 position = new(1f + _random.NextSingle() * (grid.Width - 3f), 1f + _random.NextSingle() * (grid.Height - 3f));
                 AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
-                EntityId entity = _world.Create();
-                _world.AddComponent(entity, new Position(position));
-                _world.AddComponent(entity, CritterSystem.Create(species, position));
-                _world.AddComponent(entity, new Renderable(_textures.Deer, new Vector2(10, 10), SimColor(i)));
+                EntityId entity = EcsWorld.Create();
+                _scene!.Register(entity, EntityLifetime.Scene);
+                EcsWorld.AddComponent(entity, new Position(position));
+                EcsWorld.AddComponent(entity, CritterSystem.Create(species, position));
+                EcsWorld.AddComponent(entity, new Renderable(_textures.Deer, new Vector2(10, 10), SimColor(i)));
             }
             return;
         }
@@ -278,11 +290,12 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         {
             AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
             Vector2 position = CritterSystem.FindSpawn(_map, _random, _playerStart);
-            EntityId entity = _world.Create();
-            _world.AddComponent(entity, new Position(position));
-            _world.AddComponent(entity, CritterSystem.Create(species, position));
-            _world.AddComponent(entity, new Health(1));
-            _world.AddComponent(entity, new Renderable(
+            EntityId entity = EcsWorld.Create();
+            _scene!.Register(entity, EntityLifetime.Scene);
+            EcsWorld.AddComponent(entity, new Position(position));
+            EcsWorld.AddComponent(entity, CritterSystem.Create(species, position));
+            EcsWorld.AddComponent(entity, new Health(1));
+            EcsWorld.AddComponent(entity, new Renderable(
                 species == AnimalSpecies.Deer ? _textures.Deer : _textures.Rabbit,
                 species == AnimalSpecies.Deer ? new Vector2(36, 44) : new Vector2(28, 36),
                 species == AnimalSpecies.Deer ? DeerColor : RabbitColor));
@@ -291,13 +304,13 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     private int DrawEntities(int written, Vector2 playerWorld)
     {
-        ref PlayerState state = ref _world.Get<PlayerState>(_player);
+        ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
         written = SpriteExtraction.WriteEntity(Grid!, Camera, Sprites, written, playerWorld, PlayerSize, _textures.Player, state.JumpHeight, White);
         EntityRenderBody entityBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written };
-        _world.Query<Position, Renderable>().ForEach(ref entityBody);
+        EcsWorld.Query<Position, Renderable>().ForEach(ref entityBody);
         written = entityBody.Written;
         ArrowRenderBody arrowBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written };
-        _world.Query<Position, ArrowProjectile>().ForEach(ref arrowBody);
+        EcsWorld.Query<Position, ArrowProjectile>().ForEach(ref arrowBody);
         return arrowBody.Written;
     }
 

@@ -2,6 +2,7 @@ using System.Numerics;
 using Engine.App;
 using Engine.Core;
 using Engine.Ecs;
+using World = Engine.Ecs.World;
 using Engine.Platform;
 
 namespace IsometricSandbox.Game;

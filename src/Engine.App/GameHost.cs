@@ -6,7 +6,7 @@ using Engine.Threading;
 
 namespace Engine.App;
 
-public abstract class GameHost
+public abstract class GameHost : Game
 {
     private readonly GameHostConfig _config;
     private readonly IGameWindow _window;
@@ -77,10 +77,13 @@ public abstract class GameHost
 
     public void Run()
     {
+        InitializeGame();
+        SynchronizeViewport();
         RunSplash();
         _frameTimer = new FrameTimer(_config.FrameCap);
         OnSplashComplete();
         RunGame();
+        ShutdownGame();
     }
 
     protected void Present(ReadOnlySpan<SpritePacket> sprites)
@@ -110,6 +113,13 @@ public abstract class GameHost
             splashTimer.WaitForNextFrame();
             elapsed += splashTimer.Advance();
         }
+    }
+
+    private void SynchronizeViewport()
+    {
+        _viewport = _window.Size;
+        Camera.Resize(_viewport);
+        OnResize();
     }
 
     private void RunGame()

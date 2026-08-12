@@ -1,6 +1,7 @@
 using Engine.App;
 using Engine.Core;
 using Engine.Ecs;
+using World = Engine.Ecs.World;
 
 namespace IsometricSandbox.Game;
 
