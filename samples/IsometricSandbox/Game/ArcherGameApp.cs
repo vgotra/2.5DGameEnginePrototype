@@ -11,7 +11,7 @@ using SparseWorld = Engine.Ecs.Sparse.World;
 
 namespace IsometricSandbox.Game;
 
-// The "Archer in the Forest" game as an ECS app: an archetype world with
+// The "Archer in the Forest" game as an ECS app: a sparse world with
 // four systems (player movement, critter AI, integration, projectiles), the
 // Vulkan render path, and the splash. A --simulation mode spawns a 100k
 // critter herd on a procedural map to stress the parallel job system.
@@ -25,14 +25,12 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private static readonly Vector4 RabbitColor = new(0.95f, 0.65f, 0.75f, 1);
     private static readonly Vector2 PlayerSize = new(44, 56);
 
-    private readonly Options _options;
     private readonly PlatformSession _session;
     private readonly JobSystem _jobs;
     private readonly VulkanRenderer _renderer;
     private readonly TileMap _map;
     private SparseWorld EcsWorld => _runtimeWorld!.EcsWorld;
     private RuntimeWorld? _runtimeWorld;
-    private Scene? _scene;
     private readonly FrameScheduler _scheduler;
     private SampleEntitySpawner? _spawner;
     private readonly TextureLibrary _textures;
@@ -75,7 +73,6 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private ArcherGameApp(Options options, PlatformSession session, JobSystem jobs, VulkanRenderer renderer)
         : base(BuildConfig(options), session.Window, session.Input, renderer, jobs)
     {
-        _options = options;
         _session = session;
         _jobs = jobs;
         _scheduler = new FrameScheduler(jobs);
@@ -149,7 +146,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnSplashComplete()
     {
         _runtimeWorld = base.CreateWorld("Sanctuary");
-        _scene = _runtimeWorld.LoadScene("Forest");
+        _runtimeWorld.LoadScene("Forest");
         CreateWorld();
         _playerMove.Player = _player;
         _integrate.Player = _player;
@@ -164,6 +161,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnPerFrame()
     {
+        _playerMove.CaptureInput();
         if (_frameLimit is int limit && ++_frameCount >= limit)
         {
             Window.Close();
@@ -321,7 +319,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     {
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
         written = SpriteExtraction.WriteEntity(Grid!, Camera, Sprites, written, playerWorld, PlayerSize, _textures.Player, state.JumpHeight, White);
-        EntityRenderBody entityBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written };
+        EntityRenderBody entityBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written, ExcludedEntity = _player };
         EcsWorld.Query<Position, Renderable>().ForEach(ref entityBody);
         written = entityBody.Written;
         ArrowRenderBody arrowBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written };

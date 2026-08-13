@@ -2,6 +2,8 @@
 
 Implemented milestones live in `Implemented.md`.
 
+Near-term simplification milestones live in `PlannedMilestones.md`.
+
 ## Planned
 
 - **Scene/save format** — non-reflection serialization for tile maps, entities, player state.

@@ -1,28 +1,21 @@
-using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Engine.Rendering;
-using Engine.Threading;
 using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
 
 internal unsafe class BatchRenderer : IDisposable
 {
-    private const int ParallelRangeThreshold = 512;
-    private const int MinRangesPerChunk = 256;
-
     private readonly VkDevice _device;
     private readonly VkDeviceApi _deviceApi;
     private readonly VkPhysicalDevice _physicalDevice;
     private readonly VkPhysicalDeviceMemoryProperties _memoryProperties;
     private readonly VulkanPipeline _pipeline;
-    private readonly DescriptorSetAllocator _descriptorAllocator;
     private readonly TextureUploader _textureUploader;
     private readonly VkQueue _graphicsQueue;
     private readonly uint _framesInFlight;
     private readonly ParallelDrawRecorder _drawRecorder;
-    private readonly JobSystem _jobSystem;
 
     private VulkanBuffer[] _vertexBuffers;
     private VulkanBuffer[] _indexBuffers;
@@ -31,9 +24,7 @@ internal unsafe class BatchRenderer : IDisposable
     private readonly FrameGeometryCache _geometryCache;
     private int _frameIndex;
 
-    private readonly GrowableBuffer<ShapeVertex> _vertices = new();
-    private readonly GrowableBuffer<uint> _indices = new();
-    private readonly List<TextureDrawRange> _textureRanges = new();
+    private readonly SpriteGeometryBuilder _geometry = new();
 
     private FrameRenderContext _context;
 
@@ -43,24 +34,20 @@ internal unsafe class BatchRenderer : IDisposable
         VkPhysicalDevice physicalDevice,
         VkPhysicalDeviceMemoryProperties memoryProperties,
         VulkanPipeline pipeline,
-        DescriptorSetAllocator descriptorAllocator,
         TextureUploader textureUploader,
         VkQueue graphicsQueue,
         uint framesInFlight,
-        ParallelDrawRecorder drawRecorder,
-        JobSystem jobSystem)
+        ParallelDrawRecorder drawRecorder)
     {
         _device = device;
         _deviceApi = deviceApi;
         _physicalDevice = physicalDevice;
         _memoryProperties = memoryProperties;
         _pipeline = pipeline;
-        _descriptorAllocator = descriptorAllocator;
         _textureUploader = textureUploader;
         _graphicsQueue = graphicsQueue;
         _framesInFlight = framesInFlight;
         _drawRecorder = drawRecorder;
-        _jobSystem = jobSystem;
 
         _vertexBuffers = new VulkanBuffer[framesInFlight];
         _indexBuffers = new VulkanBuffer[framesInFlight];
@@ -71,8 +58,7 @@ internal unsafe class BatchRenderer : IDisposable
 
     public void ResizeBuffers(uint maxVertices, uint maxIndices)
     {
-        _vertices.EnsureCapacity((int)maxVertices);
-        _indices.EnsureCapacity((int)maxIndices);
+        _geometry.EnsureCapacity((int)maxVertices, (int)maxIndices);
         for (int i = 0; i < _framesInFlight; i++)
         {
             if (_vertexBuffers[i].Buffer.IsNotNull) _vertexBuffers[i].Dispose();
@@ -94,101 +80,35 @@ internal unsafe class BatchRenderer : IDisposable
     {
         _context = context;
         _frameIndex = context.FrameSlot;
-        _vertices.Clear();
-        _indices.Clear();
-        _textureRanges.Clear();
+        _geometry.BeginFrame();
     }
 
     public void Submit(ReadOnlySpan<SpritePacket> sprites)
     {
-        for (int i = 0; i < sprites.Length; i++)
-        {
-            var sprite = sprites[i];
-            AddShape(new ShapePacket(sprite.Position, sprite.Size, sprite.Color, sprite.SortKey, sprite.Shape), sprite.Texture);
-        }
-    }
-
-    private void AddShape(ShapePacket packet, TextureHandle texture)
-    {
-        uint firstIndex = (uint)_indices.Count;
-        int vertexOffset = _vertices.Count;
-        if (packet.Shape == ShapeKind.Box) AddBoxShape(packet, vertexOffset);
-        else AddDiamondShape(packet, vertexOffset);
-        _textureRanges.Add(new TextureDrawRange(texture, firstIndex, 6));
-    }
-
-    private void AddBoxShape(ShapePacket packet, int vertexOffset)
-    {
-        float halfWidth = packet.Size.X * 0.5f;
-        float halfHeight = packet.Size.Y * 0.5f;
-
-        Vector2 topLeft = packet.Position + new Vector2(-halfWidth, -halfHeight);
-        Vector2 topRight = packet.Position + new Vector2(halfWidth, -halfHeight);
-        Vector2 bottomRight = packet.Position + new Vector2(halfWidth, halfHeight);
-        Vector2 bottomLeft = packet.Position + new Vector2(-halfWidth, halfHeight);
-
-        _vertices.Add(new ShapeVertex(topLeft, packet.Color, new Vector2(0, 0)));
-        _vertices.Add(new ShapeVertex(topRight, packet.Color, new Vector2(1, 0)));
-        _vertices.Add(new ShapeVertex(bottomRight, packet.Color, new Vector2(1, 1)));
-        _vertices.Add(new ShapeVertex(bottomLeft, packet.Color, new Vector2(0, 1)));
-        AppendQuadIndices(vertexOffset);
-    }
-
-    private void AddDiamondShape(ShapePacket packet, int vertexOffset)
-    {
-        float halfWidth = packet.Size.X * 0.5f;
-        float halfHeight = packet.Size.Y * 0.5f;
-
-        Vector2 top = packet.Position + new Vector2(0, -halfHeight);
-        Vector2 right = packet.Position + new Vector2(halfWidth, 0);
-        Vector2 bottom = packet.Position + new Vector2(0, halfHeight);
-        Vector2 left = packet.Position + new Vector2(-halfWidth, 0);
-
-        _vertices.Add(new ShapeVertex(top, packet.Color, new Vector2(0.5f, 0)));
-        _vertices.Add(new ShapeVertex(right, packet.Color, new Vector2(1, 0.5f)));
-        _vertices.Add(new ShapeVertex(bottom, packet.Color, new Vector2(0.5f, 1)));
-        _vertices.Add(new ShapeVertex(left, packet.Color, new Vector2(0, 0.5f)));
-        AppendQuadIndices(vertexOffset);
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void AppendQuadIndices(int vertexOffset)
-    {
-        _indices.Add((uint)vertexOffset + 0);
-        _indices.Add((uint)vertexOffset + 1);
-        _indices.Add((uint)vertexOffset + 2);
-        _indices.Add((uint)vertexOffset + 0);
-        _indices.Add((uint)vertexOffset + 2);
-        _indices.Add((uint)vertexOffset + 3);
+        _geometry.AddSprites(sprites);
     }
 
     public void EndFrame()
     {
         FrameRenderContext context = _context;
         int chunks = 0;
-        if (_vertices.Count > 0 && _indices.Count > 0)
+        if (_geometry.VertexCount > 0 && _geometry.IndexCount > 0)
         {
             UploadGeometry(context.Primary);
             chunks = 1;
-            RecordDrawChunks(context, chunks);
+            RecordDrawChunk(context);
         }
         BeginRenderPass(context);
         if (chunks > 0) _drawRecorder.ExecuteRecorded(context.Primary, chunks);
         _deviceApi.vkCmdEndRenderPass(context.Primary);
     }
 
-    private int ComputeChunkCount(int rangeCount)
-    {
-        if (rangeCount < ParallelRangeThreshold) return 1;
-        return Math.Clamp(rangeCount / MinRangesPerChunk, 1, _drawRecorder.MaxChunks);
-    }
-
-    private void RecordDrawChunks(in FrameRenderContext context, int chunks)
+    private void RecordDrawChunk(in FrameRenderContext context)
     {
         VulkanBuffer vertexBuffer = _vertexBuffers[_frameIndex];
         VulkanBuffer indexBuffer = _indexBuffers[_frameIndex];
         _drawRecorder.RecordChunk(0, in context, _pipeline.Pipeline, _pipeline.Layout,
-            vertexBuffer.Buffer, indexBuffer.Buffer, _textureRanges, 0, _textureRanges.Count, _textureUploader);
+            vertexBuffer.Buffer, indexBuffer.Buffer, _geometry.TextureRanges, 0, _geometry.TextureRanges.Count, _textureUploader);
     }
 
     private void BeginRenderPass(in FrameRenderContext context)
@@ -212,11 +132,11 @@ internal unsafe class BatchRenderer : IDisposable
         var stagingVertex = _stagingVertexBuffers[_frameIndex];
         var stagingIndex = _stagingIndexBuffers[_frameIndex];
 
-        nuint vertexBytes = (nuint)(_vertices.Count * Unsafe.SizeOf<ShapeVertex>());
-        nuint indexBytes = (nuint)(_indices.Count * sizeof(uint));
+        nuint vertexBytes = (nuint)(_geometry.VertexCount * Unsafe.SizeOf<ShapeVertex>());
+        nuint indexBytes = (nuint)(_geometry.IndexCount * sizeof(uint));
 
         EnsureBufferCapacity(ref vertexBuffer, ref indexBuffer, ref stagingVertex, ref stagingIndex, vertexBytes, indexBytes);
-        UploadGeometryIfChanged(cmdBuffer, vertexBytes, indexBytes, _vertices.AsSpan(), _indices.AsSpan(), vertexBuffer, indexBuffer, stagingVertex, stagingIndex);
+        UploadGeometryIfChanged(cmdBuffer, vertexBytes, indexBytes, _geometry.Vertices, _geometry.Indices, vertexBuffer, indexBuffer, stagingVertex, stagingIndex);
     }
 
     private void EnsureBufferCapacity(
@@ -229,7 +149,7 @@ internal unsafe class BatchRenderer : IDisposable
     {
         if (vertexBytes <= vertexBuffer.Size && indexBytes <= indexBuffer.Size) return;
         _deviceApi.vkQueueWaitIdle(_graphicsQueue);
-        ResizeBuffers((uint)_vertices.Count * 2, (uint)_indices.Count * 2);
+        ResizeBuffers((uint)_geometry.VertexCount * 2, (uint)_geometry.IndexCount * 2);
         vertexBuffer = _vertexBuffers[_frameIndex];
         indexBuffer = _indexBuffers[_frameIndex];
         stagingVertex = _stagingVertexBuffers[_frameIndex];

@@ -12,12 +12,20 @@ namespace IsometricSandbox.Game;
 // Actual collision-aware movement happens later in IntegrateSystem.
 public sealed class PlayerMoveSystem(TileMap map, IInputState input) : ISystem
 {
+    private bool _jumpRequested;
+
     public Entity Player { get; set; }
+
+    public void CaptureInput()
+    {
+        if (input.WasPressed(GameKey.Space)) _jumpRequested = true;
+    }
 
     public void Update(World world, float deltaSeconds)
     {
         Vector2 direction = ReadMovement();
-        bool jumpRequested = input.WasPressed(GameKey.Space);
+        bool jumpRequested = _jumpRequested;
+        _jumpRequested = false;
         ref Position position = ref world.Get<Position>(Player);
         ref Velocity velocity = ref world.Get<Velocity>(Player);
         ref PlayerState state = ref world.Get<PlayerState>(Player);

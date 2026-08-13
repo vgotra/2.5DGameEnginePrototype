@@ -12,9 +12,11 @@ public struct EntityRenderBody : IQueryAction<Position, Renderable, EntityRender
     public IsometricCamera Camera;
     public SpritePacket[] Sprites;
     public int Written;
+    public Entity ExcludedEntity;
 
     public static void Execute(ref EntityRenderBody body, Entity entity, ref Position position, ref Renderable renderable)
     {
+        if (entity == body.ExcludedEntity) return;
         body.Written = SpriteExtraction.WriteEntity(
             body.Grid, body.Camera, body.Sprites.AsSpan(), body.Written, position.Value,
             renderable.Size, renderable.Texture, 0f, renderable.Color);

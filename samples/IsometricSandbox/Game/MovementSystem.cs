@@ -11,4 +11,8 @@ public static class MovementSystem
         if (input.LengthSquared() > 1f) input = Vector2.Normalize(input);
         return map.TryMove(position, position + input * speed * deltaSeconds, radius);
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Vector2 MoveVelocity(TileMap map, Vector2 position, Vector2 velocity, float radius, float deltaSeconds)
+        => map.TryMove(position, position + velocity * deltaSeconds, radius);
 }

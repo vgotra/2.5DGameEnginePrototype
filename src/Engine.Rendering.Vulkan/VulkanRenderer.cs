@@ -205,7 +205,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout);
         _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator);
         _drawRecorder = new ParallelDrawRecorder(_deviceApi, GraphicsQueueFamily, _jobSystem.WorkerCount, FramesInFlight);
-        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _descriptorAllocator, _textureUploader, _graphicsQueue, FramesInFlight, _drawRecorder, _jobSystem);
+        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _textureUploader, _graphicsQueue, FramesInFlight, _drawRecorder);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
 

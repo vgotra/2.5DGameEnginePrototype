@@ -10,6 +10,6 @@ public struct IntegrateBody : IQueryAction<Position, Velocity, Collider, Integra
 
     public static void Execute(ref IntegrateBody body, Entity entity, ref Position position, ref Velocity velocity, ref Collider collider)
     {
-        position.Value = MovementSystem.Move(body.Map, position.Value, velocity.Value, velocity.Value.Length(), collider.Radius, body.DeltaSeconds);
+        position.Value = MovementSystem.MoveVelocity(body.Map, position.Value, velocity.Value, collider.Radius, body.DeltaSeconds);
     }
 }

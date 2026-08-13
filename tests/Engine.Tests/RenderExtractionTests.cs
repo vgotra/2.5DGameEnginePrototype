@@ -1,6 +1,8 @@
 using System.Numerics;
 using Engine.App;
+using Engine.Ecs.Sparse;
 using Engine.Rendering;
+using IsometricSandbox.Game;
 
 namespace Engine.Tests;
 
@@ -13,6 +15,7 @@ internal static class RenderExtractionTests
         new(nameof(ExtractTiles_FlatExtractionBounded), ExtractTiles_FlatExtractionBounded),
         new(nameof(ExtractTiles_FlatSpritesAreBoxes), ExtractTiles_FlatSpritesAreBoxes),
         new(nameof(ExtractTiles_CullsOffScreenTiles), ExtractTiles_CullsOffScreenTiles),
+        new(nameof(EntityRenderBody_ExcludesPlayer), EntityRenderBody_ExcludesPlayer),
     ];
 
     private static TileGrid OpenGrid() => new(20, 20, 64, 32, new byte[400]);
@@ -68,5 +71,21 @@ internal static class RenderExtractionTests
         SpritePacket[] sprites = new SpritePacket[grid.Width * grid.Height * 2];
         int extracted = Extract(grid, camera, sprites);
         TestAssert.True(extracted > 0 && extracted < grid.Width * grid.Height * 2, "viewport culling skips off-screen tiles");
+    }
+
+    private static void EntityRenderBody_ExcludesPlayer()
+    {
+        TileGrid grid = OpenGrid();
+        IsometricCamera camera = new(new Vector2(800, 600));
+        Entity player = new(4, 1);
+        SpritePacket[] sprites = new SpritePacket[4];
+        EntityRenderBody body = new() { Grid = grid, Camera = camera, Sprites = sprites, ExcludedEntity = player };
+        Position position = new(new Vector2(10.5f, 10.5f));
+        Renderable renderable = new(default, new Vector2(44, 56), Vector4.One);
+        EntityRenderBody.Execute(ref body, player, ref position, ref renderable);
+        TestAssert.True(body.Written == 0, "generic entity rendering excludes the manually rendered player");
+
+        EntityRenderBody.Execute(ref body, new Entity(5, 1), ref position, ref renderable);
+        TestAssert.True(body.Written == 2, "generic entity rendering keeps non-player entities");
     }
 }
