@@ -9,7 +9,7 @@ namespace IsometricSandbox.Game;
 // (safe to run in parallel). Positions are clamped to the walkable border.
 public struct SimCritterBody : IQueryAction<Position, Critter, SimCritterBody>
 {
-    public TileMap Map;
+    public TerrainSurface Map;
     public float Time;
     public float DeltaSeconds;
 

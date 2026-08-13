@@ -11,22 +11,20 @@ public static class SpriteExtraction
     private static readonly Vector4 Black = new(0, 0, 0, 1);
 
     public static int ExtractTiles(
-        TileGrid grid,
+        TerrainSurface grid,
         IsometricCamera camera,
         ITileTextureProvider? textures,
         Random? flicker,
         Span<SpritePacket> sprites)
     {
         ScreenTransform transform = camera.GetScreenTransform(grid);
-        return ExtractTileRange(grid, in transform, camera.Viewport, camera.Projection.TileShape, grid.TileWidth,
-            camera.Projection.GetTileHeight(grid), 0, grid.Height, sprites, textures, flicker);
+        return ExtractTerrainRange(grid, in transform, camera.Viewport, grid.TileWidth, grid.TileHeight, 0, grid.Height, sprites, textures, flicker);
     }
 
-    public static int ExtractTileRange(
-        TileGrid grid,
+    public static int ExtractTerrainRange(
+        TerrainSurface grid,
         in ScreenTransform transform,
         Vector2 viewport,
-        ShapeKind shape,
         float tileWidth,
         float tileHeight,
         int yStart,
@@ -49,16 +47,16 @@ public static class SpriteExtraction
                     screen.Y + halfHeight < 0 || screen.Y - halfHeight > viewport.Y)
                     continue;
                 int sortKey = y * grid.Width + x;
-                sprites[written++] = new SpritePacket(screen, borderSize, Black, default, default, sortKey, shape);
+                sprites[written++] = new SpritePacket(screen, borderSize, Black, default, default, sortKey);
                 sprites[written++] = textured
-                    ? WriteTileFill(screen, tileSize, (TileType)grid.Get(x, y), textures, flicker, sortKey, shape)
-                    : new SpritePacket(screen, tileSize, White, default, default, sortKey, shape);
+                    ? WriteTileFill(screen, tileSize, grid.SampleSurface(new(x + 0.5f, y + 0.5f)), textures, flicker, sortKey)
+                    : new SpritePacket(screen, tileSize, White, default, default, sortKey);
             }
         return written;
     }
 
     public static int WriteEntity(
-        TileGrid grid,
+        TerrainSurface grid,
         IsometricCamera camera,
         Span<SpritePacket> sprites,
         int written,
@@ -74,13 +72,13 @@ public static class SpriteExtraction
         Vector2 borderCenter = groundScreen - new Vector2(0, borderSize.Y * 0.5f);
         Vector2 center = groundScreen - new Vector2(0, size.Y * 0.5f);
         if (written + 2 > sprites.Length) return written;
-        sprites[written++] = new SpritePacket(borderCenter, borderSize, Black, default, default, sortKey, ShapeKind.Box);
-        sprites[written++] = new SpritePacket(center, size, color, texture, default, sortKey, ShapeKind.Box);
+        sprites[written++] = new SpritePacket(borderCenter, borderSize, Black, default, default, sortKey);
+        sprites[written++] = new SpritePacket(center, size, color, texture, default, sortKey);
         return written;
     }
 
     public static int WriteEntity(
-        TileGrid grid,
+        TerrainSurface grid,
         IsometricCamera camera,
         Span<SpritePacket> sprites,
         int written,
@@ -98,7 +96,7 @@ public static class SpriteExtraction
         return written;
     }
 
-    public static float SortKey(TileGrid grid, Vector2 world)
+    public static float SortKey(TerrainSurface grid, Vector2 world)
     {
         int x = (int)MathF.Floor(world.X);
         int y = (int)MathF.Floor(world.Y);
@@ -113,18 +111,17 @@ public static class SpriteExtraction
         TileType type,
         ITileTextureProvider? textures,
         Random? flicker,
-        float sortKey,
-        ShapeKind shape)
+        float sortKey)
     {
         if (textures is null || flicker is null)
-            return new SpritePacket(screen, size, White, default, default, sortKey, shape);
+            return new SpritePacket(screen, size, White, default, default, sortKey);
         string? textureName = TileVisual.TextureName(type);
         TextureHandle? texture = textureName is null ? null : textures.TryGet(textureName);
         bool isBonfire = type == TileType.Bonfire;
         float brightness = isBonfire ? 0.7f + 0.3f * flicker.NextSingle() : 1f;
         if (texture.HasValue)
-            return new SpritePacket(screen, size, White * brightness, texture.Value, default, sortKey, shape);
-        return new SpritePacket(screen, size, TileVisual.Color(type) * brightness, default, default, sortKey, shape);
+            return new SpritePacket(screen, size, White * brightness, texture.Value, default, sortKey);
+        return new SpritePacket(screen, size, TileVisual.Color(type) * brightness, default, default, sortKey);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

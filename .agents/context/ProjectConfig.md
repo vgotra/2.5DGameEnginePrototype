@@ -38,7 +38,7 @@ Concrete values for the placeholder-based skills (see `.agents/skills/README.md`
 - Vulkan SDK (`vulkan-1.dll` + `glslc` for the build-time shader compile)
 
 ## Sample flags / controls
-- Flags: `--2d` (flat top-down view), `--fullscreen` (borderless start), `--cap <fps>` (frame-rate cap), `--metrics` (rolling table every 120 frames), `--parallel` (force supported parallel extraction paths; live Vulkan batch command recording remains serial after the rendering audit), `--simulation` (128×128 map + 100k critter ECS stress test), `--arpg` (realistic ARPG workload), and `--frames <n>` (bounded run for verification).
+- Flags: `--fullscreen` (borderless start), `--cap <fps>` (frame-rate cap), `--metrics` (rolling table every 120 frames), `--parallel` (force supported parallel extraction paths; live Vulkan batch command recording remains serial after the rendering audit), `--simulation` (128×128 map + 20K critter ARPG-scale workload), `--arpg` (realistic ARPG workload), and `--frames <n>` (bounded run for verification).
 - Controls: `WASD`/arrows move, mouse aim, left-click shoot, `Space` jump, `R` restart, `F11` fullscreen toggle, `Escape` exit. Score is shown in the window title.
 
 ## Benchmark gate

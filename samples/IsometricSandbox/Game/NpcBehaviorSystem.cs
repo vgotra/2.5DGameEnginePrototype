@@ -4,7 +4,7 @@ using Engine.Ecs.Sparse;
 
 namespace IsometricSandbox.Game;
 
-public sealed class NpcBehaviorSystem(TileMap map) : ISystem
+public sealed class NpcBehaviorSystem(TerrainSurface map) : ISystem
 {
     private Query<Position, NpcState>? _query;
 
@@ -17,7 +17,7 @@ public sealed class NpcBehaviorSystem(TileMap map) : ISystem
 
     private struct Body : IQueryAction<Position, NpcState, Body>
     {
-        public TileMap Map;
+        public TerrainSurface Map;
         public float DeltaSeconds;
 
         public static void Execute(ref Body body, Entity entity, ref Position position, ref NpcState npc)

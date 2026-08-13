@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Numerics;
 using Engine.Rendering;
 using Vortice.Vulkan;
 
@@ -16,7 +17,6 @@ internal unsafe class BatchRenderer : IDisposable
     private readonly TextureUploader _textureUploader;
     private readonly VkQueue _graphicsQueue;
     private readonly uint _framesInFlight;
-    private readonly ParallelDrawRecorder _drawRecorder;
 
     private VulkanBuffer[] _vertexBuffers;
     private VulkanBuffer[] _indexBuffers;
@@ -38,8 +38,7 @@ internal unsafe class BatchRenderer : IDisposable
         VulkanPipeline additivePipeline,
         TextureUploader textureUploader,
         VkQueue graphicsQueue,
-        uint framesInFlight,
-        ParallelDrawRecorder drawRecorder)
+        uint framesInFlight)
     {
         _device = device;
         _deviceApi = deviceApi;
@@ -50,7 +49,6 @@ internal unsafe class BatchRenderer : IDisposable
         _textureUploader = textureUploader;
         _graphicsQueue = graphicsQueue;
         _framesInFlight = framesInFlight;
-        _drawRecorder = drawRecorder;
 
         _vertexBuffers = new VulkanBuffer[framesInFlight];
         _indexBuffers = new VulkanBuffer[framesInFlight];
@@ -94,24 +92,38 @@ internal unsafe class BatchRenderer : IDisposable
     public void EndFrame()
     {
         FrameRenderContext context = _context;
-        int chunks = 0;
         if (_geometry.VertexCount > 0 && _geometry.IndexCount > 0)
-        {
             UploadGeometry(context.Primary);
-            chunks = 1;
-            RecordDrawChunk(context);
-        }
         BeginRenderPass(context);
-        if (chunks > 0) _drawRecorder.ExecuteRecorded(context.Primary, chunks);
+        if (_geometry.VertexCount > 0 && _geometry.IndexCount > 0) RecordDraw(context);
         _deviceApi.vkCmdEndRenderPass(context.Primary);
     }
 
-    private void RecordDrawChunk(in FrameRenderContext context)
+    private void RecordDraw(in FrameRenderContext context)
     {
         VulkanBuffer vertexBuffer = _vertexBuffers[_frameIndex];
         VulkanBuffer indexBuffer = _indexBuffers[_frameIndex];
-        _drawRecorder.RecordChunk(0, in context, _pipeline.Pipeline, _additivePipeline.Pipeline, _pipeline.Layout,
-            vertexBuffer.Buffer, indexBuffer.Buffer, _geometry.TextureRanges, 0, _geometry.TextureRanges.Count, _textureUploader);
+        Vector2 viewportSize = context.Viewport;
+        VkViewport viewport = new(0, 0, viewportSize.X, viewportSize.Y, 0f, 1f);
+        VkRect2D scissor = new(new VkOffset2D(0, 0), new VkExtent2D((uint)viewportSize.X, (uint)viewportSize.Y));
+        _deviceApi.vkCmdSetViewport(context.Primary, 0, viewport);
+        _deviceApi.vkCmdSetScissor(context.Primary, 0, scissor);
+        Span<VkBuffer> vertexBuffers = stackalloc VkBuffer[1] { vertexBuffer.Buffer };
+        Span<ulong> offsets = stackalloc ulong[1];
+        _deviceApi.vkCmdBindVertexBuffers(context.Primary, 0, vertexBuffers, offsets);
+        _deviceApi.vkCmdBindIndexBuffer(context.Primary, indexBuffer.Buffer, 0, VkIndexType.Uint32);
+        CameraPushConstants pushConstants = new() { Viewport = viewportSize };
+        _deviceApi.vkCmdPushConstants(context.Primary, _pipeline.Layout, VkShaderStageFlags.Vertex, 0, (uint)sizeof(CameraPushConstants), &pushConstants);
+        for (int i = 0; i < _geometry.TextureRanges.Count; i++)
+        {
+            TextureDrawRange range = _geometry.TextureRanges[i];
+            _deviceApi.vkCmdBindPipeline(context.Primary, VkPipelineBindPoint.Graphics,
+                range.Blend == BlendMode.Additive ? _additivePipeline.Pipeline : _pipeline.Pipeline);
+            TextureHandle texture = range.Material.Value == 0 ? range.Texture : new TextureHandle(range.Material.Value);
+            VkDescriptorSet descriptorSet = _textureUploader.GetDescriptorSet(texture);
+            _deviceApi.vkCmdBindDescriptorSets(context.Primary, VkPipelineBindPoint.Graphics, _pipeline.Layout, 0, descriptorSet);
+            _deviceApi.vkCmdDrawIndexed(context.Primary, range.IndexCount, 1, range.FirstIndex, 0, 0);
+        }
     }
 
     private void BeginRenderPass(in FrameRenderContext context)
@@ -125,7 +137,7 @@ internal unsafe class BatchRenderer : IDisposable
             clearValueCount = 1,
             pClearValues = &clear
         };
-        _deviceApi.vkCmdBeginRenderPass(context.Primary, &renderPassBegin, VkSubpassContents.SecondaryCommandBuffers);
+        _deviceApi.vkCmdBeginRenderPass(context.Primary, &renderPassBegin, VkSubpassContents.Inline);
     }
 
     private void UploadGeometry(VkCommandBuffer cmdBuffer)

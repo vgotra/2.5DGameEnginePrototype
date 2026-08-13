@@ -8,7 +8,7 @@ public struct ProjectileBody : IQueryAction<Position, ArrowProjectile, Projectil
 {
     private const float HomingRadiusSquared = SampleConfig.HomingRadius * SampleConfig.HomingRadius;
 
-    public TileMap Map;
+    public TerrainSurface Map;
     public EntityCommands Buffer;
     public Entity[] Entities;
     public Vector2[] Positions;

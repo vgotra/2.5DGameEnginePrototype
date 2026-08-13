@@ -20,7 +20,7 @@ internal static class JumpTests
 
     private static void Jump_ValidRequestAdvancesAndCompletes()
     {
-        TileMap map = new();
+        TerrainSurface map = new(20, 20);
         Vector2 start = new(1.5f, 1.5f);
         Position position = new(start);
         Velocity velocity = new(Vector2.Zero);
@@ -42,7 +42,7 @@ internal static class JumpTests
 
     private static void Jump_BlockedTargetDoesNotStart()
     {
-        TileMap map = new();
+        TerrainSurface map = new(20, 20);
         map.SetTile(1, 3, TileType.Wall);
         Vector2 start = new(1.5f, 1.5f);
         Position position = new(start);
@@ -58,7 +58,7 @@ internal static class JumpTests
     private static void Jump_InputLatchSurvivesUntilFixedStep()
     {
         FakeInput input = new() { SpacePressed = true };
-        TileMap map = new();
+        TerrainSurface map = new(20, 20);
         PlayerMoveSystem system = new(map, input);
         SparseWorld world = new();
         Entity player = world.Create();
@@ -78,7 +78,7 @@ internal static class JumpTests
     private static void Jump_HeldSpaceTriggersOnlyOnce()
     {
         FakeInput input = new() { SpacePressed = true };
-        TileMap map = new();
+        TerrainSurface map = new(20, 20);
         PlayerMoveSystem system = new(map, input);
         SparseWorld world = new();
         Entity player = world.Create();
@@ -101,7 +101,7 @@ internal static class JumpTests
     private static void Jump_WhileMovingStillStarts()
     {
         FakeInput input = new() { SpacePressed = true, RightDown = true };
-        TileMap map = new();
+        TerrainSurface map = new(20, 20);
         PlayerMoveSystem system = new(map, input);
         SparseWorld world = new();
         Entity player = world.Create();

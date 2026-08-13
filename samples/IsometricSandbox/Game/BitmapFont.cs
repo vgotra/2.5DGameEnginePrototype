@@ -4,11 +4,12 @@ namespace IsometricSandbox.Game;
 
 // A tiny procedural bitmap font (5x7 pixel cells) used by the splash screen.
 // Each glyph is rendered from a public-domain 5x7 pattern into its own tight
-// texture, so text is drawn as a row of box sprites — one per character.
+// texture, so text is drawn as a row of diamond sprites — one per character.
 public sealed class BitmapFont
 {
     public const int GlyphRows = 7;
     public const float Spacing = 1f;
+    private const int GlyphPadding = 1;
 
     private readonly Dictionary<char, BitmapGlyph> _glyphs = new();
     private readonly BitmapGlyph _fallback;
@@ -51,16 +52,16 @@ public sealed class BitmapFont
                 }
 
         if (maxColumn < minColumn)
-            return new BitmapGlyph(renderer.UploadTexture(new byte[4], 1, 1, TextureFilter.Nearest), 3, GlyphRows);
+            return new BitmapGlyph(renderer.UploadTexture(new byte[4], 1, 1, TextureFilter.Nearest), 3, GlyphRows, false);
 
-        int width = maxColumn - minColumn + 1;
-        int height = maxRow - minRow + 1;
+        int width = maxColumn - minColumn + 1 + GlyphPadding * 2;
+        int height = maxRow - minRow + 1 + GlyphPadding * 2;
         byte[] rgba = new byte[width * height * 4];
         for (int row = minRow; row <= maxRow; row++)
             for (int column = minColumn; column <= maxColumn; column++)
             {
                 bool on = rows[row][column] == '#';
-                int i = ((row - minRow) * width + (column - minColumn)) * 4;
+                int i = ((row - minRow + GlyphPadding) * width + (column - minColumn + GlyphPadding)) * 4;
                 rgba[i] = 255;
                 rgba[i + 1] = 255;
                 rgba[i + 2] = 255;

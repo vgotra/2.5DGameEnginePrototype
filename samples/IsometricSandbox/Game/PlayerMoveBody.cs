@@ -6,7 +6,7 @@ namespace IsometricSandbox.Game;
 
 public struct PlayerMoveBody : IQueryAction<Position, Velocity, PlayerState, PlayerMoveBody>
 {
-    public TileMap Map;
+    public TerrainSurface Map;
     public Vector2 Direction;
     public bool JumpRequested;
     public float DeltaSeconds;

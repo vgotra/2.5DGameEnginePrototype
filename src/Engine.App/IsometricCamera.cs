@@ -8,25 +8,21 @@ public sealed class IsometricCamera(Vector2 viewport)
     public Vector2 Position { get; private set; }
     public Vector2 Viewport { get; private set; } = viewport;
     public float Zoom { get; set; } = 1f;
-    public GameMode Mode { get; set; } = GameMode.Isometric;
-
     public void Resize(Vector2 viewport) => Viewport = viewport;
 
-    public ICameraProjection Projection => Mode == GameMode.Isometric ? IsometricProjection.Instance : OrthographicProjection.Instance;
-
-    public void Follow(Vector2 target, TileGrid grid) => Position = Projection.ClampToMap(target, grid, Viewport);
+    public void Follow(Vector2 target, TerrainSurface terrain) => Position = IsometricProjection.ClampToMap(target, terrain, Viewport);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public ScreenTransform GetScreenTransform(TileGrid grid) => Projection.GetTransform(Viewport, Position, Zoom, grid);
+    public ScreenTransform GetScreenTransform(TerrainSurface terrain) => IsometricProjection.GetTransform(Viewport, Position, Zoom, terrain);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Vector2 WorldToScreen(Vector2 world, TileGrid grid)
-        => GetScreenTransform(grid).ToScreen(world.X, world.Y);
+    public Vector2 WorldToScreen(Vector2 world, TerrainSurface terrain)
+        => GetScreenTransform(terrain).ToScreen(world.X, world.Y) - new Vector2(0f, terrain.SampleHeight(world) * terrain.TileHeight * Zoom);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Vector2 ScreenToWorld(Vector2 screen, TileGrid grid)
+    public Vector2 ScreenToWorld(Vector2 screen, TerrainSurface terrain)
     {
-        ScreenTransform transform = GetScreenTransform(grid);
+        ScreenTransform transform = GetScreenTransform(terrain);
         float dx = screen.X - transform.OriginX;
         float dy = screen.Y - transform.OriginY;
         float det = transform.ScaleX * transform.ScaleY - transform.ShearX * transform.ShearY;

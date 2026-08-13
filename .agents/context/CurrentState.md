@@ -2,7 +2,7 @@
 
 ## Status
 
-- Windows-first .NET 10 2D/2.5D isometric engine prototype.
+- Windows-first .NET 10 2.5D isometric engine prototype.
 - Vulkan is the only renderer; SDL3 provides windowing, input, and Vulkan surfaces.
 - Engine.Ecs.Sparse is the canonical ECS implementation.
 - IsometricSandbox runs on sparse entities, optional parallel sparse queries, deferred mutation, and the sparse frame scheduler.

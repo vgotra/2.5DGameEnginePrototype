@@ -8,10 +8,9 @@ public sealed class TileExtractionDispatch
 {
     private readonly Action<int, int> _runBody;
 
-    private TileGrid _grid = null!;
+    private TerrainSurface _grid = null!;
     private ScreenTransform _transform;
     private Vector2 _viewport;
-    private ShapeKind _shape;
     private float _tileWidth;
     private float _tileHeight;
     private int _rowsPerBand;
@@ -24,7 +23,7 @@ public sealed class TileExtractionDispatch
 
     public JobHandle Schedule(
         JobSystem jobs,
-        TileGrid grid,
+        TerrainSurface grid,
         IsometricCamera camera,
         ITileTextureProvider? textures,
         SpritePacket[][] bands,
@@ -36,9 +35,8 @@ public sealed class TileExtractionDispatch
         _grid = grid;
         _transform = camera.GetScreenTransform(grid);
         _viewport = camera.Viewport;
-        _shape = camera.Projection.TileShape;
         _tileWidth = grid.TileWidth;
-        _tileHeight = camera.Projection.GetTileHeight(grid);
+        _tileHeight = grid.TileHeight;
         _textures = textures;
         _bands = bands;
         _counts = counts;
@@ -53,8 +51,8 @@ public sealed class TileExtractionDispatch
         {
             int yStart = band * _rowsPerBand;
             int yEnd = Math.Min(yStart + _rowsPerBand, _grid.Height);
-            _counts[band] = SpriteExtraction.ExtractTileRange(
-                _grid, in _transform, _viewport, _shape, _tileWidth, _tileHeight,
+            _counts[band] = SpriteExtraction.ExtractTerrainRange(
+                _grid, in _transform, _viewport, _tileWidth, _tileHeight,
                 yStart, yEnd, _bands[band], _textures, _flickers[band]);
         }
     }

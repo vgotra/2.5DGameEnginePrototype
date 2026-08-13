@@ -8,7 +8,7 @@ public struct CritterWanderBody : IQueryAction<Position, Critter, CritterWanderB
 {
     private const float FleeRadiusSquared = SampleConfig.FleeRadius * SampleConfig.FleeRadius;
 
-    public TileMap Map;
+    public TerrainSurface Map;
     public Random Random;
     public Vector2 Player;
     public float DeltaSeconds;

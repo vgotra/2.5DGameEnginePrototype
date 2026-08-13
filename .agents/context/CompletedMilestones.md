@@ -22,7 +22,7 @@ Verification:
 - Solution build passed with 0 errors and 0 warnings.
 - Plain console smoke tests passed, including rendering-audit coverage.
 - Release renderer audit cases reported 0 B/op and 0 gen0 collections.
-- Normal, ARPG, 2D ARPG, and forced-parallel bounded Vulkan sample runs exited cleanly.
+- Normal ARPG and forced-parallel bounded Vulkan sample runs exited cleanly.
 - `git diff --check` passed.
 
 ## 2026-08-13 — Milestone 12: Tune Multithreading
@@ -40,7 +40,7 @@ Verification:
 - Solution build passed with 0 errors and 0 warnings.
 - Plain console smoke tests passed, including policy diagnostics and background-system tests.
 - Release benchmark matrix passed; policy and ARPG cases reported 0 B/op and 0 gen0 collections.
-- Normal, ARPG, 2D ARPG, and forced-parallel bounded sample runs exited cleanly.
+- Normal ARPG and forced-parallel bounded sample runs exited cleanly.
 - `git diff --check` passed.
 
 ## 2026-08-13 — Milestone 11: Realistic ARPG Benchmark
@@ -57,7 +57,7 @@ Verification:
 - Solution build passed with 0 errors and 0 warnings.
 - Plain console smoke tests passed, including dedicated ARPG assertions.
 - Release benchmark cases reported 0 B/op and 0 gen0 collections.
-- Isometric, top-down, and forced-parallel ARPG sample runs exited cleanly after 10 frames.
+- Isometric and forced-parallel ARPG sample runs exited cleanly after 10 frames.
 - `git diff --check` passed.
 
 ## 2026-08-13 — Milestone 10: Gameplay API
@@ -71,7 +71,7 @@ Completed:
 Verification:
 
 - Deferred activation, component preservation, deterministic grouping, and scene cleanup passed in console coverage.
-- Debug build, plain console tests, bounded isometric/2D sample runs, Release benchmark comparison, direct-spawn search, and diff checks passed.
+- Debug build, plain console tests, bounded isometric sample runs, Release benchmark comparison, direct-spawn search, and diff checks passed.
 
 ## 2026-08-13 — Milestone 9: Structural Command Buffer
 
@@ -85,7 +85,7 @@ Verification:
 
 - Reserved entities remained hidden until Create was applied.
 - Stale Remove/Destroy operations were harmless and reserved destruction recycled safely.
-- Debug build, plain console tests, bounded isometric/2D sample runs, Release benchmark comparison, API searches, and diff checks passed.
+- Debug build, plain console tests, bounded isometric sample runs, Release benchmark comparison, API searches, and diff checks passed.
 
 ## 2026-08-13 — Milestone 8: Simplify JobSystem
 
@@ -126,7 +126,7 @@ Completed:
 
 Verification:
 
-- Debug/Release builds, console smoke tests, bounded isometric/2D sample launches, and benchmark comparison passed.
+- Debug/Release builds, console smoke tests, bounded isometric sample launches, and benchmark comparison passed.
 
 ## 2026-08-12 — Milestone 5: Port IsometricSandbox to Sparse ECS
 
@@ -137,7 +137,7 @@ Completed:
 
 Verification:
 
-- Debug/Release builds, console smoke tests, isometric/2D simulation launches, and benchmark comparison passed.
+- Debug/Release builds, console smoke tests, isometric simulation launches, and benchmark comparison passed.
 
 ## 2026-08-12 — Milestone 4: Explicit Frame Scheduler
 

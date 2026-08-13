@@ -7,7 +7,7 @@ namespace IsometricSandbox.Game;
 
 // Applies a velocity to a position with map collision. Only entities that
 // carry a Collider participate; the archer is the sole user today.
-public sealed class IntegrateSystem(TileMap map) : ISystem
+public sealed class IntegrateSystem(TerrainSurface map) : ISystem
 {
     public Entity Player { get; set; }
 

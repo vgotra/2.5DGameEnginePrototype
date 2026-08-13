@@ -1,4 +1,4 @@
-# 2D/2.5D Isometric Game Engine
+# 2.5D Isometric Game Engine
 
 Windows-first (at current moment) .NET 10 prototype using Vortice.Vulkan. The engine uses a simple sparse-set ECS with explicit frame scheduling, adaptive/targeted multithreading, and low-allocation frame execution.
 

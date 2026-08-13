@@ -15,6 +15,7 @@ internal static class BenchmarkCatalog
             .. MathBenchmarks.Create(),
             .. JobsBenchmarks.Create(),
             .. ArpgBenchmarks.Create(),
+            .. RealisticEcsBenchmarks.Create(),
             .. PolicyBenchmarks.Create(),
             .. RenderingAuditBenchmarks.Create(),
         ];

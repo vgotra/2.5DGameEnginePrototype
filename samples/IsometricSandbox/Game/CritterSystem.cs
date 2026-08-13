@@ -10,7 +10,7 @@ namespace IsometricSandbox.Game;
 // wander/flee logic as the original animals; simulation mode runs a
 // deterministic, allocation-free wander in parallel so a huge herd is a
 // real job-system stress test.
-public sealed class CritterSystem(TileMap map, bool simulation) : ISystem
+public sealed class CritterSystem(TerrainSurface map, bool simulation) : ISystem
 {
     private readonly Random _random = new(1337);
     private float _time;
@@ -54,7 +54,7 @@ public sealed class CritterSystem(TileMap map, bool simulation) : ISystem
     }
 
     // A random walkable tile a few tiles from `near`, used as a wander target.
-    public static Vector2 RandomWalkableTile(TileMap map, Vector2 near, Random random)
+    public static Vector2 RandomWalkableTile(TerrainSurface map, Vector2 near, Random random)
     {
         for (int attempt = 0; attempt < 12; attempt++)
         {
@@ -66,7 +66,7 @@ public sealed class CritterSystem(TileMap map, bool simulation) : ISystem
     }
 
     // A random walkable spawn at least 4 tiles from the player start.
-    public static Vector2 FindSpawn(TileMap map, Random random, Vector2 playerStart)
+    public static Vector2 FindSpawn(TerrainSurface map, Random random, Vector2 playerStart)
     {
         for (int attempt = 0; attempt < 50; attempt++)
         {

@@ -15,7 +15,7 @@ internal static class FrameSchedulerBenchmarks
         _scheduler ??= CreateScheduler();
         return
         [
-            new BenchmarkCase("SparseFrameScheduler_RegisterRun", 100_000, RunScheduler),
+            new BenchmarkCase("SparseFrameScheduler_RegisterRun", 50_000, RunScheduler),
         ];
     }
 

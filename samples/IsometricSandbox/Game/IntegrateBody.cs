@@ -5,7 +5,7 @@ namespace IsometricSandbox.Game;
 
 public struct IntegrateBody : IQueryAction<Position, Velocity, Collider, IntegrateBody>
 {
-    public TileMap Map;
+    public TerrainSurface Map;
     public float DeltaSeconds;
 
     public static void Execute(ref IntegrateBody body, Entity entity, ref Position position, ref Velocity velocity, ref Collider collider)

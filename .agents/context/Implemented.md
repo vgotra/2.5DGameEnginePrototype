@@ -48,7 +48,7 @@
 ## Game and Sample
 
 - Archer in the Forest sample with player movement/jump, critter wandering/fleeing, projectiles, scoring, restart, scene lifetime, and bounded simulation mode.
-- Isometric and flat top-down rendering modes with stable entity depth ordering.
+- Isometric rendering with stable entity depth ordering.
 
 ## Rendering and Shaders
 

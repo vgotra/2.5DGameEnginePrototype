@@ -45,7 +45,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private DescriptorSetAllocator _descriptorAllocator = null!;
     private TextureUploader _textureUploader = null!;
     private BatchRenderer _batchRenderer = null!;
-    private ParallelDrawRecorder _drawRecorder = null!;
     private JobSystem _jobSystem = null!;
     private bool _ownsJobSystem;
 #if DEBUG
@@ -88,7 +87,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
         _loaderInitialized = true;
         ReadOnlySpan<byte> appName = "IsometricSandbox\0"u8;
-        ReadOnlySpan<byte> engineName = "2D2.5D Game Engine\0"u8;
+        ReadOnlySpan<byte> engineName = "2.5D Isometric Game Engine\0"u8;
         void* createInfoNext = null;
 #if DEBUG
         VkDebugUtilsMessengerCreateInfoEXT messengerInfo = default;
@@ -206,8 +205,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout);
         _additivePipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout, true);
         _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator);
-        _drawRecorder = new ParallelDrawRecorder(_deviceApi, GraphicsQueueFamily, _jobSystem.WorkerCount, FramesInFlight);
-        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _additivePipeline, _textureUploader, _graphicsQueue, FramesInFlight, _drawRecorder);
+        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _additivePipeline, _textureUploader, _graphicsQueue, FramesInFlight);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
 
@@ -224,7 +222,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
         VkCommandBufferBeginInfo beginInfo = new() { flags = VkCommandBufferUsageFlags.OneTimeSubmit };
         VkResult result = _deviceApi.vkBeginCommandBuffer(primary, &beginInfo);
         if (result != VkResult.Success) throw new InvalidOperationException($"Command buffer begin failed: {result}");
-        _drawRecorder.ResetFrameSlot(_currentFrame);
         _batchRenderer.BeginFrame(new FrameRenderContext(_currentFrame, primary, _renderPass, _framebuffers[_imageIndex], _swapchainExtent, viewport));
         _inFrame = true;
     }
@@ -516,7 +513,6 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
         if (_device.IsNotNull && _deviceApi != null) _deviceApi.vkDeviceWaitIdle();
         _batchRenderer?.Dispose();
-        _drawRecorder?.Dispose();
         _textureUploader?.Dispose();
         _descriptorAllocator?.Dispose();
         if (_pipeline.Pipeline.IsNotNull) _pipeline.Dispose();

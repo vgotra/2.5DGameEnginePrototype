@@ -4,7 +4,7 @@ using Engine.Rendering;
 namespace IsometricSandbox.Game;
 
 // The startup splash: a full-window backdrop, the game title, a progress bar,
-// and a "NN%" readout. Everything is emitted as screen-space box sprites so it
+// and a "NN%" readout. Everything is emitted as screen-space diamond sprites so it
 // renders through the same batch path as the game.
 public sealed class SplashScreen(BitmapFont font, Vector2 viewport)
 {
@@ -31,11 +31,13 @@ public sealed class SplashScreen(BitmapFont font, Vector2 viewport)
         Vector2 barCenter = new(center.X, _viewport.Y * 0.62f);
         float fillWidth = Math.Max(0f, barWidth - barInset * 2f) * (percent / 100f);
 
-        sprites[written++] = new SpritePacket(center, _viewport, Backdrop, default, default, 0, ShapeKind.Box);
-        sprites[written++] = new SpritePacket(barCenter, new(barWidth, barHeight), Track, default, default, 1, ShapeKind.Box);
-        sprites[written++] = new SpritePacket(new(barCenter.X - barWidth * 0.5f + fillWidth * 0.5f, barCenter.Y), new(fillWidth, barHeight - barInset * 2f), Fill, default, default, 2, ShapeKind.Box);
+        sprites[written++] = new SpritePacket(center, _viewport, Backdrop, default, default, 0);
+        sprites[written++] = new SpritePacket(barCenter, new(barWidth, barHeight), Track, default, default, 1);
+        if (fillWidth > 0f)
+            sprites[written++] = new SpritePacket(new(barCenter.X - barWidth * 0.5f + fillWidth * 0.5f, barCenter.Y), new(fillWidth, barHeight - barInset * 2f), Fill, default, default, 2);
 
-        float titleScale = Math.Min(3f, (barWidth * 0.9f) / font.MeasureWidth(title, 1f));
+        float titleWidth = font.MeasureWidth(title, 1f);
+        float titleScale = titleWidth <= 0f ? 1f : Math.Min(3f, (barWidth * 0.9f) / titleWidth);
         written = WriteText(sprites, written, title, new Vector2(center.X, _viewport.Y * 0.42f), titleScale, 3);
         written = WriteText(sprites, written, percent + "%", new Vector2(center.X, _viewport.Y * 0.7f), 2f, 3);
         return written;
@@ -48,12 +50,17 @@ public sealed class SplashScreen(BitmapFont font, Vector2 viewport)
         foreach (char c in text)
         {
             BitmapGlyph glyph = font.GetGlyph(c);
+            if (!glyph.IsVisible)
+            {
+                cursor += (glyph.Columns + BitmapFont.Spacing) * scale;
+                continue;
+            }
             float width = glyph.Columns * scale;
             float height = glyph.Rows * scale;
             float y = lineTop + (BitmapFont.GlyphRows - glyph.Rows) * scale * 0.5f + height * 0.5f;
             sprites[written++] = new SpritePacket(
                 new Vector2(cursor + width * 0.5f, y), new Vector2(width, height),
-                White, glyph.Texture, default, sortKey, ShapeKind.Box);
+                White, glyph.Texture, default, sortKey);
             cursor += (glyph.Columns + BitmapFont.Spacing) * scale;
         }
         return written;

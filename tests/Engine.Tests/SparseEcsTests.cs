@@ -14,6 +14,7 @@ internal static class SparseEcsTests
         new(nameof(Destroy_RemovesEveryComponent), Destroy_RemovesEveryComponent),
         new(nameof(MultipleTypes_UseIndependentStores), MultipleTypes_UseIndependentStores),
         new(nameof(CapacityGrowth_PreservesSparseLookups), CapacityGrowth_PreservesSparseLookups),
+        new(nameof(RepresentativeSceneScale_PreservesQueries), RepresentativeSceneScale_PreservesQueries),
         new(nameof(DefaultEntity_IsRejected), DefaultEntity_IsRejected),
         new(nameof(SteadyStateLookup_IsAllocationFree), SteadyStateLookup_IsAllocationFree),
         new(nameof(Queries_CountAndIterateIntersections), Queries_CountAndIterateIntersections),
@@ -102,6 +103,18 @@ internal static class SparseEcsTests
             world.Add(entities[i], new ValueComponent(i));
         }
         TestAssert.True(world.Get<ValueComponent>(entities[0]).Value == 0 && world.Get<ValueComponent>(entities[^1]).Value == 1023, "capacity growth preserves sparse lookups");
+    }
+
+    private static void RepresentativeSceneScale_PreservesQueries()
+    {
+        World world = new();
+        for (int i = 0; i < Engine.App.SceneSizing.RepresentativeEntityCount; i++)
+        {
+            Entity entity = world.Create();
+            world.Add(entity, new ValueComponent { Value = i });
+        }
+        Query<ValueComponent> query = world.Query<ValueComponent>();
+        TestAssert.True(world.EntityCount == Engine.App.SceneSizing.RepresentativeEntityCount && query.Count == world.EntityCount, "representative 20K scene scale preserves ECS queries");
     }
 
     private static void DefaultEntity_IsRejected()

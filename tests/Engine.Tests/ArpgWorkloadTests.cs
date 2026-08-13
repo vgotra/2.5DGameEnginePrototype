@@ -15,9 +15,10 @@ internal static class ArpgWorkloadTests
         new(nameof(AdaptivePolicy_UsesThreshold), AdaptivePolicy_UsesThreshold),
         new(nameof(Extraction_ProjectsGameplaySizedSprites), Extraction_ProjectsGameplaySizedSprites),
         new(nameof(Options_ParseArpgWithoutChangingSimulation), Options_ParseArpgWithoutChangingSimulation),
+        new(nameof(Options_DefaultAndCustomFrameCaps), Options_DefaultAndCustomFrameCaps),
     ];
 
-    private static TileGrid Grid() => new(20, 20, 64, 32, new byte[400]);
+    private static TerrainSurface Grid() => new(20, 20, 1f, 64f, 32f, 7);
 
     private static void Population_IsFixed()
     {
@@ -59,7 +60,7 @@ internal static class ArpgWorkloadTests
 
     private static void Extraction_ProjectsGameplaySizedSprites()
     {
-        TileGrid grid = Grid();
+        TerrainSurface grid = Grid();
         IsometricCamera camera = new(new Vector2(800, 600));
         camera.Follow(new Vector2(10, 10), grid);
         ArpgWorkload workload = new();
@@ -76,5 +77,12 @@ internal static class ArpgWorkloadTests
         Options arpg = Options.Parse(["--arpg"]);
         Options simulation = Options.Parse(["--simulation"]);
         TestAssert.True(arpg.Arpg && !arpg.Simulation && simulation.Simulation && !simulation.Arpg, "sample options preserve ARPG and simulation modes");
+    }
+
+    private static void Options_DefaultAndCustomFrameCaps()
+    {
+        TestAssert.True(Options.Parse([]).FrameCap == 120, "sample defaults to 120 FPS rendering");
+        TestAssert.True(Options.Parse(["--cap", "240"]).FrameCap == 240, "sample accepts a custom render cap");
+        TestAssert.True(Options.Parse(["--cap", "0"]).FrameCap == 0, "zero selects uncapped rendering");
     }
 }

@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 using Engine.Core;
 using Engine.Platform;
 using Engine.Rendering;
@@ -25,6 +26,9 @@ public abstract class GameHost : Game
     private long _frameStartGen1;
     private long _frameStartGen2;
     private string? _lastTitle;
+    private double _ecsMs;
+    private double _schedulerMs;
+    private double _presentMs;
 
     protected GameHost(GameHostConfig config, IGameWindow window, IInputState input, IRenderer renderer, JobSystem jobs)
     {
@@ -37,6 +41,7 @@ public abstract class GameHost : Game
         _sortScratch = new SpritePacket[config.SpriteCapacity];
         _frameTimer = new FrameTimer(config.FrameCap);
         _clock = new GameClock();
+        _metrics = new FrameMetrics();
         _viewport = window.Size;
         Camera = new IsometricCamera(_viewport);
         if (config.StartFullscreen) _window.SetFullscreen(true);
@@ -49,16 +54,16 @@ public abstract class GameHost : Game
     public IsometricCamera Camera { get; }
     public GameClock Clock => _clock;
     public Vector2 Viewport => _viewport;
-    public TileGrid? Grid { get; private set; }
+    public TerrainSurface? Terrain { get; private set; }
     public Span<SpritePacket> Sprites => _sprites;
     public Span<SpritePacket> SortScratch => _sortScratch;
     public Span<int> SortKeyCounts => _sortKeyCounts;
 
     protected SpritePacket[] SpriteArray => _sprites;
 
-    protected void SetGrid(TileGrid grid)
+    protected void SetTerrain(TerrainSurface grid)
     {
-        Grid = grid;
+        Terrain = grid;
         _sortKeyCounts = new int[grid.Width * grid.Height];
     }
 
@@ -74,6 +79,9 @@ public abstract class GameHost : Game
     protected virtual void OnRender() { }
     protected virtual string FrameTitle() => _config.WindowTitle;
     protected virtual int SpriteCount => 0;
+    protected void RecordEcsTime(double milliseconds) => _ecsMs += milliseconds;
+    protected void RecordSchedulerTime(double milliseconds) => _schedulerMs += milliseconds;
+    protected void RecordPresentTime(double milliseconds) => _presentMs += milliseconds;
 
     public void Run()
     {
@@ -88,9 +96,11 @@ public abstract class GameHost : Game
 
     protected void Present(ReadOnlySpan<SpritePacket> sprites)
     {
+        long start = Stopwatch.GetTimestamp();
         _renderer.BeginFrame(_viewport);
         _renderer.Submit(sprites);
         _renderer.EndFrame();
+        RecordPresentTime((Stopwatch.GetTimestamp() - start) * 1000.0 / Stopwatch.Frequency);
     }
 
     private void RunSplash()
@@ -150,6 +160,7 @@ public abstract class GameHost : Game
 
             int fixedSteps = 0;
             long fixedBytes = 0;
+            long simulationStart = Stopwatch.GetTimestamp();
             while (_clock.TryConsumeFixedStep())
             {
                 fixedSteps++;
@@ -157,10 +168,13 @@ public abstract class GameHost : Game
                 OnFixedStep((float)GameClock.FixedStep);
                 fixedBytes += GC.GetAllocatedBytesForCurrentThread() - beforeFixed;
             }
+            double simulationMs = (Stopwatch.GetTimestamp() - simulationStart) * 1000.0 / Stopwatch.Frequency;
 
+            long renderStart = Stopwatch.GetTimestamp();
             long beforeRender = GC.GetAllocatedBytesForCurrentThread();
             OnRender();
             long renderBytes = GC.GetAllocatedBytesForCurrentThread() - beforeRender;
+            double renderMs = (Stopwatch.GetTimestamp() - renderStart) * 1000.0 / Stopwatch.Frequency;
 
             string title = FrameTitle();
             if (title != _lastTitle)
@@ -169,7 +183,7 @@ public abstract class GameHost : Game
                 _lastTitle = title;
             }
             _frameTimer.WaitForNextFrame();
-            if (_config.ShowMetrics) RecordMetrics(elapsed, fixedSteps, fixedBytes, renderBytes);
+            if (_config.ShowMetrics) RecordMetrics(elapsed, simulationMs, renderMs, fixedSteps, fixedBytes, renderBytes);
         }
     }
 
@@ -181,10 +195,10 @@ public abstract class GameHost : Game
         _frameStartGen2 = GC.CollectionCount(2);
     }
 
-    private void RecordMetrics(double elapsed, int fixedSteps, long fixedBytes, long renderBytes)
+    private void RecordMetrics(double elapsed, double simulationMs, double renderMs, int fixedSteps, long fixedBytes, long renderBytes)
     {
         _metrics.Add(
-            elapsed * 1000.0,
+            elapsed * 1000.0, simulationMs, _ecsMs, _schedulerMs, renderMs, _presentMs,
             fixedSteps,
             SpriteCount,
             GC.GetAllocatedBytesForCurrentThread() - _frameStartAlloc,
@@ -193,5 +207,8 @@ public abstract class GameHost : Game
             GC.CollectionCount(0) - _frameStartGen0,
             GC.CollectionCount(1) - _frameStartGen1,
             GC.CollectionCount(2) - _frameStartGen2);
+        _ecsMs = 0;
+        _schedulerMs = 0;
+        _presentMs = 0;
     }
 }

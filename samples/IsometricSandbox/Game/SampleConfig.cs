@@ -1,3 +1,5 @@
+using Engine.App;
+
 namespace IsometricSandbox.Game;
 
 // Tune the sample here — window, player, world, and simulation knobs.
@@ -39,12 +41,12 @@ public static class SampleConfig
 
     // Sprite buffer sizing (capacity is enforced per run mode).
     public const int NormalSpriteCapacity = 1024;
-    public const int SimulationSpriteCapacity = 262_144;
+    public const int SimulationSpriteCapacity = 65_536;
     public const int ArpgSpriteCapacity = 1024;
 
-    // Simulation mode: an open stress-test map with a large critter herd.
+    // Simulation mode: an open ARPG-scale map with a representative critter herd.
     public const int SimulationWidth = 128;
     public const int SimulationHeight = 128;
-    public const int SimulationCritters = 100_000;
+    public const int SimulationCritters = SceneSizing.RepresentativeEntityCount;
     public const int SimulationFrames = 10;
 }

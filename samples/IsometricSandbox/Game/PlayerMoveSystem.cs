@@ -10,7 +10,7 @@ namespace IsometricSandbox.Game;
 // The archer's movement system. Reads WASD/arrow input and the Space edge,
 // then writes the desired velocity (or eases a jump into place directly).
 // Actual collision-aware movement happens later in IntegrateSystem.
-public sealed class PlayerMoveSystem(TileMap map, IInputState input) : ISystem
+public sealed class PlayerMoveSystem(TerrainSurface map, IInputState input) : ISystem
 {
     private bool _jumpRequested;
 

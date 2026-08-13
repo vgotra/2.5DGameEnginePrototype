@@ -32,4 +32,5 @@ public static class PngLoader
         if (!image.HasValue) return null;
         return renderer.UploadTexture(image.Value.Data, image.Value.Width, image.Value.Height, filter);
     }
+
 }

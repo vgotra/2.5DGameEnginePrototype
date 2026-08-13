@@ -1,5 +1,6 @@
 using SparseEntity = Engine.Ecs.Sparse.Entity;
 using SparseWorld = Engine.Ecs.Sparse.World;
+using Engine.App;
 using Engine.Ecs.Sparse;
 using Engine.Threading;
 
@@ -7,7 +8,7 @@ namespace Engine.Benchmark.Benchmarks;
 
 internal static class SparseQueryBenchmarks
 {
-    private static readonly int[] Counts = [100, 500, 1_000, 5_000, 100_000];
+    private static readonly int[] Counts = [100, 500, 1_000, 5_000, SceneSizing.RepresentativeEntityCount];
 
     public static BenchmarkCase[] Create()
     {

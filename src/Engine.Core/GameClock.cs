@@ -6,6 +6,7 @@ public struct GameClock
     public double TotalSeconds;
     public double DeltaSeconds;
     public double Accumulator;
+    public double InterpolationAlpha => Math.Clamp(Accumulator / FixedStep, 0.0, 1.0);
 
     public void Advance(double elapsedSeconds)
     {

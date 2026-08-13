@@ -11,20 +11,18 @@ internal static class ExtractionBenchmarks
     {
         return
         [
-            ExtractionCase("Extraction_Iso20x20", 20, isometric: true),
-            ExtractionCase("Extraction_Flat20x20", 20, isometric: false),
-            ExtractionCase("Extraction_Iso128x128", 128, isometric: true),
-            ExtractionCase("Extraction_Flat128x128", 128, isometric: false),
-            ParallelExtractionCase("Extraction_Iso128x128_Parallel", 128, isometric: true),
+            ExtractionCase("Extraction_Iso20x20", 20),
+            ExtractionCase("Extraction_Iso128x128", 128),
+            ParallelExtractionCase("Extraction_Iso128x128_Parallel", 128),
         ];
     }
 
-    private static TileGrid OpenGrid(int size) => new(size, size, 64, 32, new byte[size * size]);
+    private static TerrainSurface OpenGrid(int size) => new(size, size, 1f, 64f, 32f, 7);
 
-    private static BenchmarkCase ExtractionCase(string name, int size, bool isometric)
+    private static BenchmarkCase ExtractionCase(string name, int size)
     {
-        TileGrid grid = OpenGrid(size);
-        IsometricCamera camera = new(new Vector2(1920, 1080)) { Mode = isometric ? GameMode.Isometric : GameMode.TopDown };
+        TerrainSurface grid = OpenGrid(size);
+        IsometricCamera camera = new(new Vector2(1920, 1080));
         camera.Follow(new Vector2(size * 0.5f, size * 0.5f), grid);
         SpritePacket[] sprites = new SpritePacket[size * size * 2];
         float sink = 0;
@@ -32,10 +30,10 @@ internal static class ExtractionBenchmarks
             () => { sink += SpriteExtraction.ExtractTiles(grid, camera, null, null, sprites); });
     }
 
-    private static BenchmarkCase ParallelExtractionCase(string name, int size, bool isometric)
+    private static BenchmarkCase ParallelExtractionCase(string name, int size)
     {
-        TileGrid grid = OpenGrid(size);
-        IsometricCamera camera = new(new Vector2(1920, 1080)) { Mode = isometric ? GameMode.Isometric : GameMode.TopDown };
+        TerrainSurface grid = OpenGrid(size);
+        IsometricCamera camera = new(new Vector2(1920, 1080));
         camera.Follow(new Vector2(size * 0.5f, size * 0.5f), grid);
         JobSystem jobs = new();
         int bandCount = Math.Min(jobs.WorkerCount, size);

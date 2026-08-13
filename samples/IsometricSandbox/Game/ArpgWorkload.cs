@@ -83,11 +83,11 @@ public sealed class ArpgWorkload
         return new ArpgWorkloadSnapshot(PlayerCount, MonsterCount, ProjectileCount, EffectCount, _frame & 7, _hits, _extracted, _checksum);
     }
 
-    public int Extract(IsometricCamera camera, TileGrid grid, Span<SpritePacket> destination)
+    public int Extract(IsometricCamera camera, TerrainSurface grid, Span<SpritePacket> destination)
     {
         int count = 0;
         Vector2 player = camera.WorldToScreen(_playerPosition, grid);
-        destination[count++] = new SpritePacket(player, new(44, 56), new(0.3f, 0.8f, 1, 1), default, default, _playerPosition.Y, ShapeKind.Box);
+        destination[count++] = new SpritePacket(player, new(44, 56), new(0.3f, 0.8f, 1, 1), default, default, _playerPosition.Y);
         for (int i = 0; i < MonsterCount; i++) count = Write(destination, count, camera.WorldToScreen(_monsterPositions[i], grid), new(32, 40), new(0.8f, 0.35f, 0.2f, 1), _monsterPositions[i].Y);
         for (int i = 0; i < ProjectileCount; i++) count = Write(destination, count, camera.WorldToScreen(_projectilePositions[i], grid), new(10, 10), new(1, 0.9f, 0.2f, 1), _projectilePositions[i].Y);
         for (int i = 0; i < EffectCount; i++) if (_effectLife[i] > 0) count = Write(destination, count, camera.WorldToScreen(_effectPositions[i], grid), new(18, 18), new(1, 0.4f, 0.1f, _effectLife[i]), _effectPositions[i].Y);
@@ -97,7 +97,7 @@ public sealed class ArpgWorkload
 
     private static int Write(Span<SpritePacket> destination, int count, Vector2 position, Vector2 size, Vector4 color, float sortKey)
     {
-        destination[count] = new SpritePacket(position, size, color, default, default, sortKey, ShapeKind.Box);
+        destination[count] = new SpritePacket(position, size, color, default, default, sortKey);
         return count + 1;
     }
 

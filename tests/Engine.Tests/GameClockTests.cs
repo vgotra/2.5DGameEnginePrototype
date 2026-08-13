@@ -9,6 +9,7 @@ internal static class GameClockTests
         new(nameof(Advance_ConsumesOneFixedStepPerAdvance), Advance_ConsumesOneFixedStepPerAdvance),
         new(nameof(Advance_ClampsLongFrames), Advance_ClampsLongFrames),
         new(nameof(Advance_AccumulatorBounded), Advance_AccumulatorBounded),
+        new(nameof(InterpolationAlpha_TracksAccumulator), InterpolationAlpha_TracksAccumulator),
     ];
 
     private static void Advance_ConsumesOneFixedStepPerAdvance()
@@ -32,5 +33,12 @@ internal static class GameClockTests
         GameClock clock = new();
         clock.Advance(0.5);
         TestAssert.True(clock.Accumulator <= 0.25, "game clock accumulator is bounded");
+    }
+
+    private static void InterpolationAlpha_TracksAccumulator()
+    {
+        GameClock clock = new();
+        clock.Advance(GameClock.FixedStep * 0.5);
+        TestAssert.True(Math.Abs(clock.InterpolationAlpha - 0.5) < 1e-9, "interpolation alpha tracks the remaining accumulator");
     }
 }

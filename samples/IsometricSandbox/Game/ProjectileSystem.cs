@@ -10,7 +10,7 @@ namespace IsometricSandbox.Game;
 // buffered and applied after the whole system runs. Arrows home toward the
 // nearest live critter inside the homing radius, then expire or vanish on
 // map contact exactly like the original.
-public sealed class ProjectileSystem(TileMap map) : ISystem
+public sealed class ProjectileSystem(TerrainSurface map) : ISystem
 {
     private readonly Entity[] _critters = new Entity[SampleConfig.MaxAnimals];
     private readonly Vector2[] _critterPositions = new Vector2[SampleConfig.MaxAnimals];

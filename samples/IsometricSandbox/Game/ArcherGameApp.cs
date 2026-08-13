@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 using Engine.App;
 using Engine.Ecs.Sparse;
 using Engine.Platform;
@@ -13,7 +14,7 @@ namespace IsometricSandbox.Game;
 
 // The "Archer in the Forest" game as an ECS app: a sparse world with
 // four systems (player movement, critter AI, integration, projectiles), the
-// Vulkan render path, and the splash. A --simulation mode spawns a 100k
+// Vulkan render path, and the splash. A --simulation mode spawns a 20K
 // critter herd on a procedural map to stress the parallel job system.
 public sealed class ArcherGameApp : GameHost, IDisposable
 {
@@ -28,7 +29,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly PlatformSession _session;
     private readonly JobSystem _jobs;
     private readonly VulkanRenderer _renderer;
-    private readonly TileMap _map;
+    private readonly TerrainSurface _map;
     private SparseWorld EcsWorld => _runtimeWorld!.EcsWorld;
     private RuntimeWorld? _runtimeWorld;
     private readonly FrameScheduler _scheduler;
@@ -48,6 +49,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private static readonly SkillDefinition BasicShot = new(1, 0.1f, 1f);
     private static readonly WeaponDefinition Bow = new(1, 1f, SampleConfig.ArrowSpeed, SampleConfig.ArrowLifetime);
     private readonly VfxSystem _vfx;
+    private readonly PresentationPositionHistory _presentation = new();
     private readonly LifetimeSystem _lifetimes;
     private readonly bool _simulation;
     private readonly bool _forceParallel;
@@ -90,10 +92,9 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _arpgWorkload = _arpg ? new ArpgWorkload(1337, jobs) : null;
         _frameLimit = options.FrameLimit;
 
-        _map = _simulation ? BuildSimulationMap() : new TileMap();
+        _map = _simulation ? BuildSimulationMap() : new TerrainSurface(20, 20);
         if (!_simulation) _map.LoadLayout(MapLayout.Rows);
-        SetGrid(_map.ToTileGrid());
-        Camera.Mode = options.FlatMode ? GameMode.TopDown : GameMode.Isometric;
+        SetTerrain(_map);
         _playerStart = _map.TileToWorld(MapLayout.PlayerSpawnX, MapLayout.PlayerSpawnY);
 
         _textures = new TextureLibrary(Renderer);
@@ -164,7 +165,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         CreateWorld();
         _playerMove.Player = _player;
         _integrate.Player = _player;
-        Camera.Follow(EcsWorld.Get<Position>(_player).Value, Grid!);
+        Camera.Follow(EcsWorld.Get<Position>(_player).Value, Terrain!);
     }
 
     protected override void OnResize()
@@ -188,19 +189,24 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         }
         if (!Input.MousePressed) return;
         ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
-        Camera.Follow(playerPosition.Value, Grid!);
+        Camera.Follow(playerPosition.Value, Terrain!);
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
-        state.AimTarget = Camera.ScreenToWorld(Input.MousePosition, Grid!);
+        state.AimTarget = Camera.ScreenToWorld(Input.MousePosition, Terrain!);
         state.PendingShot = true;
     }
 
     protected override void OnFixedStep(float deltaSeconds)
     {
+        _presentation.BeginStep(EcsWorld);
         _vfxPool.Update(deltaSeconds);
         ref AbilityState abilityState = ref EcsWorld.Get<AbilityState>(_player);
         AbilityPipeline.Tick(ref abilityState, deltaSeconds);
         if (_arpg) _arpgWorkload!.Tick(_forceParallel ? ArpgExecutionMode.ForcedParallel : ArpgExecutionMode.AdaptiveParallel);
+        long schedulerStart = Stopwatch.GetTimestamp();
         _scheduler.Run(EcsWorld, deltaSeconds);
+        RecordSchedulerTime((Stopwatch.GetTimestamp() - schedulerStart) * 1000.0 / Stopwatch.Frequency);
+        RecordEcsTime((Stopwatch.GetTimestamp() - schedulerStart) * 1000.0 / Stopwatch.Frequency);
+        _presentation.EndStep(EcsWorld);
         _runtimeWorld!.ApplyCommands();
         _score += _projectiles.LastKills;
 
@@ -227,17 +233,20 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         if (_arpg)
         {
             Renderer.BeginFrame(Viewport);
-            Camera.Follow(new Vector2(10, 10), Grid!);
-            int arpgCount = _arpgWorkload!.Extract(Camera, Grid!, SpriteArray);
+            Camera.Follow(new Vector2(10, 10), Terrain!);
+            int arpgCount = _arpgWorkload!.Extract(Camera, Terrain!, SpriteArray);
             SpriteExtraction.StableSortByKey(SpriteArray, arpgCount, SortKeyCounts, SortScratch);
             Renderer.Submit(SpriteArray.AsSpan(0, arpgCount));
+            long presentStart = Stopwatch.GetTimestamp();
             Renderer.EndFrame();
+            RecordPresentTime((Stopwatch.GetTimestamp() - presentStart) * 1000.0 / Stopwatch.Frequency);
             _lastSpriteCount = arpgCount;
             return;
         }
-        TileGrid grid = Grid!;
+        TerrainSurface grid = Terrain!;
         ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
-        Camera.Follow(playerPosition.Value, grid);
+        Vector2 renderPlayer = _presentation.TryGetInterpolated(_player, Clock.InterpolationAlpha, out Vector2 interpolatedPlayer) ? interpolatedPlayer : playerPosition.Value;
+        Camera.Follow(renderPlayer, grid);
 
         int written;
         if (UseParallelExtraction())
@@ -248,20 +257,24 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             Renderer.BeginFrame(Viewport);
             Jobs.Wait(tiles);
             written = MergeBands(bandCount);
-            written = DrawEntities(written, playerPosition.Value);
+            written = DrawEntities(written, renderPlayer);
             SpriteExtraction.StableSortByKey(Sprites, written, SortKeyCounts, SortScratch);
             Renderer.Submit(Sprites.Slice(0, written));
+            long presentStart = Stopwatch.GetTimestamp();
             Renderer.EndFrame();
+            RecordPresentTime((Stopwatch.GetTimestamp() - presentStart) * 1000.0 / Stopwatch.Frequency);
             _lastSpriteCount = written;
         }
         else
         {
             Renderer.BeginFrame(Viewport);
             written = SpriteExtraction.ExtractTiles(grid, Camera, _textures, _flicker, Sprites);
-            written = DrawEntities(written, playerPosition.Value);
+            written = DrawEntities(written, renderPlayer);
             SpriteExtraction.StableSortByKey(Sprites, written, SortKeyCounts, SortScratch);
             Renderer.Submit(Sprites.Slice(0, written));
+            long presentStart = Stopwatch.GetTimestamp();
             Renderer.EndFrame();
+            RecordPresentTime((Stopwatch.GetTimestamp() - presentStart) * 1000.0 / Stopwatch.Frequency);
             _lastSpriteCount = written;
         }
     }
@@ -281,7 +294,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         EcsWorld.Get<Velocity>(_player).Value = Vector2.Zero;
         EcsWorld.SetComponent(_player, PlayerState.At(_playerStart));
         RespawnCritters();
-        Camera.Follow(_playerStart, Grid!);
+        Camera.Follow(_playerStart, Terrain!);
     }
 
     public void Dispose()
@@ -317,7 +330,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     {
         if (_simulation)
         {
-            TileGrid grid = Grid!;
+        TerrainSurface grid = Terrain!;
             for (int i = 0; i < SampleConfig.SimulationCritters; i++)
             {
                 Vector2 position = new(1f + _random.NextSingle() * (grid.Width - 3f), 1f + _random.NextSingle() * (grid.Height - 3f));
@@ -341,27 +354,27 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private int DrawEntities(int written, Vector2 playerWorld)
     {
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
-        written = SpriteExtraction.WriteEntity(Grid!, Camera, Sprites, written, playerWorld, PlayerSize, _textures.Player, state.JumpHeight, White);
-        EntityRenderBody entityBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written, ExcludedEntity = _player };
+        written = SpriteExtraction.WriteEntity(Terrain!, Camera, Sprites, written, playerWorld, PlayerSize, _textures.Player, state.JumpHeight, White);
+        EntityRenderBody entityBody = new() { Grid = Terrain!, Camera = Camera, Sprites = SpriteArray, Written = written, ExcludedEntity = _player, History = _presentation, InterpolationAlpha = Clock.InterpolationAlpha };
         EcsWorld.Query<Position, Renderable>().ForEach(ref entityBody);
         written = entityBody.Written;
-        ArrowRenderBody arrowBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written };
+        ArrowRenderBody arrowBody = new() { Grid = Terrain!, Camera = Camera, Sprites = SpriteArray, Written = written, History = _presentation, InterpolationAlpha = Clock.InterpolationAlpha };
         EcsWorld.Query<Position, ArrowProjectile>().ForEach(ref arrowBody);
         int vfxCount = _vfxPool.Extract(_vfxRenderItems);
         for (int i = 0; i < vfxCount; i++)
-            arrowBody.Written = SpriteExtraction.WriteEntity(Grid!, Camera, SpriteArray, arrowBody.Written, in _vfxRenderItems[i]);
+            arrowBody.Written = SpriteExtraction.WriteEntity(Terrain!, Camera, SpriteArray, arrowBody.Written, in _vfxRenderItems[i]);
         return arrowBody.Written;
     }
 
     private bool UseParallelExtraction()
     {
-        TileGrid grid = Grid!;
+        TerrainSurface grid = Terrain!;
         return _forceParallel || grid.Width * grid.Height >= ParallelTileThreshold;
     }
 
     private int EnsureBandBuffers()
     {
-        TileGrid grid = Grid!;
+        TerrainSurface grid = Terrain!;
         int bandCount = Math.Min(Jobs.WorkerCount, grid.Height);
         int rowsPerBand = (grid.Height + bandCount - 1) / bandCount;
         int capacity = rowsPerBand * grid.Width * 2;
@@ -389,11 +402,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         return written;
     }
 
-    private static TileMap BuildSimulationMap()
+    private static TerrainSurface BuildSimulationMap()
     {
         int width = SampleConfig.SimulationWidth;
         int height = SampleConfig.SimulationHeight;
-        TileMap map = new(width, height);
+        TerrainSurface map = new(width, height);
         for (int x = 0; x < width; x++)
         {
             map.SetTile(x, 0, TileType.Wall);

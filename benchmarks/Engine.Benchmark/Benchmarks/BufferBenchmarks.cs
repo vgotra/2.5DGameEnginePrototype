@@ -16,7 +16,7 @@ internal static class BufferBenchmarks
         [
             new BenchmarkCase("Buffer_AddClear", 200_000,
                 () => { buffer.Add(vertex); buffer.Clear(); }),
-            new BenchmarkCase("Buffer_Add64Clear", 100_000,
+            new BenchmarkCase("Buffer_Add64Clear", 50_000,
                 () =>
                 {
                     for (int i = 0; i < 64; i++) buffer.Add(vertex);

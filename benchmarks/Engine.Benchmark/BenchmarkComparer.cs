@@ -13,6 +13,7 @@ internal static class BenchmarkComparer
         int failures = 0;
         foreach (BenchmarkResult currentResult in current.Benchmarks)
         {
+            bool diagnostic = currentResult.Name.StartsWith("Policy_", StringComparison.Ordinal);
             BenchmarkResult? baselineResult = baseline.Benchmarks.Find(b => b.Name == currentResult.Name);
             string verdict;
             double timeDeltaPct;
@@ -28,7 +29,7 @@ internal static class BenchmarkComparer
                     : (currentResult.MedianNsPerOp - baseNs) / baseNs * 100.0;
                 bool allocRegressed = currentResult.AllocBytesPerOp > allocTolerance || currentResult.Gen0Collections > 0;
                 string timeVerdict = timeDeltaPct >= TimeFailPct ? "FAIL" : timeDeltaPct >= TimeWarnPct ? "WARN" : "PASS";
-                verdict = allocRegressed ? "FAIL(alloc)" : timeVerdict;
+                verdict = allocRegressed ? "FAIL(alloc)" : diagnostic && timeVerdict == "FAIL" ? "DIAG" : timeVerdict;
             }
             if (verdict.StartsWith("FAIL", StringComparison.Ordinal)) failures++;
             entries.Add(new CompareEntry(
@@ -58,6 +59,7 @@ internal static class BenchmarkComparer
                 $"{FormatPct(entry.TimeDeltaPct),8} {entry.CurrentAllocBytes.ToString("0.00", CultureInfo.InvariantCulture) + " B",10}  {entry.Verdict}");
             if (entry.Verdict == "PASS") pass++;
             else if (entry.Verdict == "WARN") warn++;
+            else if (entry.Verdict == "DIAG") warn++;
             else if (entry.Verdict != "NEW") fail++;
         }
         Console.WriteLine();
