@@ -27,11 +27,25 @@ public sealed class World
         return RegisterSpawn(entity);
     }
 
+    public Entity SpawnPlayer(in HeroDefinition definition) => SpawnHero(in definition);
+
     public Entity SpawnMonster(in MonsterDefinition definition)
     {
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));
         _commands.Add(entity, new MonsterState { Type = definition.Type, Speed = definition.Speed, Radius = definition.ColliderRadius });
+        _commands.Add(entity, new Health(definition.Health));
+        _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        return RegisterSpawn(entity);
+    }
+
+    public Entity SpawnNpc(in MonsterDefinition definition) => SpawnMonster(in definition);
+
+    public Entity SpawnNpc(in NpcDefinition definition)
+    {
+        Entity entity = _commands.Create(_ecsWorld);
+        _commands.Add(entity, new Position(definition.Position));
+        _commands.Add(entity, new NpcState { Id = definition.Id, Speed = definition.Speed, Radius = definition.ColliderRadius });
         _commands.Add(entity, new Health(definition.Health));
         _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
         return RegisterSpawn(entity);
@@ -70,7 +84,7 @@ public sealed class World
             return existing;
         }
 
-        Scene scene = new(name, _ecsWorld);
+        Scene scene = new(name, this, _ecsWorld);
         _scenes.Add(name, scene);
         ActiveScene = scene;
         return scene;
@@ -106,5 +120,17 @@ public sealed class World
     {
         if (ActiveScene is not null) ActiveScene.Register(entity, EntityLifetime.Scene);
         return entity;
+    }
+
+    public Entity SpawnEffect(in EffectDefinition definition)
+    {
+        Entity entity = _commands.Create(_ecsWorld);
+        _commands.Add(entity, new Position(definition.Position));
+        _commands.Add(entity, new EffectState { Type = definition.Type, LifetimeRemaining = definition.Lifetime });
+        _commands.Add(entity, new Lifetime { Remaining = definition.Lifetime });
+        _commands.Add(entity, new VfxState { Duration = definition.Lifetime, Scale = 1f, Opacity = 1f });
+        if (definition.Texture.Value != 0)
+            _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        return RegisterSpawn(entity);
     }
 }

@@ -17,8 +17,8 @@ public struct EntityRenderBody : IQueryAction<Position, Renderable, EntityRender
     public static void Execute(ref EntityRenderBody body, Entity entity, ref Position position, ref Renderable renderable)
     {
         if (entity == body.ExcludedEntity) return;
+        RenderItem item = renderable.ToRenderItem(position.Value);
         body.Written = SpriteExtraction.WriteEntity(
-            body.Grid, body.Camera, body.Sprites.AsSpan(), body.Written, position.Value,
-            renderable.Size, renderable.Texture, 0f, renderable.Color);
+            body.Grid, body.Camera, body.Sprites.AsSpan(), body.Written, in item);
     }
 }

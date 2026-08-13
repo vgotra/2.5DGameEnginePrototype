@@ -79,6 +79,25 @@ public static class SpriteExtraction
         return written;
     }
 
+    public static int WriteEntity(
+        TileGrid grid,
+        IsometricCamera camera,
+        Span<SpritePacket> sprites,
+        int written,
+        in RenderItem item,
+        float jumpHeight = 0f)
+    {
+        int start = written;
+        written = WriteEntity(grid, camera, sprites, written, item.WorldPosition, item.Size,
+            item.Texture, jumpHeight, item.Color);
+        for (int i = start; i < written; i++)
+        {
+            Vector4 color = sprites[i].Color;
+            sprites[i] = sprites[i] with { Size = sprites[i].Size * item.Scale, Color = new Vector4(color.X, color.Y, color.Z, color.W * item.Opacity), Material = item.Material, Scale = item.Scale, AnimationFrame = item.AnimationFrame, Blend = item.Blend };
+        }
+        return written;
+    }
+
     public static float SortKey(TileGrid grid, Vector2 world)
     {
         int x = (int)MathF.Floor(world.X);

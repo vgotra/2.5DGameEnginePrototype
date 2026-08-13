@@ -41,6 +41,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
     private ShaderModuleLoader _shaderLoader = null!;
     private VulkanPipeline _pipeline;
+    private VulkanPipeline _additivePipeline;
     private DescriptorSetAllocator _descriptorAllocator = null!;
     private TextureUploader _textureUploader = null!;
     private BatchRenderer _batchRenderer = null!;
@@ -203,9 +204,10 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _descriptorAllocator = new DescriptorSetAllocator(_device, _deviceApi);
         VkDescriptorSetLayout textureLayout = _descriptorAllocator.GetLayout(VkDescriptorType.CombinedImageSampler, VkShaderStageFlags.Fragment, 0);
         _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout);
+        _additivePipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout, true);
         _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator);
         _drawRecorder = new ParallelDrawRecorder(_deviceApi, GraphicsQueueFamily, _jobSystem.WorkerCount, FramesInFlight);
-        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _textureUploader, _graphicsQueue, FramesInFlight, _drawRecorder);
+        _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _additivePipeline, _textureUploader, _graphicsQueue, FramesInFlight, _drawRecorder);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
 
@@ -518,6 +520,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         _textureUploader?.Dispose();
         _descriptorAllocator?.Dispose();
         if (_pipeline.Pipeline.IsNotNull) _pipeline.Dispose();
+        if (_additivePipeline.Pipeline.IsNotNull) _additivePipeline.Dispose();
         _shaderLoader?.Dispose();
         if (_deviceApi != null)
         {

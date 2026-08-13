@@ -14,5 +14,9 @@ public readonly struct ScreenTransform(float originX, float originY, float scale
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector2 ToScreen(float worldX, float worldY)
-        => new(OriginX + worldX * ScaleX + worldY * ShearX, OriginY + worldX * ShearY + worldY * ScaleY);
+    {
+        if (ShearX == 0f && ShearY == 0f)
+            return new(OriginX + worldX * ScaleX, OriginY + worldY * ScaleY);
+        return new(OriginX + worldX * ScaleX + worldY * ShearX, OriginY + worldX * ShearY + worldY * ScaleY);
+    }
 }

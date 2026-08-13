@@ -54,14 +54,18 @@ Live renderer command recording is currently serial after CPU-side audit measure
 
 Immutable hero, monster, projectile, item, weapon, and skill definitions are available in `Engine.App`. Current gameplay spawning is deferred and returns reserved generation-safe entity handles; component population and scene registration are applied through `EntityCommands`.
 
-The next simplification target is a smaller game-facing API such as:
+The current game-facing API uses concise calls such as:
 
 ```csharp
 var player = world.SpawnPlayer(playerDefinition);
 var monster = scene.SpawnMonster(monsterDefinition);
 ```
 
-The exact ownership split and compatibility cleanup are planned in Milestones 15–16. Callers must not need to create raw ECS entities or manually assemble gameplay components.
+Player, NPC, monster, projectile, item, and effect creation remains deferred through the shared command buffer. Callers do not create raw ECS entities or manually assemble gameplay components.
+
+Gameplay features use immutable definitions and value-type state. Ability cooldowns feed weapon/projectile activation, projectile hits apply damage, and effects use fixed-step lifetime/VFX updates. High-frequency VFX use a fixed-capacity pool and are extracted into renderer-neutral items.
+
+The renderer supports renderer-neutral scale/opacity metadata, eight-cell horizontal atlas animation frames, descriptor-backed material selection, and separate alpha/additive pipelines. Independent material shader parameters remain future work.
 
 ## Current constraints
 
@@ -69,7 +73,7 @@ The exact ownership split and compatibility cleanup are planned in Milestones 15
 - Parallel queries are opt-in and must respect worker ownership and structural-change barriers.
 - `World.Get<T>` is a fast API and requires a valid live entity.
 - Component-store growth and structural changes may allocate; steady-state gameplay avoids them in hot loops.
-- Asset loading, texture ownership, atlas/bindless rendering, audio, physics, save serialization, and editor workflows remain separate future work.
+- Asset loading, texture ownership, bindless rendering, audio, physics, save serialization, and editor workflows remain separate future work. Atlas animation is supported for the current eight-cell sprite contract; general atlas authoring remains future work.
 - The 4096 outstanding-job limit and tiny-job queue churn are known JobSystem constraints.
 
 ## Development rules

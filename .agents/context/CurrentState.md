@@ -6,7 +6,8 @@
 - Vulkan is the only renderer; SDL3 provides windowing, input, and Vulkan surfaces.
 - Engine.Ecs.Sparse is the canonical ECS implementation.
 - IsometricSandbox runs on sparse entities, optional parallel sparse queries, deferred mutation, and the sparse frame scheduler.
-- Rendering remains separate from gameplay through sprite extraction and Vulkan submission.
+- Rendering remains separate from gameplay through renderer-neutral sprite extraction and Vulkan submission.
+- Gameplay supports ability/weapon/projectile damage flow, reusable NPC behavior state, and pooled fixed-step VFX.
 
 ## Active Constraints
 
@@ -15,6 +16,8 @@
 - Asset decoding and texture ownership remain sample-local and managed.
 - Vulkan validation and real Linux/macOS runs remain environment-dependent.
 - Live batch command recording is serial after the Milestone 13 rendering audit; parallel extraction remains available where measured useful.
+- Material handles currently select descriptor-backed texture resources; independent shader-parameter material assets are not implemented.
+- Animation frames currently use eight horizontal atlas cells when a non-zero frame is supplied.
 
 ## Next Actions
 

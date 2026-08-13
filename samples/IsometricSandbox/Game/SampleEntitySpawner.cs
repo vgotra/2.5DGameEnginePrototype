@@ -21,6 +21,7 @@ public sealed class SampleEntitySpawner(AppWorld world, TextureLibrary textures)
             new Vector2(44, 56),
             Vector4.One));
         _world.Commands.Add(entity, PlayerState.At(position));
+        _world.Commands.Add(entity, new AbilityState());
         return entity;
     }
 
@@ -62,4 +63,19 @@ public sealed class SampleEntitySpawner(AppWorld world, TextureLibrary textures)
 
     public Entity SpawnItem(ItemType type, Vector2 position, TextureHandle texture, Vector2 size, Vector4 color)
         => _world.SpawnItem(new ItemDefinition(type, position, texture, size, color));
+
+    public Entity SpawnMuzzleFlash(Vector2 position)
+        => _world.SpawnEffect(new EffectDefinition(
+            EffectType.MuzzleFlash,
+            position,
+            0.12f,
+            _textures.Player,
+            new Vector2(18, 18),
+            new Vector4(1f, 0.8f, 0.15f, 1f)));
+
+    public Entity SpawnAbilityProjectile(in ProjectileDefinition definition)
+        => _world.SpawnProjectile(in definition);
+
+    public Entity SpawnAbilityEffect(in EffectDefinition definition)
+        => _world.SpawnEffect(in definition);
 }

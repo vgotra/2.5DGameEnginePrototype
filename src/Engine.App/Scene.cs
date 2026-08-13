@@ -5,17 +5,23 @@ namespace Engine.App;
 public sealed class Scene
 {
     private readonly Engine.Ecs.Sparse.World _ecsWorld;
+    private readonly World _world;
     private readonly Dictionary<Entity, EntityLifetime> _entities = new();
 
-    internal Scene(string name, Engine.Ecs.Sparse.World ecsWorld)
+    internal Scene(string name, World world, Engine.Ecs.Sparse.World ecsWorld)
     {
         Name = name;
+        _world = world;
         _ecsWorld = ecsWorld;
         IsLoaded = true;
     }
 
     public string Name { get; }
     public bool IsLoaded { get; private set; }
+
+    public Entity SpawnMonster(in MonsterDefinition definition) => _world.SpawnMonster(in definition);
+
+    public Entity SpawnEffect(in EffectDefinition definition) => _world.SpawnEffect(in definition);
 
     public void Register(Entity entity, EntityLifetime lifetime = EntityLifetime.Scene)
     {

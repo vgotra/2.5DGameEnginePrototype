@@ -31,6 +31,8 @@
 - Added deferred `World.SpawnHero`, `SpawnMonster`, `SpawnProjectile`, and `SpawnItem` APIs with scene ownership and reserved entity handles.
 - Added shared gameplay state components and smoke coverage for deferred activation and scene cleanup.
 - Added the sample-owned `SampleEntitySpawner`, routing sample-specific PlayerState, Critter, and ArrowProjectile components through the runtime command buffer.
+- Added player ability cooldowns, weapon/projectile activation, NPC definitions and behavior state, projectile damage, and impact/muzzle VFX flow.
+- Added fixed-capacity pooled VFX extraction with fixed-step updates and deferred lifetime handling.
 
 ## Structural Command Buffer
 
@@ -51,6 +53,7 @@
 ## Rendering and Shaders
 
 - Vulkan renderer with swapchain lifecycle, batched textured sprites, descriptor-based texture sampling, parallel tile extraction, and secondary command recording.
+- Sprite extraction and Vulkan geometry support atlas animation frames, scale/opacity metadata, material-selected descriptors, and dedicated additive blending.
 - Incremental build-time GLSL-to-SPIR-V compilation and splash-screen texture loading.
 
 ## Platform and Input

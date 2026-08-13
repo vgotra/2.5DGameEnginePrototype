@@ -12,6 +12,7 @@ internal unsafe class BatchRenderer : IDisposable
     private readonly VkPhysicalDevice _physicalDevice;
     private readonly VkPhysicalDeviceMemoryProperties _memoryProperties;
     private readonly VulkanPipeline _pipeline;
+    private readonly VulkanPipeline _additivePipeline;
     private readonly TextureUploader _textureUploader;
     private readonly VkQueue _graphicsQueue;
     private readonly uint _framesInFlight;
@@ -34,6 +35,7 @@ internal unsafe class BatchRenderer : IDisposable
         VkPhysicalDevice physicalDevice,
         VkPhysicalDeviceMemoryProperties memoryProperties,
         VulkanPipeline pipeline,
+        VulkanPipeline additivePipeline,
         TextureUploader textureUploader,
         VkQueue graphicsQueue,
         uint framesInFlight,
@@ -44,6 +46,7 @@ internal unsafe class BatchRenderer : IDisposable
         _physicalDevice = physicalDevice;
         _memoryProperties = memoryProperties;
         _pipeline = pipeline;
+        _additivePipeline = additivePipeline;
         _textureUploader = textureUploader;
         _graphicsQueue = graphicsQueue;
         _framesInFlight = framesInFlight;
@@ -107,7 +110,7 @@ internal unsafe class BatchRenderer : IDisposable
     {
         VulkanBuffer vertexBuffer = _vertexBuffers[_frameIndex];
         VulkanBuffer indexBuffer = _indexBuffers[_frameIndex];
-        _drawRecorder.RecordChunk(0, in context, _pipeline.Pipeline, _pipeline.Layout,
+        _drawRecorder.RecordChunk(0, in context, _pipeline.Pipeline, _additivePipeline.Pipeline, _pipeline.Layout,
             vertexBuffer.Buffer, indexBuffer.Buffer, _geometry.TextureRanges, 0, _geometry.TextureRanges.Count, _textureUploader);
     }
 

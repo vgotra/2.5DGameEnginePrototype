@@ -13,6 +13,7 @@ internal static class SmokeTestRunner
         (nameof(JumpTests), JumpTests.Tests),
         (nameof(CameraTests), CameraTests.Tests),
         (nameof(RenderExtractionTests), RenderExtractionTests.Tests),
+        (nameof(FeaturePipelineTests), FeaturePipelineTests.Tests),
         (nameof(JobSystemTests), JobSystemTests.Tests),
         (nameof(FrameTimerTests), FrameTimerTests.Tests),
         (nameof(GameClockTests), GameClockTests.Tests),

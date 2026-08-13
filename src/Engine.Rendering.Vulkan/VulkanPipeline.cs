@@ -15,14 +15,15 @@ public unsafe struct VulkanPipeline : IDisposable
         VkShaderModule vertModule,
         VkShaderModule fragModule,
         VkRenderPass renderPass,
-        VkDescriptorSetLayout textureLayout)
+        VkDescriptorSetLayout textureLayout,
+        bool additive = false)
     {
         var pipeline = new VulkanPipeline { _device = device, _deviceApi = deviceApi };
 
         VkPipelineLayout* layoutPtr = &pipeline.Layout;
         VkPipeline* pipelinePtr = &pipeline.Pipeline;
         CreatePipelineLayout(device, deviceApi, textureLayout, layoutPtr);
-        CreateGraphicsPipeline(device, deviceApi, vertModule, fragModule, renderPass, pipeline.Layout, pipelinePtr);
+        CreateGraphicsPipeline(device, deviceApi, vertModule, fragModule, renderPass, pipeline.Layout, pipelinePtr, additive);
 
         return pipeline;
     }
@@ -56,7 +57,8 @@ public unsafe struct VulkanPipeline : IDisposable
         VkShaderModule fragModule,
         VkRenderPass renderPass,
         VkPipelineLayout layout,
-        VkPipeline* pipeline)
+        VkPipeline* pipeline,
+        bool additive)
     {
         ReadOnlySpan<byte> entryPoint = "main\0"u8;
         fixed (byte* entryPointPointer = entryPoint)
@@ -81,7 +83,7 @@ public unsafe struct VulkanPipeline : IDisposable
                 rasterizationSamples = VkSampleCountFlags.Count1
             };
 
-            VkPipelineColorBlendAttachmentState blendAttachment = PipelineConfiguration.AlphaBlendAttachment;
+            VkPipelineColorBlendAttachmentState blendAttachment = additive ? PipelineConfiguration.AdditiveBlendAttachment : PipelineConfiguration.AlphaBlendAttachment;
 
             VkPipelineColorBlendStateCreateInfo colorBlend = new()
             {

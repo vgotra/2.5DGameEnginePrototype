@@ -107,3 +107,16 @@ Synchronize architecture, roadmap, implementation inventory, milestone history, 
 ### Dependency
 
 Run after Milestones 15–18, or whenever a substantial API/test/benchmark simplification changes the documented contracts.
+
+## Milestone 20 — Material System and Renderer Profiling
+
+### Goal
+
+Replace texture-backed material selection with explicit material resources and use profiling to guide further renderer decomposition.
+
+### Acceptance
+
+- Material shader parameters are represented by explicit renderer-owned resources.
+- Material and blend state changes are batched and measured.
+- Further Vulkan extraction is justified by profiling data or explicitly deferred.
+- Release benchmark and bounded Vulkan verification remain clean.

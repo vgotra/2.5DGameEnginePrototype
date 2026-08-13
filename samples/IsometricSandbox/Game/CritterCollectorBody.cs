@@ -13,6 +13,7 @@ public struct CritterCollectorBody : IQueryAction<Position, Critter, Health, Cri
     public Entity[] Entities;
     public Vector2[] Positions;
     public float[] Radii;
+    public int[] HealthValues;
     public int Count;
 
     public static void Execute(ref CritterCollectorBody body, Entity entity, ref Position position, ref Critter critter, ref Health health)
@@ -21,6 +22,7 @@ public struct CritterCollectorBody : IQueryAction<Position, Critter, Health, Cri
         body.Entities[body.Count] = entity;
         body.Positions[body.Count] = position.Value;
         body.Radii[body.Count] = critter.Radius;
+        body.HealthValues[body.Count] = health.Value;
         body.Count++;
     }
 }

@@ -13,9 +13,11 @@ public struct ProjectileBody : IQueryAction<Position, ArrowProjectile, Projectil
     public Entity[] Entities;
     public Vector2[] Positions;
     public float[] Radii;
+    public int[] HealthValues;
     public int CritterCount;
     public float DeltaSeconds;
     public int Kills;
+    public int DamageAmount;
 
     public static void Execute(ref ProjectileBody body, Entity entity, ref Position position, ref ArrowProjectile arrow)
     {
@@ -36,9 +38,13 @@ public struct ProjectileBody : IQueryAction<Position, ArrowProjectile, Projectil
             if (Vector2.DistanceSquared(body.Positions[i], next) < combined * combined)
             {
                 body.Buffer.Destroy(entity);
-                body.Buffer.Destroy(body.Entities[i]);
-                body.Entities[i] = default;
-                body.Kills++;
+                body.HealthValues[i] -= body.DamageAmount;
+                if (body.HealthValues[i] <= 0)
+                {
+                    body.Buffer.Destroy(body.Entities[i]);
+                    body.Entities[i] = default;
+                    body.Kills++;
+                }
                 return;
             }
         }

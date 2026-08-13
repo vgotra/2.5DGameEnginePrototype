@@ -15,6 +15,7 @@ public sealed class ProjectileSystem(TileMap map) : ISystem
     private readonly Entity[] _critters = new Entity[SampleConfig.MaxAnimals];
     private readonly Vector2[] _critterPositions = new Vector2[SampleConfig.MaxAnimals];
     private readonly float[] _critterRadii = new float[SampleConfig.MaxAnimals];
+    private readonly int[] _critterHealth = new int[SampleConfig.MaxAnimals];
     private Query<Position, ArrowProjectile>? _arrowQuery;
     private Query<Position, Critter, Health>? _critterQuery;
 
@@ -28,7 +29,7 @@ public sealed class ProjectileSystem(TileMap map) : ISystem
         _arrowQuery ??= world.Query<Position, ArrowProjectile>();
         if (_arrowQuery.Count == 0) return;
         _critterQuery ??= world.Query<Position, Critter, Health>();
-        CritterCollectorBody collector = new() { Entities = _critters, Positions = _critterPositions, Radii = _critterRadii };
+        CritterCollectorBody collector = new() { Entities = _critters, Positions = _critterPositions, Radii = _critterRadii, HealthValues = _critterHealth };
         _critterQuery.ForEach(ref collector);
         ProjectileBody body = new()
         {
@@ -37,8 +38,10 @@ public sealed class ProjectileSystem(TileMap map) : ISystem
             Entities = _critters,
             Positions = _critterPositions,
             Radii = _critterRadii,
+            HealthValues = _critterHealth,
             CritterCount = collector.Count,
             DeltaSeconds = deltaSeconds,
+            DamageAmount = 1,
         };
         _arrowQuery.ForEach(ref body);
         LastKills = body.Kills;

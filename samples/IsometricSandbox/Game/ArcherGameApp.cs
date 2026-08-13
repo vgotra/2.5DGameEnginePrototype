@@ -42,6 +42,13 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly CritterSystem _critters;
     private readonly IntegrateSystem _integrate;
     private readonly ProjectileSystem _projectiles;
+    private readonly VfxPool _vfxPool;
+    private readonly RenderItem[] _vfxRenderItems = new RenderItem[256];
+    private readonly NpcBehaviorSystem _npcBehavior;
+    private static readonly SkillDefinition BasicShot = new(1, 0.1f, 1f);
+    private static readonly WeaponDefinition Bow = new(1, 1f, SampleConfig.ArrowSpeed, SampleConfig.ArrowLifetime);
+    private readonly VfxSystem _vfx;
+    private readonly LifetimeSystem _lifetimes;
     private readonly bool _simulation;
     private readonly bool _forceParallel;
     private readonly bool _arpg;
@@ -97,10 +104,17 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _critters = new CritterSystem(_map, _simulation);
         _integrate = new IntegrateSystem(_map);
         _projectiles = new ProjectileSystem(_map);
+        _vfxPool = new VfxPool(256);
+        _npcBehavior = new NpcBehaviorSystem(_map);
+        _vfx = new VfxSystem();
+        _lifetimes = new LifetimeSystem();
         _scheduler.Register(_playerMove, new("Input.PlayerMovement", ExecutionPolicy.Serial, 0, true, true, false));
         _scheduler.Register(_critters, new("AI.MonsterMovement", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
         _scheduler.Register(_integrate, new("Collision.Integration", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
         _scheduler.Register(_projectiles, new("Combat.Projectiles", ExecutionPolicy.Adaptive, SampleConfig.ProjectileParallelThreshold, true, true, false));
+        _scheduler.Register(_npcBehavior, new("AI.NpcBehavior", ExecutionPolicy.Adaptive, 64, true, true, false));
+        _scheduler.Register(_vfx, new("Presentation.Vfx", ExecutionPolicy.Serial, 0, true, true, false));
+        _scheduler.Register(_lifetimes, new("Presentation.Lifetimes", ExecutionPolicy.Serial, 0, true, true, false));
 
         if (_simulation)
         {
@@ -182,6 +196,9 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnFixedStep(float deltaSeconds)
     {
+        _vfxPool.Update(deltaSeconds);
+        ref AbilityState abilityState = ref EcsWorld.Get<AbilityState>(_player);
+        AbilityPipeline.Tick(ref abilityState, deltaSeconds);
         if (_arpg) _arpgWorkload!.Tick(_forceParallel ? ArpgExecutionMode.ForcedParallel : ArpgExecutionMode.AdaptiveParallel);
         _scheduler.Run(EcsWorld, deltaSeconds);
         _runtimeWorld!.ApplyCommands();
@@ -193,9 +210,14 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             state.PendingShot = false;
             Vector2 origin = EcsWorld.Get<Position>(_player).Value;
             Vector2 direction = state.AimTarget - origin;
-            if (direction.LengthSquared() >= 0.0001f && EcsWorld.Query<Position, ArrowProjectile>().Count < SampleConfig.MaxArrows)
+            AbilityResult ability = AbilityPipeline.TryActivate(ref abilityState, in BasicShot, in Bow, origin, direction, 0.12f, _textures.Player, new Vector2(18, 18));
+            if (ability.Activated && EcsWorld.Query<Position, ArrowProjectile>().Count < SampleConfig.MaxArrows)
             {
-                _spawner!.SpawnProjectile(origin, direction);
+                ProjectileDefinition projectileDefinition = ability.Projectile;
+                EffectDefinition effectDefinition = ability.Effect;
+                Entity projectile = _spawner!.SpawnAbilityProjectile(in projectileDefinition);
+                _runtimeWorld!.Commands.Add(projectile, new ArrowProjectile { Direction = projectileDefinition.Direction, Speed = projectileDefinition.Speed, Lifetime = projectileDefinition.Lifetime });
+                _vfxPool.TryAcquire(in effectDefinition, out _);
             }
         }
     }
@@ -284,6 +306,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         RuntimeWorld runtimeWorld = _runtimeWorld!;
         _spawner = new SampleEntitySpawner(runtimeWorld, _textures);
         _projectiles.Buffer = runtimeWorld.Commands;
+        _lifetimes.Buffer = runtimeWorld.Commands;
         _player = _spawner.SpawnHero(_playerStart);
         _critters.Player = _player;
         RespawnCritters();
@@ -324,6 +347,9 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         written = entityBody.Written;
         ArrowRenderBody arrowBody = new() { Grid = Grid!, Camera = Camera, Sprites = SpriteArray, Written = written };
         EcsWorld.Query<Position, ArrowProjectile>().ForEach(ref arrowBody);
+        int vfxCount = _vfxPool.Extract(_vfxRenderItems);
+        for (int i = 0; i < vfxCount; i++)
+            arrowBody.Written = SpriteExtraction.WriteEntity(Grid!, Camera, SpriteArray, arrowBody.Written, in _vfxRenderItems[i]);
         return arrowBody.Written;
     }
 

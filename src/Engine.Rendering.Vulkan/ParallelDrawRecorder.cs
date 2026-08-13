@@ -44,7 +44,8 @@ internal sealed unsafe class ParallelDrawRecorder : IDisposable
     internal void RecordChunk(
         int chunk,
         in FrameRenderContext context,
-        VkPipeline pipeline,
+        VkPipeline alphaPipeline,
+        VkPipeline additivePipeline,
         VkPipelineLayout layout,
         VkBuffer vertexBuffer,
         VkBuffer indexBuffer,
@@ -82,7 +83,7 @@ internal sealed unsafe class ParallelDrawRecorder : IDisposable
         VkRect2D scissor = new(new VkOffset2D(0, 0), new VkExtent2D((uint)viewportSize.X, (uint)viewportSize.Y));
         _deviceApi.vkCmdSetViewport(cmd, 0, viewport);
         _deviceApi.vkCmdSetScissor(cmd, 0, scissor);
-        _deviceApi.vkCmdBindPipeline(cmd, VkPipelineBindPoint.Graphics, pipeline);
+        _deviceApi.vkCmdBindPipeline(cmd, VkPipelineBindPoint.Graphics, alphaPipeline);
 
         Span<VkBuffer> vertexBuffers = stackalloc VkBuffer[1] { vertexBuffer };
         Span<ulong> offsets = stackalloc ulong[1];
@@ -95,7 +96,12 @@ internal sealed unsafe class ParallelDrawRecorder : IDisposable
         for (int i = rangeStart; i < rangeEnd; i++)
         {
             TextureDrawRange range = ranges[i];
-            VkDescriptorSet descriptorSet = textures.GetDescriptorSet(range.Texture);
+            if (range.Blend == BlendMode.Additive)
+                _deviceApi.vkCmdBindPipeline(cmd, VkPipelineBindPoint.Graphics, additivePipeline);
+            else
+                _deviceApi.vkCmdBindPipeline(cmd, VkPipelineBindPoint.Graphics, alphaPipeline);
+            TextureHandle materialTexture = range.Material.Value == 0 ? range.Texture : new TextureHandle(range.Material.Value);
+            VkDescriptorSet descriptorSet = textures.GetDescriptorSet(materialTexture);
             _deviceApi.vkCmdBindDescriptorSets(cmd, VkPipelineBindPoint.Graphics, layout, 0, descriptorSet);
             _deviceApi.vkCmdDrawIndexed(cmd, range.IndexCount, 1, range.FirstIndex, 0, 0);
         }
