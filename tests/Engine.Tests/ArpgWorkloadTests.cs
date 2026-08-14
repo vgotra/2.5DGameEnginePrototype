@@ -83,6 +83,8 @@ internal static class ArpgWorkloadTests
     {
         TestAssert.True(Options.Parse([]).FrameCap == 120, "sample defaults to 120 FPS rendering");
         TestAssert.True(Options.Parse(["--cap", "240"]).FrameCap == 240, "sample accepts a custom render cap");
+        TestAssert.True(Options.Parse(["--cap", "144"]).FrameCap == 144, "sample accepts a 144 FPS render cap");
+        TestAssert.True(Options.Parse(["--cap", "120"]).FrameCap == 120, "sample accepts a 120 FPS render cap");
         TestAssert.True(Options.Parse(["--cap", "0"]).FrameCap == 0, "zero selects uncapped rendering");
     }
 }

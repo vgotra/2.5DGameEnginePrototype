@@ -4,6 +4,8 @@ namespace Engine.Tests;
 
 internal static class JobSystemTests
 {
+    private const int MaxOutstandingJobs = 4096;
+
     internal static readonly TestCase[] Tests =
     [
         new(nameof(Run_WaitsForIndependentJobs), Run_WaitsForIndependentJobs),
@@ -12,6 +14,7 @@ internal static class JobSystemTests
         new(nameof(Wait_RethrowsJobException), Wait_RethrowsJobException),
         new(nameof(ParallelFor_ChunkExceptionReachesBarrier), ParallelFor_ChunkExceptionReachesBarrier),
         new(nameof(Run_RejectsOutstandingCapacityOverflow), Run_RejectsOutstandingCapacityOverflow),
+        new(nameof(Run_RecoversAfterCapacityIsReleased), Run_RecoversAfterCapacityIsReleased),
     ];
 
     private static void Run_WaitsForIndependentJobs()
@@ -110,11 +113,26 @@ internal static class JobSystemTests
         using ManualResetEventSlim gate = new(false);
         using JobSystem jobs = new(1);
         jobs.Run(() => gate.Wait());
-        for (int i = 0; i < 4095; i++) jobs.Run(static () => { });
+        for (int i = 0; i < MaxOutstandingJobs - 1; i++) jobs.Run(static () => { });
         bool threw = false;
         try { jobs.Run(static () => { }); }
         catch (InvalidOperationException) { threw = true; }
         gate.Set();
         TestAssert.True(threw, "job system rejects more than 4096 outstanding jobs");
+    }
+
+    private static void Run_RecoversAfterCapacityIsReleased()
+    {
+        using ManualResetEventSlim gate = new(false);
+        using JobSystem jobs = new(1);
+        jobs.Run(() => gate.Wait());
+        JobHandle last = JobHandle.None;
+        for (int i = 0; i < MaxOutstandingJobs - 1; i++) last = jobs.Run(static () => { });
+        gate.Set();
+        jobs.Wait(last);
+
+        JobHandle recovered = jobs.Run(static () => { });
+        jobs.Wait(recovered);
+        TestAssert.True(jobs.IsComplete(recovered), "job system reuses slots after outstanding work completes");
     }
 }

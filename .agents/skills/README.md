@@ -4,6 +4,37 @@ Portable, just-in-time-loaded agent instructions. Each skill is a standalone `SK
 
 ## Using these skills
 
+## Engine skill selection
+
+Load the smallest set that covers the task. Do not load every skill for every change.
+
+### Every runtime/code change
+
+- `coding-runtime` — allocation, hot-path, and runtime constraints.
+- `code-style` — naming, ownership, method size, and source conventions.
+- `platform-neutrality` — OS/backend boundaries.
+- `engine-api-layering` — Engine/Core/App/Sample contracts when APIs are involved.
+- `build-and-verify` — after code or shader changes; use `dotnet run` for the plain console tests, never `dotnet test`.
+
+### Vulkan, renderer, or frame-pacing work
+
+- Always load `swapchain-lifecycle`, `game-loop-frame`, `rendering-batching`, and `profiling-diagnostics`.
+- Load `hot-path-interop` and `memory-spans` when touching native buffers, pointers, spans, or per-frame paths.
+- Load `shader-workflow` for any GLSL or SPIR-V source/deployment change.
+- Load `shader-effects` only for post-processing, blend modes, uniforms, or per-object shader parameters.
+- The concrete renderer is Vulkan (`src/Engine.Rendering.Vulkan`), the shared packet is `SpritePacket`, and the preferred present mode is MAILBOX with FIFO fallback.
+
+### Assets, ECS, and gameplay
+
+- Assets/textures: `assets-io`; add `asset-pipeline` for cooking/import/build outputs; add `swapchain-lifecycle` when GPU upload or swapchain synchronization changes.
+- ECS/simulation: `ecs`, `determinism`, and `job-system`; add `state-machines`, `behavior-ai`, `pathfinding`, `collision-2d`, or `simd` only when that subsystem is touched.
+
+### Review, generation, and milestone completion
+
+- `code-review` for review-only work or a final review pass.
+- `pre-generation-checklist` before generating new hot-path runtime code.
+- `resumable-context` after a completed milestone updates the context snapshots and docs index.
+
 Every skill is **generic** — it uses `<...>` placeholders instead of concrete project or solution names so it can be reused across projects of the same type. Before applying a skill, substitute the placeholders with the actual repo's names (from `.agents/context/ProjectConfig.md`).
 
 ## Placeholder glossary

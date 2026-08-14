@@ -30,22 +30,27 @@ public sealed class SplashScreen(SplashFont font, Vector2 viewport)
         LastPercentageGlyphCount = 0;
         Vector2 center = _viewport * 0.5f;
 
-        float barWidth = Math.Min(480f, _viewport.X * 0.7f);
+        float availableViewportWidth = _viewport.X * 0.7f;
+        float barWidth = Math.Min(SampleConfig.SplashBarMaxWidth, availableViewportWidth);
         const float barHeight = 16f;
         const float barInset = 3f;
         Vector2 barCenter = new(center.X, _viewport.Y * 0.62f);
-        float fillWidth = Math.Max(0f, barWidth - barInset * 2f) * (percent / 100f);
+        float barInsetWidth = barInset * 2f;
+        float fillableBarWidth = Math.Max(0f, barWidth - barInsetWidth);
+        float fillWidth = fillableBarWidth * (percent / 100f);
 
         if (written < sprites.Length) sprites[written++] = new SpritePacket(center, _viewport, Backdrop, default, default, 0);
         if (written < sprites.Length) sprites[written++] = new SpritePacket(barCenter, new(barWidth, barHeight), Track, default, default, 1);
         if (fillWidth > 0f && written < sprites.Length)
-            sprites[written++] = new SpritePacket(new(barCenter.X - barWidth * 0.5f + fillWidth * 0.5f, barCenter.Y), new(fillWidth, barHeight - barInset * 2f), Fill, default, default, 2);
+            sprites[written++] = new SpritePacket(new(barCenter.X - barWidth * 0.5f + fillWidth * 0.5f, barCenter.Y), new(fillWidth, barHeight - barInsetWidth), Fill, default, default, 2);
 
         float titleWidth = font.MeasureWidth(title, 1f);
-        float titleScale = titleWidth <= 0f ? 1f : Math.Min(SampleConfig.SplashTitleMaxScale, barWidth * 1.3f / titleWidth);
+        float maxTextWidth = barWidth * SampleConfig.SplashTextWidthMultiplier;
+        float titleScale = titleWidth <= 0f ? 1f : Math.Min(SampleConfig.SplashTitleMaxScale, maxTextWidth / titleWidth);
         written = WriteText(sprites, written, title, new Vector2(center.X, _viewport.Y * 0.42f), titleScale, 3, false);
         string percentageText = percent + "%";
-        float percentageScale = Math.Min(SampleConfig.SplashTitleMaxScale, barWidth * 1.3f / titleWidth);
+        float percentageWidth = font.MeasureWidth(percentageText, 1f);
+        float percentageScale = percentageWidth <= 0f ? 1f : Math.Min(SampleConfig.SplashPercentageMaxScale, maxTextWidth / percentageWidth);
         written = WriteText(sprites, written, percentageText, new Vector2(center.X, _viewport.Y * 0.7f), percentageScale, 3, true);
         return written;
     }
@@ -54,7 +59,8 @@ public sealed class SplashScreen(SplashFont font, Vector2 viewport)
     {
         float measuredWidth = font.MeasureWidth(text, scale);
         float halfWidth = measuredWidth * 0.5f;
-        float left = Math.Clamp(center.X - halfWidth, 0f, Math.Max(0f, _viewport.X - measuredWidth));
+        float availableViewportWidth = Math.Max(0f, _viewport.X - measuredWidth);
+        float left = Math.Clamp(center.X - halfWidth, 0f, availableViewportWidth);
         float cursor = left;
         float lineTop = center.Y - 0.5f * glyphHeight(text) * scale;
         foreach (char c in text)

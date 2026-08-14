@@ -12,6 +12,9 @@ public static class SampleConfig
     public const float PlayerSpriteHeight = 56f;
     public const float SplashTitleMaxScale = 3f;
     public const float SplashPercentageMaxScale = 2f;
+    public const float SplashBarMaxWidth = 480f;
+    public const float SplashTextWidthMultiplier = 1.3f;
+    public const int NpcParallelThreshold = 64;
 
     // Deer/rabbits alive at once (normal mode).
     public const int MaxAnimals = 10;
@@ -25,7 +28,7 @@ public static class SampleConfig
     public const float JumpHeight = 18f;
 
     // Minimum time the splash screen stays visible during startup, in seconds.
-    public const float SplashMinimumSeconds = 1.0f;
+    public const float SplashMinimumSeconds = 3.0f;
 
     // Weapon and projectile tuning.
     public const int MaxArrows = 32;

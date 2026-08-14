@@ -41,7 +41,8 @@ public abstract class GameHost : Game
         _sortScratch = new SpritePacket[config.SpriteCapacity];
         _frameTimer = new FrameTimer(config.FrameCap);
         _clock = new GameClock();
-        _metrics = new FrameMetrics();
+        string presentMode = renderer is IPresentationDiagnostics diagnostics ? diagnostics.Presentation.SelectedMode.ToString() : "unknown";
+        _metrics = new FrameMetrics(config.FrameCap, presentMode);
         _viewport = window.Size;
         Camera = new IsometricCamera(_viewport);
         if (config.StartFullscreen) _window.SetFullscreen(true);

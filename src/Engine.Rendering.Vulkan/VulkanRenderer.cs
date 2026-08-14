@@ -7,7 +7,7 @@ using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
 
-public sealed unsafe class VulkanRenderer : IRenderer
+public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
 {
     private const int FramesInFlight = 3;
 
@@ -40,6 +40,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private bool _loaderInitialized;
     private readonly DescriptorModeOverride _descriptorModeOverride;
     public DescriptorMode DescriptorMode { get; private set; } = DescriptorMode.PerTextureSets;
+    public PresentationDiagnostics Presentation { get; private set; } = new(PresentMode.Mailbox, PresentMode.Fifo, true, 0);
 
     private ShaderModuleLoader _shaderLoader = null!;
     private VulkanPipeline _pipeline;
@@ -446,6 +447,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (result != VkResult.Success) throw new InvalidOperationException($"Swapchain creation failed: {result}");
         _swapchainFormat = format.format;
         _swapchainExtent = extent;
+        PresentMode selectedMode = presentMode == VkPresentModeKHR.Mailbox ? PresentMode.Mailbox : PresentMode.Fifo;
+        Presentation = new(PresentMode.Mailbox, selectedMode, selectedMode != PresentMode.Mailbox, imageCount);
         QuerySwapchainImages();
         CreateSwapchainImageViews(format.format);
     }

@@ -1,5 +1,20 @@
 namespace Engine.App;
 
+public readonly record struct FrameStatistics(
+    int FrameCount,
+    double AverageFps,
+    double AverageFrameMs,
+    double MedianFrameMs,
+    double P95FrameMs,
+    double P99FrameMs,
+    double MaxFrameMs,
+    long FixedSteps,
+    double PresentMs,
+    long AllocatedBytes,
+    long Gen0Collections,
+    long Gen1Collections,
+    long Gen2Collections);
+
 public struct FrameMetrics
 {
     private const int PrintInterval = 120;
@@ -20,9 +35,17 @@ public struct FrameMetrics
         new double[PrintInterval], new double[PrintInterval], new double[PrintInterval],
         new double[PrintInterval], new double[PrintInterval], new double[PrintInterval]
     ];
+    private readonly double _frameCap;
+    private readonly string _presentMode;
+    private readonly bool _writeOutput;
 
-    public FrameMetrics()
+    public FrameStatistics LastStatistics { get; private set; }
+
+    public FrameMetrics(double frameCap = 0, string presentMode = "unknown", bool writeOutput = true)
     {
+        _frameCap = frameCap;
+        _presentMode = presentMode;
+        _writeOutput = writeOutput;
         _frameSamples = new double[PrintInterval];
         _phaseSamples =
         [
@@ -57,6 +80,7 @@ public struct FrameMetrics
     private void PrintAndReset()
     {
         double avgFrameMs = _totalFrameMs / _frames;
+        double averageFps = avgFrameMs <= 0 ? 0 : 1000.0 / avgFrameMs;
         double avgAlloc = (double)_totalAllocatedBytes / _frames;
         double avgFixed = (double)_totalFixedBytes / _frames;
         double avgRender = (double)_totalRenderBytes / _frames;
@@ -71,11 +95,15 @@ public struct FrameMetrics
         double scheduler = Average(_phaseSamples[2]);
         double render = Average(_phaseSamples[3]);
         double present = Average(_phaseSamples[4]);
-        Console.WriteLine(
-            $"metrics  frames={_frames,4}  avg={avgFrameMs,7:F2}ms  median={median,7:F2}ms  p95={p95,7:F2}ms  p99={p99,7:F2}ms  max={_maxFrameMs,7:F2}ms  " +
-            $"sim={_totalFixedSteps,4}  sprites={_totalSprites,6}  alloc={avgAlloc,6:F1} B/frame  " +
-            $"simMs={simulation,6:F2} ecsMs={ecs,6:F2} schedMs={scheduler,6:F2} renderMs={render,6:F2} presentMs={present,6:F2}  " +
-            $"fixedAlloc={avgFixed,6:F1} renderAlloc={avgRender,6:F1} gen0={_gen0} gen1={_gen1} gen2={_gen2}");
+        LastStatistics = new(
+            _frames, averageFps, avgFrameMs, median, p95, p99, _maxFrameMs,
+            _totalFixedSteps, present, _totalAllocatedBytes, _gen0, _gen1, _gen2);
+        if (_writeOutput)
+            Console.WriteLine(
+                $"metrics  mode={_presentMode}  cap={_frameCap,6:F0}  frames={_frames,4}  fps={averageFps,7:F2}  avg={avgFrameMs,7:F2}ms  median={median,7:F2}ms  p95={p95,7:F2}ms  p99={p99,7:F2}ms  max={_maxFrameMs,7:F2}ms  " +
+                $"sim={_totalFixedSteps,4}  sprites={_totalSprites,6}  alloc={avgAlloc,6:F1} B/frame  " +
+                $"simMs={simulation,6:F2} ecsMs={ecs,6:F2} schedMs={scheduler,6:F2} renderMs={render,6:F2} presentMs={present,6:F2}  " +
+                $"fixedAlloc={avgFixed,6:F1} renderAlloc={avgRender,6:F1} gen0={_gen0} gen1={_gen1} gen2={_gen2}");
         _totalFrameMs = 0;
         _maxFrameMs = 0;
         _totalFixedSteps = 0;

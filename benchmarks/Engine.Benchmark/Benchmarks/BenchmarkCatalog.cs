@@ -11,6 +11,7 @@ internal static class BenchmarkCatalog
             .. SparseEcsBenchmarks.Create(),
             .. SparseQueryBenchmarks.Create(),
             .. FrameSchedulerBenchmarks.Create(),
+            .. FrameMetricsBenchmarks.Create(),
             .. JobsBenchmarks.Create(),
             .. ArpgBenchmarks.Create(),
             .. RealisticEcsBenchmarks.Create(),

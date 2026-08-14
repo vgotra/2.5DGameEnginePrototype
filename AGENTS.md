@@ -3,11 +3,12 @@
 - Windows-first (at current moment) .NET 10 isometric game engine prototype. 
 - Vulkan is the renderer. 
 - Before starting work, read `.agents/context/*` (CurrentState, KnownIssues, ProjectConfig, Roadmap, Implemented, CompletedMilestones) — these are auto-loaded into every session; `CurrentState` is the present snapshot, `Implemented` is the brief feature inventory, and `CompletedMilestones` is the milestone history.
-- For the codebase structure map, use the `mcp-repo-graph` MCP server (`orient` first; then `find`/`impact`/`trace`/`read`). MCP and tooling details: `.agents/README.md`.
-- For conventions and workflows, load the relevant skill from `.agents/skills/` (index + placeholder glossary: `.agents/skills/README.md`). Skills are placeholder-based; substitute concrete values from `.agents/context/ProjectConfig.md`.
+- For the codebase structure map, use the `mcp-repo-graph` MCP server when available (`orient` first; then `find`/`impact`/`trace`/`read`), with local `rg`/file inspection as the fallback. MCP and tooling details: `.agents/README.md`.
+- For conventions and workflows, load the smallest relevant skill set from `.agents/skills/` using the project-specific matrix in `.agents/skills/README.md`; substitute concrete values from `.agents/context/ProjectConfig.md`.
 
 ## Verification
 - After any code or shader change, run the `build-and-verify` skill (build → smoke tests → sample run → benchmark gate). Key rule: the brief tests are a plain console app, NOT a test framework — do not use `dotnet test`.
+- For Vulkan or renderer changes, also load `swapchain-lifecycle`, `game-loop-frame`, `rendering-batching`, and `profiling-diagnostics`; load `shader-workflow` for any GLSL/SPIR-V change.
 
 ## Shaders
 - After editing a GLSL shader, run the `shader-workflow` skill (incremental recompile via `glslc` at build; manual fallback `tools\CompileShaders.ps1`).

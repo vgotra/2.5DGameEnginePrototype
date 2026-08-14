@@ -5,6 +5,19 @@
 - Documentation now describes the shipped sparse-set ECS, explicit frame scheduler, adaptive/targeted multithreading, and serial live renderer command recording.
 - Obsolete archetype, automatic dependency-inference, mandatory-parallel, and migration-plan instructions were removed from current architecture guidance.
 
+## JobSystem Capacity Measurement
+
+- Verified exact 4096-slot saturation, overflow rejection, and slot reuse after completion.
+- Added allocation-free representative benchmarks for small `Run` batches, tiny `ParallelFor`, and slot reuse.
+- Measured larger queued `Run` bursts as channel-segment allocation churn without changing JobSystem internals.
+
+## Presentation Policy Measurement
+
+- Exposed requested/selected Vulkan present mode, fallback state, and swapchain image count through read-only diagnostics.
+- Added allocation-free FPS and frame-time statistics with average, median, p95, p99, and maximum values.
+- Added benchmark coverage for uncapped-like, 60/120/144/240 FPS, and jittered frame intervals.
+- Preserved MAILBOX preference and FIFO fallback without adaptive presentation changes.
+
 ## Tune Multithreading
 
 - Added explicit `Serial`, `Adaptive`, `Parallel`, and `Background` execution policies with stable system metadata.

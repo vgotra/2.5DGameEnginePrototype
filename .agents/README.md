@@ -19,13 +19,20 @@ How the AI-agent tooling in this repo is configured and used. All agent instruct
 | `vulkan` | Vulkan registry lookup | `node tools/mcp/mcp-Vulkan/vulkan/build/index.js` | `tools/Setup-McpServers.ps1` → gitignored `tools/mcp/` |
 | `mcp-repo-graph` | Codebase structural graph | `uvx --python 3.13 --with "mcp>=1.0,<2" mcp-repo-graph --repo .` | uvx; caches to `.ai/repo-graph/` |
 
+### MCP usage policy
+
+- `mcp-repo-graph` is the preferred structural-navigation tool: run `orient` first, then use `find`, `impact`, `trace`, or `read`.
+- The `vulkan` server is optional and is useful for Vulkan registry/API lookup; it is not required for ordinary local renderer edits.
+- If an MCP server is configured but its tools are not available in the current agent session, record that limitation and use local `rg`, file inspection, and build tooling as the fallback. Do not invent MCP tool names or install a plugin implicitly.
+- Web or unrelated connector MCPs are not required for local engine/Vulkan work.
+
 All paths in `opencode.json` are relative to the workspace root. Config is loaded once at startup — restart opencode after changing `opencode.json`, an agent, a skill, or a context file to pick it up.
 
 ## Getting started
 
 1. Ensure MCP prerequisites (`uvx`); restart opencode so the MCP config loads.
-2. Verify wiring: the `mcp-repo-graph` tools should be available.
-3. For structural questions use `mcp-repo-graph` BEFORE grepping; for skill usage load a skill from `.agents/skills/`.
+2. Verify wiring: the `mcp-repo-graph` tools should be available; if unavailable, use the documented local-search fallback.
+3. For structural questions use `mcp-repo-graph` before grepping when available; for skill usage load the smallest relevant set from `.agents/skills/`.
 
 ## Agent skills
 

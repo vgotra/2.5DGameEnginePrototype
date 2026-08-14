@@ -54,6 +54,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly bool _simulation;
     private readonly bool _forceParallel;
     private readonly bool _arpg;
+    private readonly double _frameCap;
     private readonly ArpgWorkload? _arpgWorkload;
     private readonly int? _frameLimit;
     private int _simulationFrames;
@@ -89,6 +90,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _simulation = options.Simulation;
         _forceParallel = options.ForceParallel;
         _arpg = options.Arpg;
+        _frameCap = options.FrameCap;
         _arpgWorkload = _arpg ? new ArpgWorkload(1337, jobs) : null;
         _frameLimit = options.FrameLimit;
 
@@ -113,7 +115,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _scheduler.Register(_critters, new("AI.MonsterMovement", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
         _scheduler.Register(_integrate, new("Collision.Integration", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
         _scheduler.Register(_projectiles, new("Combat.Projectiles", ExecutionPolicy.Adaptive, SampleConfig.ProjectileParallelThreshold, true, true, false));
-        _scheduler.Register(_npcBehavior, new("AI.NpcBehavior", ExecutionPolicy.Adaptive, 64, true, true, false));
+        _scheduler.Register(_npcBehavior, new("AI.NpcBehavior", ExecutionPolicy.Adaptive, SampleConfig.NpcParallelThreshold, true, true, false));
         _scheduler.Register(_vfx, new("Presentation.Vfx", ExecutionPolicy.Serial, 0, true, true, false));
         _scheduler.Register(_lifetimes, new("Presentation.Lifetimes", ExecutionPolicy.Serial, 0, true, true, false));
 
@@ -162,7 +164,9 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     {
         _runtimeWorld = base.CreateWorld("Sanctuary");
         _runtimeWorld.LoadScene("Forest");
-        CreateWorld();
+        InitializeWorld();
+        PresentationDiagnostics presentation = _renderer.Presentation;
+        Console.WriteLine($"presentation  requested={presentation.RequestedMode}  selected={presentation.SelectedMode}  fallback={presentation.UsedFallback}  images={presentation.SwapchainImageCount}  cap={(_frameCap > 0 ? _frameCap.ToString("F0") : "unbounded")}");
         _playerMove.Player = _player;
         _integrate.Player = _player;
         Camera.Follow(EcsWorld.Get<Position>(_player).Value, Terrain!);
@@ -257,7 +261,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             Renderer.BeginFrame(Viewport);
             Jobs.Wait(tiles);
             written = MergeBands(bandCount);
-            written = DrawEntities(written, renderPlayer);
+            written = RenderEntities(written, renderPlayer);
             SpriteExtraction.StableSortByKey(Sprites, written, SortKeyCounts, SortScratch);
             Renderer.Submit(Sprites.Slice(0, written));
             long presentStart = Stopwatch.GetTimestamp();
@@ -269,7 +273,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         {
             Renderer.BeginFrame(Viewport);
             written = SpriteExtraction.ExtractTiles(grid, Camera, _textures, _flicker, Sprites);
-            written = DrawEntities(written, renderPlayer);
+            written = RenderEntities(written, renderPlayer);
             SpriteExtraction.StableSortByKey(Sprites, written, SortKeyCounts, SortScratch);
             Renderer.Submit(Sprites.Slice(0, written));
             long presentStart = Stopwatch.GetTimestamp();
@@ -293,7 +297,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         EcsWorld.Get<Position>(_player).Value = _playerStart;
         EcsWorld.Get<Velocity>(_player).Value = Vector2.Zero;
         EcsWorld.SetComponent(_player, PlayerState.At(_playerStart));
-        RespawnCritters();
+        SpawnCritters();
         Camera.Follow(_playerStart, Terrain!);
     }
 
@@ -315,7 +319,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         SplashFramesPerSecond: SplashFramesPerSecond,
         SplashMinimumSeconds: SampleConfig.SplashMinimumSeconds);
 
-    private void CreateWorld()
+    private void InitializeWorld()
     {
         RuntimeWorld runtimeWorld = _runtimeWorld!;
         _spawner = new SampleEntitySpawner(runtimeWorld, _textures);
@@ -323,11 +327,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _lifetimes.Buffer = runtimeWorld.Commands;
         _player = _spawner.SpawnHero(_playerStart);
         _critters.Player = _player;
-        RespawnCritters();
+        SpawnCritters();
         runtimeWorld.ApplyCommands();
     }
 
-    private void RespawnCritters()
+    private void SpawnCritters()
     {
         if (_simulation)
         {
@@ -352,7 +356,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         }
     }
 
-    private int DrawEntities(int written, Vector2 playerWorld)
+    private int RenderEntities(int written, Vector2 playerWorld)
     {
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
         written = SpriteExtraction.WriteEntity(Terrain!, Camera, Sprites, written, playerWorld, PlayerSize, _textures.Player, state.JumpHeight, White);
