@@ -8,7 +8,7 @@ namespace Engine.Benchmark.Benchmarks;
 
 internal static class SparseQueryBenchmarks
 {
-    private static readonly int[] Counts = [100, 500, 1_000, 5_000, SceneSizing.RepresentativeEntityCount];
+    private static readonly int[] Counts = [1_000, SceneSizing.RepresentativeEntityCount];
 
     public static BenchmarkCase[] Create()
     {

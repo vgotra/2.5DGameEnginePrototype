@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AssemblyName>Engine.Assets</AssemblyName><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Engine.Rendering\Engine.Rendering.csproj" />
+    <ProjectReference Include="..\Engine.Threading\Engine.Threading.csproj" />
+  </ItemGroup>
+</Project>

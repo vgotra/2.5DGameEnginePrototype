@@ -2,6 +2,7 @@
   <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>IsometricSandbox</AssemblyName></PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Engine.App\Engine.App.csproj" />
+    <ProjectReference Include="..\..\src\Engine.Assets\Engine.Assets.csproj" />
     <ProjectReference Include="..\..\src\Engine.Core\Engine.Core.csproj" />
     <ProjectReference Include="..\..\src\Engine.Mathematics\Engine.Mathematics.csproj" />
     <ProjectReference Include="..\..\src\Engine.Ecs\Engine.Ecs.csproj" />
@@ -12,6 +13,10 @@
   <ItemGroup>
     <None Include="..\..\assets\textures\*.png">
       <Link>textures\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\assets\fonts\splash-font.png">
+      <Link>textures\splash-font.png</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

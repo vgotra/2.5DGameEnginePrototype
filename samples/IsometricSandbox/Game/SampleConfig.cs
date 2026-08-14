@@ -9,6 +9,9 @@ public static class SampleConfig
     public const string WindowTitle = "Archer in the Forest";
     public const int WindowWidth = 800;
     public const int WindowHeight = 600;
+    public const float PlayerSpriteHeight = 56f;
+    public const float SplashTitleMaxScale = 3f;
+    public const float SplashPercentageMaxScale = 2f;
 
     // Deer/rabbits alive at once (normal mode).
     public const int MaxAnimals = 10;
@@ -22,7 +25,7 @@ public static class SampleConfig
     public const float JumpHeight = 18f;
 
     // Minimum time the splash screen stays visible during startup, in seconds.
-    public const float SplashMinimumSeconds = 0.8f;
+    public const float SplashMinimumSeconds = 1.0f;
 
     // Weapon and projectile tuning.
     public const int MaxArrows = 32;

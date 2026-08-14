@@ -11,6 +11,7 @@ internal static class FeaturePipelineTests
     [
         new(nameof(RenderItem_PreservesEffectMetadata), RenderItem_PreservesEffectMetadata),
         new(nameof(VfxPool_ReusesExpiredSlots), VfxPool_ReusesExpiredSlots),
+        new(nameof(VfxPool_MuzzleFlashUsesPresentationOffset), VfxPool_MuzzleFlashUsesPresentationOffset),
         new(nameof(AbilityPipeline_EnforcesCooldown), AbilityPipeline_EnforcesCooldown),
         new(nameof(EffectLifetime_DestroysAfterDuration), EffectLifetime_DestroysAfterDuration),
     ];
@@ -35,6 +36,16 @@ internal static class FeaturePipelineTests
         TestAssert.True(!pool.TryAcquire(in definition, out _), "pool capacity is enforced");
         pool.Update(0.1f);
         TestAssert.True(pool.TryAcquire(in definition, out int second) && first == second, "expired slot is reused");
+    }
+
+    private static void VfxPool_MuzzleFlashUsesPresentationOffset()
+    {
+        VfxPool pool = new(2);
+        EffectDefinition definition = new(EffectType.MuzzleFlash, new Vector2(3, 4), 1f, default, new Vector2(8, 8), Vector4.One);
+        TestAssert.True(pool.TryAcquire(in definition, out _), "muzzle flash acquired");
+        RenderItem[] items = new RenderItem[2];
+        int count = pool.Extract(items, new Vector2(0, -28));
+        TestAssert.True(count == 1 && items[0].ScreenOffset == new Vector2(0, -28), "muzzle flash uses render-only center offset");
     }
 
     private static void AbilityPipeline_EnforcesCooldown()

@@ -6,6 +6,12 @@ public readonly record struct RendererAuditResult(int WorkItems, int Chunks, lon
 
 public static class RendererCommandPreparationAudit
 {
+    public static uint ComputeContiguousInstanceCount(ReadOnlySpan<SpritePacket> sprites)
+    {
+        SpriteGeometryBuilder geometry = new();
+        geometry.AddSprites(sprites);
+        return geometry.TextureRanges.Count == 0 ? 0u : geometry.TextureRanges[0].IndexCount;
+    }
     private const int ParallelThreshold = 512;
     private const int MinimumItemsPerChunk = 256;
     private static readonly long[] Partials = new long[64];

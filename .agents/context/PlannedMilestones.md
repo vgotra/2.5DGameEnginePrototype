@@ -2,31 +2,32 @@
 
 This file contains future work only. Verified implementation history is recorded in `Implemented.md` and `CompletedMilestones.md`.
 
-## Milestone 15 — Simplified Gameplay Public API
+## Historical milestones 15–19
+
+Milestones 15–19 are complete and remain documented in `CompletedMilestones.md`; their former plans are intentionally not duplicated here.
+
+## Milestone 20 — Material System and Renderer Profiling
 
 ### Goal
 
-Expose the smallest game-facing API for creating persistent players and scene-owned monsters without requiring raw ECS operations.
+Implement renderer-neutral material handles and independent shader parameters while preserving indexed textures and blend ordering.
 
 ### Work
 
-- Introduce concise player and monster spawn entry points, with immutable data-oriented definitions.
-- Use `World` or game-level APIs for persistent players and `Scene` APIs for scene-owned monsters.
-- Preserve deferred creation, reserved handles, deterministic activation, and explicit lifetime ownership.
-- Reuse shared internal spawn/command logic; do not create duplicate spawn pipelines.
-- Keep projectile and item APIs compatible or simplify them through the same path.
+- Add renderer-owned material resources and explicit shader parameters.
+- Keep material selection renderer-neutral and allocation-free in sprite hot paths.
+- Measure material state changes with the focused benchmark catalog.
 
 ### Acceptance
 
-- Game code can spawn players and monsters without creating ECS entities or adding gameplay components manually.
-- Tests cover deferred activation, component population, ownership, unload behavior, and invalid definitions.
-- Existing sample behavior and generation safety remain unchanged.
+- Alpha/additive behavior, painter order, and indexed texture sampling remain unchanged.
+- Focused renderer tests and benchmarks cover material selection and allocations.
 
 ### Dependencies and verification
 
 Build the solution, run the plain console tests, run bounded sample smoke checks, run the Release benchmark gate, and search for direct gameplay ECS construction.
 
-## Milestone 16 — Runtime API and Code Simplification
+## Historical — Milestone 16: Runtime API and Code Simplification
 
 ### Goal
 
@@ -41,9 +42,9 @@ Remove duplicate paths and unnecessary wrappers across `Game`, `World`, `Scene`,
 
 ### Dependencies and verification
 
-Depends on Milestone 15. Run the full build-and-verify workflow, including tests, bounded samples, Release benchmarks, allocation checks, and API searches.
+Run the full build-and-verify workflow, including tests, bounded samples, Release benchmarks, allocation checks, and API searches.
 
-## Milestone 17 — Simplified Configurable Console Tests
+## Historical — Milestone 17: Simplified Configurable Console Tests
 
 ### Goal
 
@@ -67,7 +68,7 @@ Make the plain console test application easy to run in full or focused modes wit
 
 Keep test definitions independent from command-line parsing. Verify default and focused runs, invalid arguments, failure exit behavior, and the repository’s normal smoke-test command.
 
-## Milestone 18 — Simplified Configurable Benchmarks
+## Historical — Milestone 18: Simplified Configurable Benchmarks
 
 ### Goal
 
@@ -90,7 +91,7 @@ Make benchmark selection and workload configuration explicit while preserving co
 
 Depends on the existing benchmark comparison contract and may follow Milestone 17. Verify default, focused, configured, machine-readable, comparison, and invalid-argument runs.
 
-## Milestone 19 — Documentation and Verification Reconciliation
+## Historical — Milestone 19: Documentation and Verification Reconciliation
 
 ### Goal
 

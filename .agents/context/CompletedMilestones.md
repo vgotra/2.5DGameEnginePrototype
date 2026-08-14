@@ -1,5 +1,7 @@
 # Completed Milestones
 
+Historical benchmark matrices in this file describe the suite at the time of each milestone. They are not the current default gate; the current catalog is the focused 35-case suite documented in `ProjectConfig.md`.
+
 ## 2026-08-13 — Milestone 14: Delete and Document
 
 Verified:
@@ -14,7 +16,7 @@ Completed:
 
 - Added renderer-owned command-preparation audit coverage for serial and parallel execution.
 - Added deterministic chunk-count and checksum parity checks for empty, small, 512+, ARPG-sized, and large workloads.
-- Added `RenderingAudit_Serial` and `RenderingAudit_Parallel` Release benchmark cases.
+- Added the focused `RenderingAudit_Serial` Release benchmark case; parallel live recording remains intentionally outside the default gate.
 - Simplified live renderer command recording to one serial secondary command buffer because the representative audit measured parallel preparation overhead above serial work; audit cases reported 0 B/op after warm-up.
 
 Verification:

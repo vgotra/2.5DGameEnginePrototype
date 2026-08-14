@@ -15,4 +15,5 @@ public readonly record struct RenderItem(
     public float Opacity { get; init; } = 1f;
     public byte AnimationFrame { get; init; }
     public BlendMode Blend { get; init; } = BlendMode.Alpha;
+    public Vector2 ScreenOffset { get; init; }
 }

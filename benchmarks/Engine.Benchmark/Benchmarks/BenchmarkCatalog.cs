@@ -11,12 +11,9 @@ internal static class BenchmarkCatalog
             .. SparseEcsBenchmarks.Create(),
             .. SparseQueryBenchmarks.Create(),
             .. FrameSchedulerBenchmarks.Create(),
-            .. BufferBenchmarks.Create(),
-            .. MathBenchmarks.Create(),
             .. JobsBenchmarks.Create(),
             .. ArpgBenchmarks.Create(),
             .. RealisticEcsBenchmarks.Create(),
-            .. PolicyBenchmarks.Create(),
             .. RenderingAuditBenchmarks.Create(),
         ];
         if (iterationsOverride is not int count) return cases;

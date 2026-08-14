@@ -38,11 +38,14 @@ public sealed unsafe class VulkanRenderer : IRenderer
     private bool _inFrame;
     private bool _disposed;
     private bool _loaderInitialized;
+    private readonly DescriptorModeOverride _descriptorModeOverride;
+    public DescriptorMode DescriptorMode { get; private set; } = DescriptorMode.PerTextureSets;
 
     private ShaderModuleLoader _shaderLoader = null!;
     private VulkanPipeline _pipeline;
     private VulkanPipeline _additivePipeline;
     private DescriptorSetAllocator _descriptorAllocator = null!;
+    private IndexedDescriptorAllocator? _indexedDescriptorAllocator;
     private TextureUploader _textureUploader = null!;
     private BatchRenderer _batchRenderer = null!;
     private JobSystem _jobSystem = null!;
@@ -53,9 +56,11 @@ public sealed unsafe class VulkanRenderer : IRenderer
 
     public uint SwapchainImageCount => (uint)_swapchainImages.Length;
     public uint GraphicsQueueFamily { get; private set; }
+    public TextureUploadDiagnostics UploadDiagnostics => _textureUploader.Diagnostics;
 
-    public VulkanRenderer(in NativeWindowSurface surface, JobSystem? jobSystem = null)
+    public VulkanRenderer(in NativeWindowSurface surface, JobSystem? jobSystem = null, DescriptorModeOverride descriptorModeOverride = DescriptorModeOverride.Auto)
     {
+        _descriptorModeOverride = descriptorModeOverride;
         try
         {
             Initialize(surface, jobSystem);
@@ -170,6 +175,29 @@ public sealed unsafe class VulkanRenderer : IRenderer
         VkPhysicalDeviceMemoryProperties memoryProperties;
         _instanceApi.vkGetPhysicalDeviceMemoryProperties(_physicalDevice, &memoryProperties);
         _memoryProperties = memoryProperties;
+        VkPhysicalDeviceDescriptorIndexingFeatures descriptorFeatures = new()
+        {
+            sType = VkStructureType.PhysicalDeviceDescriptorIndexingFeatures
+        };
+        VkPhysicalDeviceFeatures2 deviceFeatures = new()
+        {
+            sType = VkStructureType.PhysicalDeviceFeatures2,
+            pNext = &descriptorFeatures
+        };
+        _instanceApi.vkGetPhysicalDeviceFeatures2(_physicalDevice, &deviceFeatures);
+        bool indexedSupported = descriptorFeatures.runtimeDescriptorArray &&
+            descriptorFeatures.descriptorBindingPartiallyBound &&
+            descriptorFeatures.descriptorBindingVariableDescriptorCount &&
+            descriptorFeatures.shaderSampledImageArrayNonUniformIndexing &&
+            descriptorFeatures.descriptorBindingSampledImageUpdateAfterBind;
+        DescriptorCapabilities capabilities = new(
+            descriptorFeatures.runtimeDescriptorArray,
+            descriptorFeatures.shaderSampledImageArrayNonUniformIndexing,
+            descriptorFeatures.descriptorBindingPartiallyBound,
+            descriptorFeatures.descriptorBindingVariableDescriptorCount,
+            descriptorFeatures.descriptorBindingSampledImageUpdateAfterBind);
+        DescriptorMode = DescriptorModeSelector.Select(_descriptorModeOverride, in capabilities);
+        indexedSupported = DescriptorMode == DescriptorMode.IndexedArray;
         Span<VkQueueFamilyProperties> families = stackalloc VkQueueFamilyProperties[16];
         uint familyCount = (uint)families.Length;
         _instanceApi.vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, families);
@@ -183,7 +211,24 @@ public sealed unsafe class VulkanRenderer : IRenderer
         fixed (byte* swapchainPointer = swapchainExtension)
         {
             nint* deviceExtensions = stackalloc nint[1] { (nint)swapchainPointer };
-            VkDeviceCreateInfo deviceInfo = new() { queueCreateInfoCount = 1, pQueueCreateInfos = &queueInfo, enabledExtensionCount = 1, ppEnabledExtensionNames = (byte**)deviceExtensions };
+            void* featureChain = null;
+            if (indexedSupported)
+            {
+                descriptorFeatures.runtimeDescriptorArray = true;
+                descriptorFeatures.descriptorBindingPartiallyBound = true;
+                descriptorFeatures.descriptorBindingVariableDescriptorCount = true;
+                descriptorFeatures.shaderSampledImageArrayNonUniformIndexing = true;
+                descriptorFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
+                featureChain = &descriptorFeatures;
+            }
+            VkDeviceCreateInfo deviceInfo = new()
+            {
+                queueCreateInfoCount = 1,
+                pQueueCreateInfos = &queueInfo,
+                enabledExtensionCount = 1,
+                ppEnabledExtensionNames = (byte**)deviceExtensions,
+                pNext = featureChain
+            };
             result = _instanceApi.vkCreateDevice(_physicalDevice, &deviceInfo, out _device);
             if (result != VkResult.Success) throw new InvalidOperationException($"Vulkan device creation failed: {result}");
         }
@@ -201,10 +246,14 @@ public sealed unsafe class VulkanRenderer : IRenderer
         VkShaderModule vertexModule = _shaderLoader.Load(ShaderPath("shape.vert.spv"));
         VkShaderModule fragmentModule = _shaderLoader.Load(ShaderPath("shape.frag.spv"));
         _descriptorAllocator = new DescriptorSetAllocator(_device, _deviceApi);
-        VkDescriptorSetLayout textureLayout = _descriptorAllocator.GetLayout(VkDescriptorType.CombinedImageSampler, VkShaderStageFlags.Fragment, 0);
+        if (DescriptorMode == DescriptorMode.IndexedArray)
+            _indexedDescriptorAllocator = new IndexedDescriptorAllocator(_device, _deviceApi);
+        VkDescriptorSetLayout textureLayout = _indexedDescriptorAllocator?.Layout ?? _descriptorAllocator.GetLayout(VkDescriptorType.CombinedImageSampler, VkShaderStageFlags.Fragment, 0);
+        if (DescriptorMode == DescriptorMode.IndexedArray)
+            fragmentModule = _shaderLoader.Load(ShaderPath("shape_indexed.frag.spv"));
         _pipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout);
         _additivePipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout, true);
-        _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator);
+        _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator, _indexedDescriptorAllocator);
         _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _additivePipeline, _textureUploader, _graphicsQueue, FramesInFlight);
         _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
     }
@@ -215,6 +264,8 @@ public sealed unsafe class VulkanRenderer : IRenderer
     public void BeginFrame(Vector2 viewport)
     {
         if (_swapchain.IsNull) throw new InvalidOperationException("Swapchain is not ready.");
+        _textureUploader.PollCompletedUploads();
+        _textureUploader.ProcessUploads(8);
         _currentFrame = (_currentFrame + 1) % FramesInFlight;
         AcquireSwapchainImage(viewport);
         VkCommandBuffer primary = _commandBuffers[_imageIndex];
@@ -514,6 +565,7 @@ public sealed unsafe class VulkanRenderer : IRenderer
         if (_device.IsNotNull && _deviceApi != null) _deviceApi.vkDeviceWaitIdle();
         _batchRenderer?.Dispose();
         _textureUploader?.Dispose();
+        _indexedDescriptorAllocator?.Dispose();
         _descriptorAllocator?.Dispose();
         if (_pipeline.Pipeline.IsNotNull) _pipeline.Dispose();
         if (_additivePipeline.Pipeline.IsNotNull) _additivePipeline.Dispose();

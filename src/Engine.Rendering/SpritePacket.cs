@@ -6,5 +6,7 @@ public readonly record struct SpritePacket(Vector2 Position, Vector2 Size, Vecto
 {
     public float Scale { get; init; } = 1f;
     public byte AnimationFrame { get; init; }
+    public Vector2 UvScale { get; init; } = Vector2.One;
+    public Vector2 UvOffset { get; init; } = Vector2.Zero;
     public BlendMode Blend { get; init; } = BlendMode.Alpha;
 }

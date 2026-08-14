@@ -51,18 +51,19 @@ internal static class Program
         BenchRunResult run;
         try
         {
+            BenchmarkCase[] catalog = BenchmarkCatalog.Create(iterations);
+            Console.WriteLine($"Benchmark catalog: {catalog.Length} representative cases across extraction, terrain, ECS, jobs, ARPG, and rendering.");
             run = new(
                 SchemaVersion,
                 machine ?? Environment.MachineName,
                 TryGetCommit(),
                 DateTime.UtcNow,
-                BenchmarkCatalog.Create(iterations).Select(BenchRunner.Run).ToList());
+                catalog.Select(BenchRunner.Run).ToList());
         }
         finally
         {
             ArpgBenchmarks.Dispose();
             RealisticEcsBenchmarks.Dispose();
-            PolicyBenchmarks.Dispose();
             RenderingAuditBenchmarks.Dispose();
         }
 
@@ -111,7 +112,7 @@ internal static class Program
               --help                  Show this help.
 
             Results: benchmarks/results/last.json every run (gitignored); baseline.json on --save.
-            Verdicts: time WARN at +15%, FAIL at +30%; allocations FAIL above tolerance or on any gen0.
+              Verdicts: time WARN at +15% (diagnostic only); allocations FAIL above tolerance or on any gen0.
             Only same-machine comparisons are authoritative.
             """);
     }

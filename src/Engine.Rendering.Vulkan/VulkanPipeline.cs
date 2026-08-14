@@ -65,7 +65,7 @@ public unsafe struct VulkanPipeline : IDisposable
         {
             VkPipelineShaderStageCreateInfo[] stages = ShaderStages(vertModule, fragModule, entryPointPointer);
 
-            VkVertexInputBindingDescription binding = ShapePipelineDescription.Binding;
+            VkVertexInputBindingDescription[] bindings = ShapePipelineDescription.Bindings;
             VkVertexInputAttributeDescription[] attributes = ShapePipelineDescription.Attributes;
 
             VkPipelineInputAssemblyStateCreateInfo inputAssembly = ShapePipelineDescription.InputAssembly;
@@ -95,13 +95,14 @@ public unsafe struct VulkanPipeline : IDisposable
             VkDynamicState[] dynamicStates = DynamicStates();
 
             fixed (VkPipelineShaderStageCreateInfo* stagePtr = stages)
+            fixed (VkVertexInputBindingDescription* bindingPtr = bindings)
             fixed (VkVertexInputAttributeDescription* attributePtr = attributes)
             fixed (VkDynamicState* dynStates = dynamicStates)
             {
                 VkPipelineVertexInputStateCreateInfo vertexInput = new()
                 {
-                    vertexBindingDescriptionCount = 1,
-                    pVertexBindingDescriptions = &binding,
+                    vertexBindingDescriptionCount = (uint)bindings.Length,
+                    pVertexBindingDescriptions = bindingPtr,
                     vertexAttributeDescriptionCount = (uint)attributes.Length,
                     pVertexAttributeDescriptions = attributePtr
                 };

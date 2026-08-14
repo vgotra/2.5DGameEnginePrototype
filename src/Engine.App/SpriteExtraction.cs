@@ -91,7 +91,7 @@ public static class SpriteExtraction
         for (int i = start; i < written; i++)
         {
             Vector4 color = sprites[i].Color;
-            sprites[i] = sprites[i] with { Size = sprites[i].Size * item.Scale, Color = new Vector4(color.X, color.Y, color.Z, color.W * item.Opacity), Material = item.Material, Scale = item.Scale, AnimationFrame = item.AnimationFrame, Blend = item.Blend };
+            sprites[i] = sprites[i] with { Position = sprites[i].Position + item.ScreenOffset, Size = sprites[i].Size * item.Scale, Color = new Vector4(color.X, color.Y, color.Z, color.W * item.Opacity), Material = item.Material, Scale = item.Scale, AnimationFrame = item.AnimationFrame, Blend = item.Blend };
         }
         return written;
     }

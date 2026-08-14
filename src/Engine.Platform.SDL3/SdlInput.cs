@@ -23,7 +23,7 @@ public sealed unsafe class SdlInput(SdlWindow window) : IInputState
         _mouseDown = (mouseFlags & SDL_MouseButtonFlags.SDL_BUTTON_LMASK) != 0;
         _mousePressed = window.ConsumeMousePressed();
         _mousePosition = new Vector2(x, y);
-        if ((Sdl.SDL_GetWindowFlags(window.Handle) & SDL_WindowFlags.SDL_WINDOW_INPUT_FOCUS) == 0) return;
+        if (!window.IsFocused) return;
         Set(GameKey.Up, IsDown(SDL_Scancode.SDL_SCANCODE_W) || IsDown(SDL_Scancode.SDL_SCANCODE_UP));
         Set(GameKey.Down, IsDown(SDL_Scancode.SDL_SCANCODE_S) || IsDown(SDL_Scancode.SDL_SCANCODE_DOWN));
         Set(GameKey.Left, IsDown(SDL_Scancode.SDL_SCANCODE_A) || IsDown(SDL_Scancode.SDL_SCANCODE_LEFT));

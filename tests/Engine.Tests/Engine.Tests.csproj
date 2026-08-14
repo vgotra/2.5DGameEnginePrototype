@@ -2,6 +2,8 @@
   <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>Engine.Tests</AssemblyName></PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Engine.Core\Engine.Core.csproj" />
+    <ProjectReference Include="..\..\src\Engine.Assets\Engine.Assets.csproj" />
+    <ProjectReference Include="..\..\src\Engine.Rendering.Vulkan\Engine.Rendering.Vulkan.csproj" />
     <ProjectReference Include="..\..\src\Engine.Mathematics\Engine.Mathematics.csproj" />
     <ProjectReference Include="..\..\src\Engine.Ecs\Engine.Ecs.csproj" />
     <ProjectReference Include="..\..\samples\IsometricSandbox\IsometricSandbox.csproj" />

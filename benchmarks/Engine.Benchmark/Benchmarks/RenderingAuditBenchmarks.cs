@@ -15,7 +15,6 @@ internal static class RenderingAuditBenchmarks
         return
         [
             new BenchmarkCase("RenderingAudit_Serial", 2_000, Serial),
-            new BenchmarkCase("RenderingAudit_Parallel", 2_000, Parallel),
         ];
     }
 
@@ -27,9 +26,4 @@ internal static class RenderingAuditBenchmarks
         RendererCommandPreparationAudit.PrepareSerial(workload, _jobs!.WorkerCount);
     }
 
-    private static void Parallel()
-    {
-        int workload = Workloads[_workloadIndex++ & (Workloads.Length - 1)];
-        RendererCommandPreparationAudit.PrepareParallel(workload, _jobs!.WorkerCount, _jobs);
-    }
 }

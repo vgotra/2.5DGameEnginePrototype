@@ -11,6 +11,9 @@ public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
     private bool _closed;
     private bool _disposed;
     private bool _mousePressedLatch;
+    private bool _fullscreen;
+    private bool _minimized;
+    private bool _focused;
     private Vector2 _size;
 
     public SdlWindow(int width, int height, string title)
@@ -24,6 +27,7 @@ public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
             int actualWidth, actualHeight;
             Sdl.SDL_GetWindowSize(_window, &actualWidth, &actualHeight);
             _size = new Vector2(actualWidth, actualHeight);
+            UpdateWindowState();
         }
         catch
         {
@@ -34,8 +38,9 @@ public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
 
     public Vector2 Size => _size;
     public bool ShouldClose => _closed;
-    public bool Fullscreen => (Sdl.SDL_GetWindowFlags(_window) & SDL_WindowFlags.SDL_WINDOW_FULLSCREEN) != 0;
-    public bool IsMinimized => (Sdl.SDL_GetWindowFlags(_window) & SDL_WindowFlags.SDL_WINDOW_MINIMIZED) != 0;
+    public bool Fullscreen => _fullscreen;
+    public bool IsMinimized => _minimized;
+    internal bool IsFocused => _focused;
     public NativeWindowSurface NativeSurface => new(PlatformKind.Sdl3, (nint)_window, surfaceFactory: this);
 
     internal SDL_Window* Handle => _window;
@@ -47,6 +52,7 @@ public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
         if (fullscreen == Fullscreen) return;
         if (!Sdl.SDL_SetWindowFullscreen(_window, fullscreen))
             throw new InvalidOperationException($"SDL_SetWindowFullscreen failed: {Sdl.SDL_GetError()}");
+        UpdateWindowState();
     }
 
     public void Close() => _closed = true;
@@ -71,6 +77,7 @@ public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
                     break;
             }
         }
+        UpdateWindowState();
     }
 
     public void Dispose()
@@ -87,6 +94,14 @@ public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
         bool value = _mousePressedLatch;
         _mousePressedLatch = false;
         return value;
+    }
+
+    private void UpdateWindowState()
+    {
+        SDL_WindowFlags flags = Sdl.SDL_GetWindowFlags(_window);
+        _fullscreen = (flags & SDL_WindowFlags.SDL_WINDOW_FULLSCREEN) != 0;
+        _minimized = (flags & SDL_WindowFlags.SDL_WINDOW_MINIMIZED) != 0;
+        _focused = (flags & SDL_WindowFlags.SDL_WINDOW_INPUT_FOCUS) != 0;
     }
 
     public string[] RequiredInstanceExtensions

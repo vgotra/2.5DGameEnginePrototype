@@ -45,7 +45,7 @@ public sealed class VfxPool
         }
     }
 
-    public int Extract(Span<RenderItem> destination)
+    public int Extract(Span<RenderItem> destination, Vector2 muzzleFlashScreenOffset = default)
     {
         int written = 0;
         for (int i = 0; i < _slots.Length && written < destination.Length; i++)
@@ -58,6 +58,7 @@ public sealed class VfxPool
                 Opacity = opacity,
                 Blend = BlendMode.Additive,
                 AnimationFrame = (byte)(slot.Type == EffectType.SkillBurst ? 1 : 0),
+                ScreenOffset = slot.Type == EffectType.MuzzleFlash ? muzzleFlashScreenOffset : default,
             };
         }
         return written;

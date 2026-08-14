@@ -21,8 +21,8 @@ public struct ArrowRenderBody : IQueryAction<Position, ArrowProjectile, ArrowRen
     public static void Execute(ref ArrowRenderBody body, Entity entity, ref Position position, ref ArrowProjectile arrow)
     {
         Vector2 world = body.History is not null && body.History.TryGetInterpolated(entity, body.InterpolationAlpha, out Vector2 interpolated) ? interpolated : position.Value;
-        Vector2 screen = body.Camera.WorldToScreen(world, body.Grid);
-        if (screen.X < -8 || screen.X > body.Camera.Viewport.X + 8 || screen.Y < -8 || screen.Y > body.Camera.Viewport.Y + 8)
+        Vector2 screen = body.Camera.WorldToScreen(world, body.Grid) - new Vector2(0f, SampleConfig.PlayerSpriteHeight * 0.5f);
+        if (screen.X < -8 || screen.X > body.Camera.Viewport.X + 8 || screen.Y < -SampleConfig.PlayerSpriteHeight || screen.Y > body.Camera.Viewport.Y + 8)
             return;
         float sortKey = SpriteExtraction.SortKey(body.Grid, world);
         body.Sprites[body.Written++] = new SpritePacket(screen, ArrowSize, ArrowColor, default, default, sortKey);

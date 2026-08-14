@@ -24,7 +24,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private static readonly Vector4 White = new(1, 1, 1, 1);
     private static readonly Vector4 DeerColor = new(0.55f, 0.85f, 0.55f, 1);
     private static readonly Vector4 RabbitColor = new(0.95f, 0.65f, 0.75f, 1);
-    private static readonly Vector2 PlayerSize = new(44, 56);
+    private static readonly Vector2 PlayerSize = new(44, SampleConfig.PlayerSpriteHeight);
 
     private readonly PlatformSession _session;
     private readonly JobSystem _jobs;
@@ -35,7 +35,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly FrameScheduler _scheduler;
     private SampleEntitySpawner? _spawner;
     private readonly TextureLibrary _textures;
-    private readonly BitmapFont _font;
+    private readonly SplashFont _font;
     private readonly SplashScreen _splash;
     private readonly Random _random = new(1337);
     private readonly Random _flicker = new(7);
@@ -98,7 +98,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _playerStart = _map.TileToWorld(MapLayout.PlayerSpawnX, MapLayout.PlayerSpawnY);
 
         _textures = new TextureLibrary(Renderer);
-        _font = new BitmapFont(Renderer);
+        _font = new SplashFont(Renderer, Path.Combine(AppContext.BaseDirectory, "textures", "splash-font.png"));
         _splash = new SplashScreen(_font, Viewport);
 
         _playerMove = new PlayerMoveSystem(_map, Input);
@@ -154,7 +154,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnSplashFrame(int percent)
     {
         _textures.TryUploadNextStep();
-        int count = _splash.Render(Sprites, SampleConfig.WindowTitle, percent);
+        int count = _splash.Render(Sprites, SampleConfig.WindowTitle, SplashPercent);
         Present(Sprites.Slice(0, count));
     }
 
@@ -299,6 +299,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     public void Dispose()
     {
+        _textures.Dispose();
         _renderer.Dispose();
         _jobs.Dispose();
         _session.Dispose();
@@ -360,7 +361,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         written = entityBody.Written;
         ArrowRenderBody arrowBody = new() { Grid = Terrain!, Camera = Camera, Sprites = SpriteArray, Written = written, History = _presentation, InterpolationAlpha = Clock.InterpolationAlpha };
         EcsWorld.Query<Position, ArrowProjectile>().ForEach(ref arrowBody);
-        int vfxCount = _vfxPool.Extract(_vfxRenderItems);
+        int vfxCount = _vfxPool.Extract(_vfxRenderItems, new Vector2(0f, -SampleConfig.PlayerSpriteHeight * 0.5f));
         for (int i = 0; i < vfxCount; i++)
             arrowBody.Written = SpriteExtraction.WriteEntity(Terrain!, Camera, SpriteArray, arrowBody.Written, in _vfxRenderItems[i]);
         return arrowBody.Written;

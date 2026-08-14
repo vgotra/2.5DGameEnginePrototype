@@ -73,7 +73,7 @@ The renderer supports renderer-neutral scale/opacity metadata, eight-cell horizo
 - Parallel queries are opt-in and must respect worker ownership and structural-change barriers.
 - `World.Get<T>` is a fast API and requires a valid live entity.
 - Component-store growth and structural changes may allocate; steady-state gameplay avoids them in hot loops.
-- Asset loading, texture ownership, bindless rendering, audio, physics, save serialization, and editor workflows remain separate future work. Atlas animation is supported for the current eight-cell sprite contract; general atlas authoring remains future work.
+- Asset decoding and fence-backed texture uploads are implemented in the asset and Vulkan layers. Indexed descriptor-array rendering is the preferred path with per-texture descriptor fallback. Texture eviction, atlas repacking, audio, physics, save serialization, and editor workflows remain separate future work.
 - The 4096 outstanding-job limit and tiny-job queue churn are known JobSystem constraints.
 
 ## Development rules

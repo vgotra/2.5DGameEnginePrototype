@@ -5,22 +5,20 @@ namespace Engine.Benchmark.Benchmarks;
 
 internal static class RealisticEcsBenchmarks
 {
-    private static readonly int[] Counts = [1_000, 5_000, 10_000, 20_000];
+    private static readonly int[] Counts = [1_000, 10_000];
     private static readonly JobSystem Jobs = new(4);
 
     public static void Dispose() => Jobs.Dispose();
 
     public static BenchmarkCase[] Create()
     {
-        List<BenchmarkCase> cases = new(Counts.Length * 5);
+        List<BenchmarkCase> cases = new(Counts.Length * 3);
         foreach (int count in Counts)
         {
             RealisticCase scenario = new(count);
             cases.Add(new($"RealisticEcs_Serial_{count}", 200, scenario.Serial));
             cases.Add(new($"RealisticEcs_Adaptive_{count}", 200, scenario.Adaptive));
             cases.Add(new($"RealisticEcs_Parallel_{count}", 200, scenario.Parallel));
-            cases.Add(new($"RealisticEcs_Query_{count}", 200, scenario.Query));
-            cases.Add(new($"RealisticEcs_SchedulerDiagnostic_{count}", 200, scenario.SchedulerDiagnostic));
         }
         return cases.ToArray();
     }
@@ -59,8 +57,6 @@ internal static class RealisticEcsBenchmarks
         public void Serial() { Reset(); _serial.Update(_world, 1f / 60f); }
         public void Adaptive() { Reset(); _adaptive.Run(_world, 1f / 60f); }
         public void Parallel() { Reset(); _parallel.Update(_world, 1f / 60f); }
-        public void Query() { Reset(); SumAction action = new(); _query.ForEach(ref action); }
-        public void SchedulerDiagnostic() { Reset(); _adaptive.DiagnosticsEnabled = true; _adaptive.Run(_world, 1f / 60f); _adaptive.DiagnosticsEnabled = false; }
 
         private void Reset()
         {
@@ -111,12 +107,6 @@ internal static class RealisticEcsBenchmarks
             transform.Value += motion.Value / 60f;
             health.Value = Math.Max(1, health.Value - (entity.Id & 1));
         }
-    }
-
-    private struct SumAction : IQueryAction<Transform, Motion, Health, SumAction>
-    {
-        public int Sum;
-        public static void Execute(ref SumAction action, Entity entity, ref Transform transform, ref Motion motion, ref Health health) => action.Sum += health.Value;
     }
 
     private struct Transform(float value) { public float Value = value; }

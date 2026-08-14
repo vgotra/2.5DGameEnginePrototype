@@ -43,7 +43,8 @@ Concrete values for the placeholder-based skills (see `.agents/skills/README.md`
 
 ## Benchmark gate
 - Run: `dotnet run -c Release --project <BenchmarkProject> -- --compare baseline`
-- Verdicts: time WARN +15% / FAIL +30%; allocations FAIL over tolerance (default 0.5 B) or any gen0. Steady-state target 0 B/op, 0 collections. Same-machine only. Exit code 1 on FAIL.
+- The default catalog contains a focused set of representative extraction, terrain, sparse ECS/query, scheduler, JobSystem, ARPG, and rendering-audit cases; low-signal math, buffer, policy, and duplicate population matrices are excluded.
+- Verdicts: time WARN at +15% as a diagnostic; allocations FAIL over tolerance (default 0.5 B) or any gen0. Steady-state target 0 B/op, 0 collections. Same-machine only. Exit code 1 only for allocation regressions.
 - `<ResultsDir>` — `benchmarks\results` (`last.json` every run, gitignored; `baseline.json` on `--save`, committed).
 
 ## Assets

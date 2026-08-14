@@ -10,12 +10,12 @@
 - Added explicit `Serial`, `Adaptive`, `Parallel`, and `Background` execution policies with stable system metadata.
 - Added optional allocation/GC/timing diagnostics to the sparse frame scheduler.
 - Classified sample input, AI, movement, collision, and projectile systems with fixed adaptive thresholds.
-- Added policy benchmark cases and clean benchmark JobSystem ownership.
+- Added focused benchmark ownership and zero-allocation Release verification.
 
 ## Rendering Audit
 
 - Added renderer-owned serial/parallel command-preparation audit helpers with deterministic chunking and checksums.
-- Added representative 128, 512, 1,350, and 10,000-range benchmark cases and smoke parity coverage.
+- Added representative renderer audit workloads and smoke parity coverage; the active benchmark gate is now a focused 35-case catalog.
 - Simplified live renderer command recording to one serial secondary command buffer after the audit measured parallel preparation overhead above serial work; the audit path reports zero steady-state benchmark allocations after warm-up.
 
 ## Realistic ARPG Benchmark
@@ -54,6 +54,8 @@
 
 - Vulkan renderer with swapchain lifecycle, batched textured sprites, descriptor-based texture sampling, parallel tile extraction, and secondary command recording.
 - Sprite extraction and Vulkan geometry support atlas animation frames, scale/opacity metadata, material-selected descriptors, and dedicated additive blending.
+- Render-thread-owned Vulkan texture upload batches use bounded tickets, binary-fence polling, retained staging resources, completion-only texture publication, and allocation-free diagnostics.
+- Optional descriptor indexing uses a stable 1024-entry sampled-image array, indexed shader variant, per-instance texture indices, and explicit Auto/Fallback/Indexed startup selection.
 - Incremental build-time GLSL-to-SPIR-V compilation and splash-screen texture loading.
 
 ## Platform and Input
@@ -64,7 +66,8 @@
 
 - Simplified work-stealing JobSystem with `Run`, `ParallelFor`, `Wait`, and `IsComplete`; arbitrary inter-job dependency scheduling removed.
 - Deferred sparse structural mutations through `EntityCommands` with reserved entity creation and FIFO application.
-- PNG texture loading, procedural fallback assets, frame/simulation/allocation metrics, smoke tests, and Release benchmarks.
+- Asynchronous PNG decoding with unmanaged decoded buffers, procedural fallback assets, upload/descriptor diagnostics, frame/simulation/allocation metrics, smoke tests, and Release benchmarks.
+- The plain console smoke suite retains contract and regression coverage; the Release benchmark gate uses a focused representative catalog with zero-allocation enforcement.
 
 For milestone history and verification results, see `CompletedMilestones.md`.
 # Milestone 3 — Sparse ECS Queries

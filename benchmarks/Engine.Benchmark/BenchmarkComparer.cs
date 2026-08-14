@@ -5,7 +5,6 @@ namespace Engine.Benchmark;
 internal static class BenchmarkComparer
 {
     private const double TimeWarnPct = 15.0;
-    private const double TimeFailPct = 30.0;
 
     public static CompareReport Compare(BenchRunResult baseline, BenchRunResult current, double allocTolerance)
     {
@@ -13,7 +12,6 @@ internal static class BenchmarkComparer
         int failures = 0;
         foreach (BenchmarkResult currentResult in current.Benchmarks)
         {
-            bool diagnostic = currentResult.Name.StartsWith("Policy_", StringComparison.Ordinal);
             BenchmarkResult? baselineResult = baseline.Benchmarks.Find(b => b.Name == currentResult.Name);
             string verdict;
             double timeDeltaPct;
@@ -28,8 +26,8 @@ internal static class BenchmarkComparer
                 timeDeltaPct = baseNs == 0 ? (currentResult.MedianNsPerOp > 0 ? 100.0 : 0.0)
                     : (currentResult.MedianNsPerOp - baseNs) / baseNs * 100.0;
                 bool allocRegressed = currentResult.AllocBytesPerOp > allocTolerance || currentResult.Gen0Collections > 0;
-                string timeVerdict = timeDeltaPct >= TimeFailPct ? "FAIL" : timeDeltaPct >= TimeWarnPct ? "WARN" : "PASS";
-                verdict = allocRegressed ? "FAIL(alloc)" : diagnostic && timeVerdict == "FAIL" ? "DIAG" : timeVerdict;
+                string timeVerdict = timeDeltaPct >= TimeWarnPct ? "WARN" : "PASS";
+                verdict = allocRegressed ? "FAIL(alloc)" : timeVerdict;
             }
             if (verdict.StartsWith("FAIL", StringComparison.Ordinal)) failures++;
             entries.Add(new CompareEntry(

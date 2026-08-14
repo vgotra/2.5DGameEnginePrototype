@@ -3,6 +3,7 @@
   <Project Path="benchmarks/Engine.Benchmark/Engine.Benchmark.csproj" />
   <Project Path="src/Engine.Audio/Engine.Audio.csproj" />
   <Project Path="src/Engine.App/Engine.App.csproj" />
+  <Project Path="src/Engine.Assets/Engine.Assets.csproj" />
   <Project Path="src/Engine.Core/Engine.Core.csproj" />
   <Project Path="src/Engine.Ecs/Engine.Ecs.csproj" />
   <Project Path="src/Engine.Mathematics/Engine.Mathematics.csproj" />
