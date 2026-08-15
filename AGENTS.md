@@ -8,13 +8,14 @@
 
 ## Verification
 - After any code or shader change, run the `build-and-verify` skill (build → smoke tests → sample run → benchmark gate). Key rule: the brief tests are a plain console app, NOT a test framework — do not use `dotnet test`.
+- Automated IsometricSandbox verification must always include a positive `--frames` limit and `--cap 0`; unbounded sample launches are interactive-only.
 - For Vulkan or renderer changes, also load `swapchain-lifecycle`, `game-loop-frame`, `rendering-batching`, and `profiling-diagnostics`; load `shader-workflow` for any GLSL/SPIR-V change.
 
 ## Shaders
 - After editing a GLSL shader, run the `shader-workflow` skill (incremental recompile via `glslc` at build; manual fallback `tools\CompileShaders.ps1`).
 
 ## Architecture
-- Vulkan is the only renderer (white/black diamonds in iso, boxes in `--2d`); changing `IRenderer` means updating `VulkanRenderer`.
+- Vulkan is the only renderer and the sample uses white/black isometric diamonds; changing `IRenderer` means updating `VulkanRenderer`.
 - `Engine.Ecs.Sparse` is the canonical ECS; frame order is explicit and multithreading is opt-in/adaptive rather than mandatory or parallel-by-default.
 
 ## Principles

@@ -10,28 +10,52 @@ namespace IsometricSandbox.Game;
 // The archer's movement system. Reads WASD/arrow input and the Space edge,
 // then writes the desired velocity (or eases a jump into place directly).
 // Actual collision-aware movement happens later in IntegrateSystem.
-public sealed class PlayerMoveSystem(TerrainSurface map, IInputState input) : ISystem
+public sealed class PlayerMoveSystem
+    : ISystem
 {
+    private readonly TerrainSurface _map;
+    private readonly IInputState? _legacyInput;
     private bool _jumpRequested;
+    private PlayerCommand _command;
+    private bool _hasCommand;
+
+    public PlayerMoveSystem(TerrainSurface map, IInputState input)
+    {
+        _map = map;
+        _legacyInput = input;
+    }
+
+    public PlayerMoveSystem(TerrainSurface map)
+    {
+        _map = map;
+    }
 
     public Entity Player { get; set; }
 
     public void CaptureInput()
     {
-        if (input.WasPressed(GameKey.Space)) _jumpRequested = true;
+        if (_legacyInput is not null && _legacyInput.WasPressed(GameKey.Space)) _jumpRequested = true;
+    }
+
+    public void SetCommand(in PlayerCommand command)
+    {
+        _command = command;
+        _jumpRequested |= command.IsPressed(InputAction.Dodge);
+        _hasCommand = true;
     }
 
     public void Update(World world, float deltaSeconds)
     {
-        Vector2 direction = ReadMovement();
-        bool jumpRequested = _jumpRequested;
+        Vector2 direction = _hasCommand ? _command.Move : ReadLegacyMovement();
+        bool jumpRequested = _jumpRequested || (_hasCommand && _command.IsPressed(InputAction.Dodge));
         _jumpRequested = false;
+        _hasCommand = false;
         ref Position position = ref world.Get<Position>(Player);
         ref Velocity velocity = ref world.Get<Velocity>(Player);
         ref PlayerState state = ref world.Get<PlayerState>(Player);
         PlayerMoveBody body = new()
         {
-            Map = map,
+            Map = _map,
             Direction = direction,
             JumpRequested = jumpRequested,
             DeltaSeconds = deltaSeconds,
@@ -40,10 +64,11 @@ public sealed class PlayerMoveSystem(TerrainSurface map, IInputState input) : IS
     }
 
     // Maps WASD/arrow keys to a movement direction.
-    private Vector2 ReadMovement()
+    private Vector2 ReadLegacyMovement()
     {
-        float right = (input.IsDown(GameKey.Right) ? 1 : 0) - (input.IsDown(GameKey.Left) ? 1 : 0);
-        float down = (input.IsDown(GameKey.Down) ? 1 : 0) - (input.IsDown(GameKey.Up) ? 1 : 0);
+        if (_legacyInput is null) return Vector2.Zero;
+        float right = (_legacyInput.IsDown(GameKey.Right) ? 1 : 0) - (_legacyInput.IsDown(GameKey.Left) ? 1 : 0);
+        float down = (_legacyInput.IsDown(GameKey.Down) ? 1 : 0) - (_legacyInput.IsDown(GameKey.Up) ? 1 : 0);
         return new Vector2(right, down);
     }
 }

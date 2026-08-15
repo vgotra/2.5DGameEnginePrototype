@@ -4,13 +4,12 @@ using IsometricSandbox.Game;
 //  IsometricSandbox — "Archer in the Forest"
 //  A small end-to-end sample of the engine. This file only parses the
 //  command line and runs the ECS game app; the work lives in Game\:
-//    Options       — command-line flags (--cap, --frames, --fullscreen, --metrics, --parallel, --simulation, --arpg, --arpg-sample; --phase1 is retained as a compatibility alias)
+//    Options       — command-line flags (--cap, --frames, --fullscreen, --metrics, --parallel)
 //    ArcherGameApp — the GameHost: window/renderer/world wiring + frame loop
 //    SampleConfig  — the tunables (window size, speeds, sim scale, ...)
 //
 //  HOW TO RUN     : dotnet run --project samples\IsometricSandbox
-//  STRESS TEST    : dotnet run --project samples\IsometricSandbox -- --simulation
-//  BOUNDED RUN    : dotnet run --project samples\IsometricSandbox -- --arpg --frames 10
+//  BOUNDED RUN    : dotnet run --project samples\IsometricSandbox -- --frames 60 --cap 0
 //  MAKE CHANGES   : edit Game\SampleConfig.cs — the tunables live there.
 // ====================================================================
 

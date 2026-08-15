@@ -51,7 +51,10 @@ public sealed class World
         _commands.Add(entity, new Position(definition.Position));
         _commands.Add(entity, new MonsterState { Type = definition.Type, Speed = definition.Speed, Radius = definition.ColliderRadius });
         _commands.Add(entity, new Health(definition.Health));
-        _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color)
+        {
+            BottomColor = definition.BottomColor == default ? definition.Color : definition.BottomColor
+        });
         return RegisterSpawn(entity);
     }
 

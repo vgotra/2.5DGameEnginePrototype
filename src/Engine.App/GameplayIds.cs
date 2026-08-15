@@ -33,4 +33,5 @@ public static class SkillIds
     public static readonly SkillId Smite = new("smite");
     public static readonly SkillId NatureBolt = new("nature-bolt");
     public static readonly SkillId Root = new("root");
+    public static readonly SkillId PoisonArrow = new("poison-arrow");
 }

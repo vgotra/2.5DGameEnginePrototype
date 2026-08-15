@@ -25,6 +25,7 @@ internal static class SmokeTestRunner
         (nameof(GameClockTests), GameClockTests.Tests),
         (nameof(PresentationHistoryTests), PresentationHistoryTests.Tests),
         (nameof(ArpgWorkloadTests), ArpgWorkloadTests.Tests),
+        (nameof(ArpgCombatTests), ArpgCombatTests.Tests),
         (nameof(RenderingAuditTests), [new TestCase("Renderer command preparation", RenderingAuditTests.Run)]),
         (nameof(TextureAssetTests), TextureAssetTests.Tests),
         (nameof(TextureUploadPolicyTests), TextureUploadPolicyTests.Tests),

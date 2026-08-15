@@ -1,6 +1,7 @@
 using System.Numerics;
 using Engine.App;
 using Engine.Ecs.Sparse;
+using World = Engine.Ecs.Sparse.World;
 
 namespace IsometricSandbox.Game;
 
@@ -10,13 +11,15 @@ public struct ProjectileBody : IQueryAction<Position, ArrowProjectile, Projectil
 
     public TerrainSurface Map;
     public EntityCommands Buffer;
+    public World World;
     public Entity[] Entities;
     public Vector2[] Positions;
     public float[] Radii;
-    public int[] HealthValues;
+    public bool[] EnemyTargets;
     public int CritterCount;
     public float DeltaSeconds;
     public int Kills;
+    public int EnemyKills;
     public int DamageAmount;
 
     public static void Execute(ref ProjectileBody body, Entity entity, ref Position position, ref ArrowProjectile arrow)
@@ -38,12 +41,14 @@ public struct ProjectileBody : IQueryAction<Position, ArrowProjectile, Projectil
             if (Vector2.DistanceSquared(body.Positions[i], next) < combined * combined)
             {
                 body.Buffer.Destroy(entity);
-                body.HealthValues[i] -= body.DamageAmount;
-                if (body.HealthValues[i] <= 0)
+                ref Health health = ref body.World.Get<Health>(body.Entities[i]);
+                health.Value -= body.DamageAmount;
+                if (health.Value <= 0)
                 {
                     body.Buffer.Destroy(body.Entities[i]);
                     body.Entities[i] = default;
                     body.Kills++;
+                    if (body.EnemyTargets[i]) body.EnemyKills++;
                 }
                 return;
             }

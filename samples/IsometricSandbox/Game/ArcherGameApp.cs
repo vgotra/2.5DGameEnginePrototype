@@ -13,17 +13,14 @@ using SparseWorld = Engine.Ecs.Sparse.World;
 namespace IsometricSandbox.Game;
 
 // The "Archer in the Forest" game as an ECS app: a sparse world with
-// four systems (player movement, critter AI, integration, projectiles), the
-// Vulkan render path, and the splash. A --simulation mode spawns a 20K
-// critter herd on a procedural map to stress the parallel job system.
+// ARPG gameplay, typed scenes, deferred ECS commands, the Vulkan render path,
+// and the splash.
 public sealed class ArcherGameApp : GameHost, IDisposable
 {
     private const double SplashFramesPerSecond = 30;
     private const int ParallelTileThreshold = 10_000;
 
     private static readonly Vector4 White = new(1, 1, 1, 1);
-    private static readonly Vector4 DeerColor = new(0.55f, 0.85f, 0.55f, 1);
-    private static readonly Vector4 RabbitColor = new(0.95f, 0.65f, 0.75f, 1);
     private static readonly Vector2 PlayerSize = new(44, SampleConfig.PlayerSpriteHeight);
 
     private readonly PlatformSession _session;
@@ -37,28 +34,21 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly TextureLibrary _textures;
     private readonly SplashFont _font;
     private readonly SplashScreen _splash;
-    private readonly Random _random = new(1337);
     private readonly Random _flicker = new(7);
     private readonly PlayerMoveSystem _playerMove;
-    private readonly CritterSystem _critters;
+    private readonly MonsterMovementSystem _monsters;
     private readonly IntegrateSystem _integrate;
     private readonly ProjectileSystem _projectiles;
     private readonly VfxPool _vfxPool;
     private readonly RenderItem[] _vfxRenderItems = new RenderItem[256];
-    private readonly NpcBehaviorSystem _npcBehavior;
-    private static readonly SkillDefinition BasicShot = new(1, 0.1f, 1f);
-    private static readonly WeaponDefinition Bow = new(1, 1f, SampleConfig.ArrowSpeed, SampleConfig.ArrowLifetime);
+    private static readonly SkillDefinition BasicShot = new(SkillIds.BasicShot, 0.1f, 1f);
+    private static readonly WeaponDefinition Bow = new(GameContent.GoblinSlayerBow, 1f, SampleConfig.ArrowSpeed, SampleConfig.ArrowLifetime);
     private readonly VfxSystem _vfx;
     private readonly PresentationPositionHistory _presentation = new();
     private readonly LifetimeSystem _lifetimes;
-    private readonly bool _simulation;
     private readonly bool _forceParallel;
-    private readonly bool _arpg;
-    private readonly bool _gameplayScenario;
     private readonly double _frameCap;
-    private readonly ArpgWorkload? _arpgWorkload;
     private readonly int? _frameLimit;
-    private int _simulationFrames;
     private int _frameCount;
 
     private Entity _player;
@@ -92,16 +82,12 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _jobs = jobs;
         _scheduler = new FrameScheduler(jobs);
         _renderer = renderer;
-        _simulation = options.Simulation;
         _forceParallel = options.ForceParallel;
-        _arpg = options.Arpg;
-        _gameplayScenario = options.GameplayScenario;
         _frameCap = options.FrameCap;
-        _arpgWorkload = _arpg ? new ArpgWorkload(1337, jobs) : null;
         _frameLimit = options.FrameLimit;
 
-        _map = _simulation ? BuildSimulationMap() : new TerrainSurface(20, 20);
-        if (!_simulation) _map.LoadLayout(MapLayout.Rows);
+        _map = new TerrainSurface(20, 20);
+        _map.LoadLayout(MapLayout.Rows);
         SetTerrain(_map);
         _playerStart = _map.TileToWorld(MapLayout.PlayerSpawnX, MapLayout.PlayerSpawnY);
 
@@ -109,33 +95,24 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _font = new SplashFont(Renderer, Path.Combine(AppContext.BaseDirectory, "textures", "splash-font.png"));
         _splash = new SplashScreen(_font, Viewport);
 
-        _playerMove = new PlayerMoveSystem(_map, Input);
-        _critters = new CritterSystem(_map, _simulation);
+        _playerMove = new PlayerMoveSystem(_map);
+        _monsters = new MonsterMovementSystem(_map);
         _integrate = new IntegrateSystem(_map);
         _projectiles = new ProjectileSystem(_map);
         _vfxPool = new VfxPool(256);
-        _npcBehavior = new NpcBehaviorSystem(_map);
         _vfx = new VfxSystem();
         _lifetimes = new LifetimeSystem();
         _scheduler.Register(_playerMove, new("Input.PlayerMovement", ExecutionPolicy.Serial, 0, true, true, false));
-        _scheduler.Register(_critters, new("AI.MonsterMovement", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
-        _scheduler.Register(_integrate, new("Collision.Integration", ExecutionPolicy.Adaptive, ArpgWorkload.AdaptiveThreshold, true, true, false));
+        _scheduler.Register(_monsters, new("AI.GoblinMovement", ExecutionPolicy.Serial, 0, true, true, false));
+        _scheduler.Register(_integrate, new("Collision.Integration", ExecutionPolicy.Serial, 0, true, true, false));
         _scheduler.Register(_projectiles, new("Combat.Projectiles", ExecutionPolicy.Adaptive, SampleConfig.ProjectileParallelThreshold, true, true, false));
-        _scheduler.Register(_npcBehavior, new("AI.NpcBehavior", ExecutionPolicy.Adaptive, SampleConfig.NpcParallelThreshold, true, true, false));
         _scheduler.Register(_vfx, new("Presentation.Vfx", ExecutionPolicy.Serial, 0, true, true, false));
         _scheduler.Register(_lifetimes, new("Presentation.Lifetimes", ExecutionPolicy.Serial, 0, true, true, false));
 
-        if (_simulation)
-        {
-            for (int i = 0; i < _textures.StepCount; i++) _textures.LoadNextStep();
-        }
-        else
-        {
-            _textures.BeginAsyncLoad(Jobs);
-        }
+        _textures.BeginAsyncLoad(Jobs);
     }
 
-    protected override bool ShowSplash => !_simulation;
+    protected override bool ShowSplash => true;
     protected override bool TexturesLoaded => _textures.IsComplete;
     protected override int SplashPercent
     {
@@ -148,7 +125,6 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override string FrameTitle()
     {
-        if (_simulation) return SampleConfig.WindowTitle;
         if (_score != _lastScore)
         {
             _lastScore = _score;
@@ -169,12 +145,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnSplashComplete()
     {
         _runtimeWorld = base.CreateWorld("Sanctuary");
-        if (_gameplayScenario) InitializeGameWorld();
-        else
-        {
-            _runtimeWorld.LoadScene("Forest");
-            InitializeWorld();
-        }
+        InitializeGameWorld();
         PresentationDiagnostics presentation = _renderer.Presentation;
         Console.WriteLine($"presentation  requested={presentation.RequestedMode}  selected={presentation.SelectedMode}  fallback={presentation.UsedFallback}  images={presentation.SwapchainImageCount}  cap={(_frameCap > 0 ? _frameCap.ToString("F0") : "unbounded")}");
         _playerMove.Player = _player;
@@ -190,19 +161,14 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnPerFrame()
     {
-        _playerMove.CaptureInput();
-        if (_gameplayScenario) InputActionMapper.CaptureCurrent(Input, ref _inputActions, _inputBindings);
+        InputActionMapper.CaptureCurrent(Input, ref _inputActions, _inputBindings);
+        _playerMove.SetCommand(_inputActions.Snapshot());
         if (_frameLimit is int limit && ++_frameCount >= limit)
         {
             Window.Close();
             return;
         }
-        if (_simulation && ++_simulationFrames >= SampleConfig.SimulationFrames)
-        {
-            Window.Close();
-            return;
-        }
-        if (_gameplayScenario ? !_inputActions.Snapshot().IsPressed(InputAction.PrimaryAttack) : !Input.MousePressed) return;
+        if (!_inputActions.Snapshot().IsPressed(InputAction.PrimaryAttack)) return;
         ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
         Camera.Follow(playerPosition.Value, Terrain!);
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
@@ -212,12 +178,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnFixedStep(float deltaSeconds)
     {
-        if (_gameplayScenario) _gameProgression?.Tick(_inputActions.Snapshot());
+        _gameProgression!.Tick(_inputActions.Snapshot());
         _presentation.BeginStep(EcsWorld);
         _vfxPool.Update(deltaSeconds);
         ref AbilityState abilityState = ref EcsWorld.Get<AbilityState>(_player);
         AbilityPipeline.Tick(ref abilityState, deltaSeconds);
-        if (_arpg) _arpgWorkload!.Tick(_forceParallel ? ArpgExecutionMode.ForcedParallel : ArpgExecutionMode.AdaptiveParallel);
         long schedulerStart = Stopwatch.GetTimestamp();
         _scheduler.Run(EcsWorld, deltaSeconds);
         RecordSchedulerTime((Stopwatch.GetTimestamp() - schedulerStart) * 1000.0 / Stopwatch.Frequency);
@@ -225,6 +190,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _presentation.EndStep(EcsWorld);
         _runtimeWorld!.ApplyCommands();
         _score += _projectiles.LastKills;
+        for (int i = 0; i < _projectiles.LastEnemyKills; i++) _gameProgression!.RecordProjectileKill();
 
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
         if (state.PendingShot)
@@ -246,19 +212,6 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnRender()
     {
-        if (_arpg)
-        {
-            Renderer.BeginFrame(Viewport);
-            Camera.Follow(new Vector2(10, 10), Terrain!);
-            int arpgCount = _arpgWorkload!.Extract(Camera, Terrain!, SpriteArray);
-            SpriteExtraction.StableSortByKey(SpriteArray, arpgCount, SortKeyCounts, SortScratch);
-            Renderer.Submit(SpriteArray.AsSpan(0, arpgCount));
-            long presentStart = Stopwatch.GetTimestamp();
-            Renderer.EndFrame();
-            RecordPresentTime((Stopwatch.GetTimestamp() - presentStart) * 1000.0 / Stopwatch.Frequency);
-            _lastSpriteCount = arpgCount;
-            return;
-        }
         TerrainSurface grid = Terrain!;
         ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
         Vector2 renderPlayer = _presentation.TryGetInterpolated(_player, Clock.InterpolationAlpha, out Vector2 interpolatedPlayer) ? interpolatedPlayer : playerPosition.Value;
@@ -300,8 +253,6 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         EntityCommands reset = _runtimeWorld!.Commands;
         ArrowCollectBody arrowBody = new() { Buffer = reset };
         EcsWorld.Query<ArrowProjectile>().ForEach(ref arrowBody);
-        CritterCollectBody critterBody = new() { Buffer = reset };
-        EcsWorld.Query<Critter>().ForEach(ref critterBody);
         _runtimeWorld.ApplyCommands();
 
         _score = 0;
@@ -309,7 +260,6 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         EcsWorld.Get<Position>(_player).Value = _playerStart;
         EcsWorld.Get<Velocity>(_player).Value = Vector2.Zero;
         EcsWorld.SetComponent(_player, PlayerState.At(_playerStart));
-        SpawnCritters();
         Camera.Follow(_playerStart, Terrain!);
     }
 
@@ -326,23 +276,11 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         WindowTitle: SampleConfig.WindowTitle,
         RenderResolution: new Vector2(SampleConfig.WindowWidth, SampleConfig.WindowHeight),
         FrameCap: options.FrameCap,
-        SpriteCapacity: options.Simulation ? SampleConfig.SimulationSpriteCapacity : options.Arpg ? SampleConfig.ArpgSpriteCapacity : SampleConfig.NormalSpriteCapacity,
+        SpriteCapacity: SampleConfig.ArpgSpriteCapacity,
         StartFullscreen: options.StartFullscreen,
         ShowMetrics: options.ShowMetrics,
         SplashFramesPerSecond: SplashFramesPerSecond,
         SplashMinimumSeconds: SampleConfig.SplashMinimumSeconds);
-
-    private void InitializeWorld()
-    {
-        RuntimeWorld runtimeWorld = _runtimeWorld!;
-        _spawner = new SampleEntitySpawner(runtimeWorld, _textures);
-        _projectiles.Buffer = runtimeWorld.Commands;
-        _lifetimes.Buffer = runtimeWorld.Commands;
-        _player = _spawner.SpawnHero(_playerStart);
-        _critters.Player = _player;
-        SpawnCritters();
-        runtimeWorld.ApplyCommands();
-    }
 
     private void InitializeGameWorld()
     {
@@ -356,48 +294,28 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _activeScene = village;
         string manifestPath = Path.Combine(AppContext.BaseDirectory, "assets", "game-bake.json");
         _textures.RegisterManifestAtlases(manifestPath, out _);
-
-        world.Catalog.Register(HeroIds.Rogue, new HeroDefinition(HeroType.Archer, Vector2.Zero, SampleConfig.PlayerRadius, _textures.Player, PlayerSize, White));
-        world.Catalog.Register(GameContent.GoblinWarrior, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1.2f, 0.4f, 12, _textures.Deer, new Vector2(36, 44), new Vector4(0.7f, 0.3f, 0.2f, 1f)));
-        world.Catalog.Register(GameContent.GoblinArcher, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1f, 0.35f, 8, _textures.Rabbit, new Vector2(32, 40), new Vector4(0.8f, 0.4f, 0.2f, 1f)));
-        world.Catalog.Register(GameContent.GoblinShaman, new MonsterDefinition(MonsterType.GoblinShaman, Vector2.Zero, 0.8f, 0.4f, 16, _textures.Rabbit, new Vector2(34, 44), new Vector4(0.5f, 0.2f, 0.8f, 1f)));
+        _spawner = new SampleEntitySpawner(world, _textures);
+        _projectiles.Buffer = world.Commands;
+        _lifetimes.Buffer = world.Commands;
+        _spawner.RegisterHeroDefinition();
+        Vector4 warriorColor = new(0.08f, 0.28f, 0.10f, 1f);
+        Vector4 archerColor = new(0.16f, 0.42f, 0.18f, 1f);
+        Vector4 shamanColor = new(0.10f, 0.34f, 0.12f, 1f);
+        Vector4 warriorBottomColor = new(0.16f, 0.42f, 0.18f, 1f);
+        Vector4 archerBottomColor = new(0.24f, 0.55f, 0.26f, 1f);
+        Vector4 shamanBottomColor = new(0.20f, 0.48f, 0.22f, 1f);
+        TextureHandle enemyTexture = default;
+        world.Catalog.Register(GameContent.GoblinWarrior, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1.2f, 0.4f, 6, enemyTexture, new Vector2(36, 44), warriorColor, warriorBottomColor));
+        world.Catalog.Register(GameContent.GoblinArcher, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1f, 0.35f, 4, enemyTexture, new Vector2(32, 40), archerColor, archerBottomColor));
+        world.Catalog.Register(GameContent.GoblinShaman, new MonsterDefinition(MonsterType.GoblinShaman, Vector2.Zero, 0.8f, 0.4f, 8, enemyTexture, new Vector2(34, 44), shamanColor, shamanBottomColor));
 
         MapLocation start = village.Map.Resolve("player-start");
-        _player = world.SpawnHero(HeroIds.Rogue, start);
-        world.Commands.Add(_player, PlayerState.At(start.Position));
-        world.Commands.Add(_player, new AbilityState());
+        _player = _spawner.SpawnHero(HeroIds.Rogue, start);
         world.Commands.Add(_player, new CharacterMovement { Mode = CharacterIntentKind.Stop });
         _playerStart = start.Position;
-        _critters.Player = _player;
         world.ApplyCommands();
-        _spawner = new SampleEntitySpawner(world, _textures);
         _gameProgression = new GameProgression(world, Terrain!);
         _gameProgression.Start(_player);
-    }
-
-    private void SpawnCritters()
-    {
-        if (_simulation)
-        {
-        TerrainSurface grid = Terrain!;
-            for (int i = 0; i < SampleConfig.SimulationCritters; i++)
-            {
-                Vector2 position = new(1f + _random.NextSingle() * (grid.Width - 3f), 1f + _random.NextSingle() * (grid.Height - 3f));
-                AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
-                _spawner!.SpawnMonster(species, position, new Vector2(10, 10), SimColor(i));
-            }
-            return;
-        }
-        for (int i = 0; i < SampleConfig.AnimalCount; i++)
-        {
-            AnimalSpecies species = i % 2 == 0 ? AnimalSpecies.Deer : AnimalSpecies.Rabbit;
-            Vector2 position = CritterSystem.FindSpawn(_map, _random, _playerStart);
-            _spawner!.SpawnMonster(
-                species,
-                position,
-                species == AnimalSpecies.Deer ? new Vector2(36, 44) : new Vector2(28, 36),
-                species == AnimalSpecies.Deer ? DeerColor : RabbitColor);
-        }
     }
 
     private int RenderEntities(int written, Vector2 playerWorld)
@@ -451,41 +369,4 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         return written;
     }
 
-    private static TerrainSurface BuildSimulationMap()
-    {
-        int width = SampleConfig.SimulationWidth;
-        int height = SampleConfig.SimulationHeight;
-        TerrainSurface map = new(width, height);
-        for (int x = 0; x < width; x++)
-        {
-            map.SetTile(x, 0, TileType.Wall);
-            map.SetTile(x, height - 1, TileType.Wall);
-        }
-        for (int y = 0; y < height; y++)
-        {
-            map.SetTile(0, y, TileType.Wall);
-            map.SetTile(width - 1, y, TileType.Wall);
-        }
-        int riverY = height / 3;
-        for (int x = 0; x < width; x++)
-        {
-            if (Math.Abs(x - width / 2) > 2) map.SetTile(x, riverY, TileType.Water);
-        }
-        Random random = new(42);
-        for (int cluster = 0; cluster < 8; cluster++)
-        {
-            int cx = 4 + random.Next(width - 12);
-            int cy = 4 + random.Next(height - 12);
-            for (int dx = 0; dx < 3; dx++)
-                for (int dy = 0; dy < 3; dy++)
-                    map.SetTile(cx + dx, cy + dy, TileType.Tree);
-        }
-        return map;
-    }
-
-    private static Vector4 SimColor(int i)
-    {
-        float t = (i % 8) / 7f;
-        return new Vector4(1f - 0.5f * t, 0.8f - 0.2f * t, 1f - 0.55f * t, 1f);
-    }
 }

@@ -43,7 +43,8 @@ internal sealed class SpriteGeometryBuilder
             uvScale = new Vector2(1f / 8f, 1f);
             uvOffset = new Vector2(sprite.AnimationFrame * uvScale.X, 0f);
         }
-        _instances.Add(new SpriteInstance(sprite.Position, sprite.Size, sprite.Color, uvScale, uvOffset, (uint)Math.Max(0, sprite.Texture.Value)));
+        Vector4 bottomColor = sprite.BottomColor == default ? sprite.Color : sprite.BottomColor;
+        _instances.Add(new SpriteInstance(sprite.Position, sprite.Size, sprite.Color, bottomColor, uvScale, uvOffset, (uint)Math.Max(0, sprite.Texture.Value)));
         if (_textureRanges.Count > 0)
         {
             int last = _textureRanges.Count - 1;

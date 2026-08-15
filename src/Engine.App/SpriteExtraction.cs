@@ -47,9 +47,10 @@ public static class SpriteExtraction
                     screen.Y + halfHeight < 0 || screen.Y - halfHeight > viewport.Y)
                     continue;
                 int sortKey = y * grid.Width + x;
-                sprites[written++] = new SpritePacket(screen, borderSize, Black, default, default, sortKey);
+                TileType tileType = grid.SampleSurface(new(x + 0.5f, y + 0.5f));
+                sprites[written++] = new SpritePacket(screen, borderSize, TileVisual.BorderColor(tileType), default, default, sortKey);
                 sprites[written++] = textured
-                    ? WriteTileFill(screen, tileSize, grid.SampleSurface(new(x + 0.5f, y + 0.5f)), textures, flicker, sortKey)
+                    ? WriteTileFill(screen, tileSize, tileType, textures, flicker, sortKey)
                     : new SpritePacket(screen, tileSize, White, default, default, sortKey);
             }
         return written;
@@ -73,7 +74,7 @@ public static class SpriteExtraction
         Vector2 center = groundScreen - new Vector2(0, size.Y * 0.5f);
         if (written + 2 > sprites.Length) return written;
         sprites[written++] = new SpritePacket(borderCenter, borderSize, Black, default, default, sortKey);
-        sprites[written++] = new SpritePacket(center, size, color, texture, default, sortKey);
+        sprites[written++] = new SpritePacket(center, size, color, texture, default, sortKey) { BottomColor = color };
         return written;
     }
 
@@ -88,6 +89,11 @@ public static class SpriteExtraction
         int start = written;
         written = WriteEntity(grid, camera, sprites, written, item.WorldPosition, item.Size,
             item.Texture, jumpHeight, item.Color);
+        if (written > start)
+        {
+            int fillIndex = written - 1;
+            sprites[fillIndex] = sprites[fillIndex] with { BottomColor = item.BottomColor };
+        }
         for (int i = start; i < written; i++)
         {
             Vector4 color = sprites[i].Color;
@@ -113,14 +119,8 @@ public static class SpriteExtraction
         Random? flicker,
         float sortKey)
     {
-        if (textures is null || flicker is null)
-            return new SpritePacket(screen, size, White, default, default, sortKey);
-        string? textureName = TileVisual.TextureName(type);
-        TextureHandle? texture = textureName is null ? null : textures.TryGet(textureName);
         bool isBonfire = type == TileType.Bonfire;
-        float brightness = isBonfire ? 0.7f + 0.3f * flicker.NextSingle() : 1f;
-        if (texture.HasValue)
-            return new SpritePacket(screen, size, White * brightness, texture.Value, default, sortKey);
+        float brightness = isBonfire && flicker is not null ? 0.7f + 0.3f * flicker.NextSingle() : 1f;
         return new SpritePacket(screen, size, TileVisual.Color(type) * brightness, default, default, sortKey);
     }
 

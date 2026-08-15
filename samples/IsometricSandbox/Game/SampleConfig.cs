@@ -16,9 +16,7 @@ public static class SampleConfig
     public const float SplashTextWidthMultiplier = 1.3f;
     public const int NpcParallelThreshold = 64;
 
-    // Deer/rabbits alive at once (normal mode).
-    public const int MaxAnimals = 10;
-    public const int AnimalCount = MaxAnimals;
+    public const int MaxEnemies = 10;
 
     public const float PlayerSpeed = 7f;
     public const float PlayerRadius = 0.2f;
@@ -38,21 +36,8 @@ public static class SampleConfig
     public const float ArrowRadius = 0.15f;
     public const float HomingRadius = 5f;
 
-    // Critter behavior.
     public const float FleeRadius = 3.5f;
-    public const float DeerSpeed = 1.4f;
-    public const float DeerRadius = 0.5f;
-    public const float RabbitSpeed = 2.2f;
-    public const float RabbitRadius = 0.35f;
 
-    // Sprite buffer sizing (capacity is enforced per run mode).
     public const int NormalSpriteCapacity = 1024;
-    public const int SimulationSpriteCapacity = 65_536;
     public const int ArpgSpriteCapacity = 1024;
-
-    // Simulation mode: an open ARPG-scale map with a representative critter herd.
-    public const int SimulationWidth = 128;
-    public const int SimulationHeight = 128;
-    public const int SimulationCritters = SceneSizing.RepresentativeEntityCount;
-    public const int SimulationFrames = 10;
 }

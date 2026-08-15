@@ -10,6 +10,7 @@ public readonly record struct RenderItem(
     Vector4 Color,
     float SortKey = 0f)
 {
+    public Vector4 BottomColor { get; init; } = Color;
     public MaterialHandle Material { get; init; }
     public float Scale { get; init; } = 1f;
     public float Opacity { get; init; } = 1f;

@@ -8,6 +8,7 @@ public struct Renderable(TextureHandle texture, Vector2 size, Vector4 color)
     public TextureHandle Texture = texture;
     public Vector2 Size = size;
     public Vector4 Color = color;
+    public Vector4 BottomColor = color;
     public float Scale = 1f;
     public float Opacity = 1f;
     public byte AnimationFrame;
@@ -20,6 +21,7 @@ public struct Renderable(TextureHandle texture, Vector2 size, Vector4 color)
     public readonly RenderItem ToRenderItem(Vector2 worldPosition)
         => new(worldPosition, Size, Texture, new Vector4(Color.X, Color.Y, Color.Z, Color.W * Opacity), SortKey: 0f)
         {
+            BottomColor = BottomColor,
             Material = Material,
             Scale = Scale,
             Opacity = Opacity,

@@ -24,7 +24,6 @@ public static class AbilityPipeline
             return default;
 
         Vector2 normalized = Vector2.Normalize(direction);
-        ability.Id = skill.Id;
         ability.CooldownRemaining = skill.Cooldown;
         return new AbilityResult(
             true,

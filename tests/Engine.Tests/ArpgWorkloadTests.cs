@@ -14,9 +14,8 @@ internal static class ArpgWorkloadTests
         new(nameof(ExecutionModes_StayParityEquivalent), ExecutionModes_StayParityEquivalent),
         new(nameof(AdaptivePolicy_UsesThreshold), AdaptivePolicy_UsesThreshold),
         new(nameof(Extraction_ProjectsGameplaySizedSprites), Extraction_ProjectsGameplaySizedSprites),
-        new(nameof(Options_ParseArpgWithoutChangingSimulation), Options_ParseArpgWithoutChangingSimulation),
-        new(nameof(Options_ParseArpgSampleAlias), Options_ParseArpgSampleAlias),
         new(nameof(Options_DefaultAndCustomFrameCaps), Options_DefaultAndCustomFrameCaps),
+        new(nameof(Options_ParseBoundedVerificationArguments), Options_ParseBoundedVerificationArguments),
     ];
 
     private static TerrainSurface Grid() => new(20, 20, 1f, 64f, 32f, 7);
@@ -73,18 +72,6 @@ internal static class ArpgWorkloadTests
         TestAssert.True(packets[0].Position.X > 0 && packets[0].Position.X < 800 && packets[0].Position.Y > 0 && packets[0].Position.Y < 600, "ARPG positions are projected into the viewport");
     }
 
-    private static void Options_ParseArpgWithoutChangingSimulation()
-    {
-        Options arpg = Options.Parse(["--arpg"]);
-        Options simulation = Options.Parse(["--simulation"]);
-        TestAssert.True(arpg.Arpg && !arpg.Simulation && simulation.Simulation && !simulation.Arpg, "sample options preserve ARPG and simulation modes");
-    }
-
-    private static void Options_ParseArpgSampleAlias()
-    {
-        TestAssert.True(Options.Parse(["--arpg-sample"]).GameplayScenario, "ARPG sample selects the gameplay scenario path");
-    }
-
     private static void Options_DefaultAndCustomFrameCaps()
     {
         TestAssert.True(Options.Parse([]).FrameCap == 120, "sample defaults to 120 FPS rendering");
@@ -92,5 +79,11 @@ internal static class ArpgWorkloadTests
         TestAssert.True(Options.Parse(["--cap", "144"]).FrameCap == 144, "sample accepts a 144 FPS render cap");
         TestAssert.True(Options.Parse(["--cap", "120"]).FrameCap == 120, "sample accepts a 120 FPS render cap");
         TestAssert.True(Options.Parse(["--cap", "0"]).FrameCap == 0, "zero selects uncapped rendering");
+    }
+
+    private static void Options_ParseBoundedVerificationArguments()
+    {
+        Options options = Options.Parse(["--frames", "10", "--cap", "0"]);
+        TestAssert.True(options.FrameLimit == 10 && options.FrameCap == 0, "bounded verification arguments remain separate options");
     }
 }

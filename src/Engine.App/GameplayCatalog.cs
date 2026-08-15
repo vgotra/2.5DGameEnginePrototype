@@ -38,6 +38,7 @@ public sealed class GameplayCatalog
         Register(SkillIds.Smite, new(SkillIds.Smite, HeroType.Cleric, 2f, 0.8f, 5, new("smite"), new("smite-impact"), new("smite")));
         Register(SkillIds.NatureBolt, new(SkillIds.NatureBolt, HeroType.Druid, 2f, 0.5f, 5, new("nature"), new("nature-bolt-impact"), new("nature-bolt")));
         Register(SkillIds.Root, new(SkillIds.Root, HeroType.Druid, 1f, 1.1f, 5, new("root"), new("root-impact"), new("root")));
+        Register(SkillIds.PoisonArrow, new(SkillIds.PoisonArrow, HeroType.Archer, 3f, 0.5f, 5, GameContent.Poison, new("poison-arrow-impact"), new("poison-arrow")));
     }
 
     public void RegisterDefaultNpcs()

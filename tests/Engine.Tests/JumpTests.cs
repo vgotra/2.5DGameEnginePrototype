@@ -16,6 +16,8 @@ internal static class JumpTests
         new(nameof(Jump_InputLatchSurvivesUntilFixedStep), Jump_InputLatchSurvivesUntilFixedStep),
         new(nameof(Jump_HeldSpaceTriggersOnlyOnce), Jump_HeldSpaceTriggersOnlyOnce),
         new(nameof(Jump_WhileMovingStillStarts), Jump_WhileMovingStillStarts),
+        new(nameof(Jump_PlayerCommandDrivesSampleMovement), Jump_PlayerCommandDrivesSampleMovement),
+        new(nameof(Jump_CommandEdgeSurvivesMissedFixedStep), Jump_CommandEdgeSurvivesMissedFixedStep),
     ];
 
     private static void Jump_ValidRequestAdvancesAndCompletes()
@@ -116,6 +118,45 @@ internal static class JumpTests
         system.Update(world, 1f / 60f);
 
         TestAssert.True(world.Get<PlayerState>(player).IsJumping, "jump starts while movement is held");
+    }
+
+    private static void Jump_PlayerCommandDrivesSampleMovement()
+    {
+        TerrainSurface map = new(20, 20);
+        PlayerMoveSystem system = new(map);
+        SparseWorld world = new();
+        Entity player = world.Create();
+        Vector2 start = new(1.5f, 1.5f);
+        world.Add(player, new Position(start));
+        world.Add(player, new Velocity(Vector2.Zero));
+        world.Add(player, PlayerState.At(start));
+        system.Player = player;
+        uint pressed = 1u << (int)InputAction.Dodge;
+        system.SetCommand(new PlayerCommand(Vector2.UnitX, Vector2.Zero, pressed, pressed));
+
+        system.Update(world, 1f / 60f);
+
+        TestAssert.True(world.Get<PlayerState>(player).IsJumping, "sample movement consumes the shared player command");
+    }
+
+    private static void Jump_CommandEdgeSurvivesMissedFixedStep()
+    {
+        TerrainSurface map = new(20, 20);
+        PlayerMoveSystem system = new(map);
+        SparseWorld world = new();
+        Entity player = world.Create();
+        Vector2 start = new(1.5f, 1.5f);
+        world.Add(player, new Position(start));
+        world.Add(player, new Velocity(Vector2.Zero));
+        world.Add(player, PlayerState.At(start));
+        system.Player = player;
+
+        uint jumpPressed = 1u << (int)InputAction.Dodge;
+        system.SetCommand(new PlayerCommand(Vector2.Zero, Vector2.Zero, jumpPressed, jumpPressed));
+        system.SetCommand(new PlayerCommand(Vector2.UnitX, Vector2.Zero, 0, 0));
+        system.Update(world, 1f / 60f);
+
+        TestAssert.True(world.Get<PlayerState>(player).IsJumping, "jump edge survives until the next fixed step");
     }
 
     private sealed class FakeInput : IInputState

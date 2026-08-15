@@ -29,6 +29,7 @@ Concrete values for the placeholder-based skills (see `.agents/skills/README.md`
 - `<Sdl3BackendProject>` — `src\Engine.Platform.SDL3\Engine.Platform.SDL3.csproj` (SDL3 P/Invoke via `ppy.SDL3-CS` + window/pump)
 - `<RendererProject>` — `src\Engine.Rendering.Vulkan\Engine.Rendering.Vulkan.csproj` (Vulkan is the only renderer)
 - `<SampleProject>` — `samples\IsometricSandbox\IsometricSandbox.csproj`
+- `<SimulationProject>` — `samples\IsometricSimulation\IsometricSimulation.csproj`
 - `<TestProject>` — `tests\Engine.Tests\Engine.Tests.csproj` (plain console app, NOT a test framework — never `dotnet test`)
 - `<BenchmarkProject>` — `benchmarks\Engine.Benchmark\Engine.Benchmark.csproj` (Release-only, no GPU)
 
@@ -38,12 +39,18 @@ Concrete values for the placeholder-based skills (see `.agents/skills/README.md`
 - Vulkan SDK (`vulkan-1.dll` + `glslc` for the build-time shader compile)
 
 ## Sample flags / controls
-- Flags: `--fullscreen` (borderless start), `--cap <fps>` (frame-rate cap), `--metrics` (rolling table every 120 frames), `--parallel` (force supported parallel extraction paths; live Vulkan batch command recording remains serial after the rendering audit), `--simulation` (128×128 map + 20K critter ARPG-scale workload), `--arpg` (realistic ARPG workload), `--arpg-sample` (bounded Village → Goblin Forest gameplay scenario), `--phase1` (temporary compatibility alias for `--arpg-sample`), and `--frames <n>` (bounded run for verification).
+- ARPG flags: `--fullscreen` (borderless start), `--cap <fps>` (frame-rate cap), `--metrics` (rolling table every 120 frames), `--parallel` (force supported parallel extraction paths), and `--frames <n>` (bounded run for verification).
+- Simulation flags: `--parallel` and `--frames <n>`; simulation is a separate console executable and defaults to a bounded 10-frame run.
+- Automated verification commands:
+  `dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --frames 60 --cap 0`,
+  `dotnet run --project samples\IsometricSimulation\IsometricSimulation.csproj -- --frames 10`, and
+  `dotnet run --project samples\IsometricSimulation\IsometricSimulation.csproj -- --parallel --frames 10`.
+- In PowerShell automation, pass flags as separate arguments. A single quoted string containing multiple flags is not parsed as separate options.
 - Controls: `WASD`/arrows move, mouse aim, left-click shoot, `Space` jump, `R` restart, `F11` fullscreen toggle, `Escape` exit. Score is shown in the window title.
 
 ## Benchmark gate
 - Run: `dotnet run -c Release --project <BenchmarkProject> -- --compare baseline`
-- The default catalog contains a focused set of representative extraction, terrain, sparse ECS/query, scheduler, JobSystem, ARPG, and rendering-audit cases; low-signal math, buffer, policy, and duplicate population matrices are excluded.
+- The default catalog contains 44 focused representative extraction, terrain, sparse ECS/query, scheduler, JobSystem, ARPG, and rendering-audit cases; low-signal math, buffer, policy, and duplicate population matrices are excluded.
 - Verdicts: time WARN at +15% as a diagnostic; allocations FAIL over tolerance (default 0.5 B) or any gen0. Steady-state target 0 B/op, 0 collections. Same-machine only. Exit code 1 only for allocation regressions.
 - `<ResultsDir>` — `benchmarks\results` (`last.json` every run, gitignored; `baseline.json` on `--save`, committed).
 

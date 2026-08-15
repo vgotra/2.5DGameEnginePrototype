@@ -1,6 +1,6 @@
 # Completed Milestones
 
-Historical benchmark matrices in this file describe the suite at the time of each milestone. They are not the current default gate; the current catalog is the focused 35-case suite documented in `ProjectConfig.md`.
+Historical benchmark matrices in this file describe the suite at the time of each milestone. They are not the current default gate; the current catalog is the focused 44-case suite documented in `ProjectConfig.md`.
 
 ## 2026-08-13 — Milestone 14: Delete and Document
 

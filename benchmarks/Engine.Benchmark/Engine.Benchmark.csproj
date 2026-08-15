@@ -2,6 +2,7 @@
   <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>Engine.Benchmark</AssemblyName></PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\samples\IsometricSandbox\IsometricSandbox.csproj" />
+    <ProjectReference Include="..\..\samples\IsometricSimulation\IsometricSimulation.csproj" />
     <ProjectReference Include="..\..\src\Engine.Core\Engine.Core.csproj" />
     <ProjectReference Include="..\..\src\Engine.Mathematics\Engine.Mathematics.csproj" />
     <ProjectReference Include="..\..\src\Engine.Ecs\Engine.Ecs.csproj" />

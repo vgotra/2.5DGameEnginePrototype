@@ -9,3 +9,5 @@ Platforms: Windows is supported today (Vulkan renderer). Linux (X11/Wayland via 
 ## How to run, verify, and test
 
 Prerequisites, build, smoke tests, sample run (flags and controls), and the benchmark/verification loop are covered by the [`build-and-verify` skill](.agents/skills/build-and-verify/SKILL.md); concrete project names, commands, flags, and controls are in [.agents/context/ProjectConfig.md](.agents/context/ProjectConfig.md).
+
+For automated verification, use bounded sample runs such as `dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --frames 10 --cap 0`. Launches without `--frames` are interactive and do not terminate automatically.

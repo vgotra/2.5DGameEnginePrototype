@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document describes the implemented runtime architecture and constraints that future work must preserve. Future work is tracked in `PlannedMilestones.md`; verified history remains in `Implemented.md` and `CompletedMilestones.md`.
+This document describes the implemented runtime architecture and constraints that future work must preserve. Future work is tracked in `Roadmap.md`; verified history remains in `Implemented.md` and `CompletedMilestones.md`.
 
 ## Runtime hierarchy
 
@@ -46,7 +46,7 @@ The supported public JobSystem contracts are `Run`, `ParallelFor`, `Wait`, and `
 
 ## Rendering and extraction
 
-Gameplay state is extracted into renderer-owned packets before Vulkan submission. The renderer does not iterate arbitrary gameplay state. Isometric and flat modes share the renderer boundary while using different projection and tile shapes.
+Gameplay state is extracted into renderer-owned packets before Vulkan submission. The renderer does not iterate arbitrary gameplay state. The sample uses isometric projection, diamond tile extraction, stable depth ordering, and upright sprite packets.
 
 Live renderer command recording is currently serial after CPU-side audit measurements showed no benefit from parallel recording for the representative workload. The audit path remains available for deterministic parity and future measurement.
 
@@ -82,4 +82,4 @@ The renderer supports renderer-neutral scale/opacity metadata, eight-cell horizo
 - Keep platform-specific code behind platform seams.
 - Prefer explicit ownership, small APIs, and deterministic fixed-step behavior.
 - Do not add scheduler inference, a second ECS, or speculative abstraction.
-- Update `PlannedMilestones.md` when future work changes; do not append future milestones to this architecture reference.
+- Update `Roadmap.md` when future work changes; do not append future milestones to this architecture reference.

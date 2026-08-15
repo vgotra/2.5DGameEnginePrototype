@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>IsometricSandbox</AssemblyName></PropertyGroup>
   <ItemGroup>
+    <Compile Remove="Game\ArpgWorkload.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Engine.App\Engine.App.csproj" />
     <ProjectReference Include="..\..\src\Engine.Assets\Engine.Assets.csproj" />
     <ProjectReference Include="..\..\src\Engine.Core\Engine.Core.csproj" />

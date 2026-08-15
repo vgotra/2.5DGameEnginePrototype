@@ -17,7 +17,7 @@ description: Applies asset, texture, and I/O conventions: asynchronous backgroun
 
 ## Asset authorship
 - ENCODE RGBA (not RGB): transparency is alpha-blended, so an entity quad shows only the opaque pixels of the image.
-- AUTHOR entity sprites portrait/upright and bottom-center anchored to the tile (never square-cropped); AUTHOR tile art square, clipped to the tile shape at render (diamond in iso, square in top-down).
+- AUTHOR entity sprites portrait/upright and bottom-center anchored to the tile (never square-cropped); AUTHOR tile art is clipped to the isometric diamond shape at render.
 
 ## Rules
 - SEE `asset-pipeline` for build-time cooking/determinism, and the repo's concrete texture conventions (names, copy-to-output, placeholder generator) in `.agents/context/ProjectConfig.md`.

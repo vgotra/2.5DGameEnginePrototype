@@ -51,8 +51,8 @@ internal static class FeaturePipelineTests
     private static void AbilityPipeline_EnforcesCooldown()
     {
         AbilityState state = default;
-        SkillDefinition skill = new(4, 0.5f, 2f);
-        WeaponDefinition weapon = new(2, 5f, 10f, 1f);
+        SkillDefinition skill = new(SkillIds.PowerShot, 0.5f, 2f);
+        WeaponDefinition weapon = new(GameContent.GoblinSlayerBow, 5f, 10f, 1f);
         AbilityResult result = AbilityPipeline.TryActivate(ref state, in skill, in weapon, Vector2.Zero, Vector2.UnitX, 0.1f, default, Vector2.One);
         TestAssert.True(result.Activated && state.CooldownRemaining == 0.5f, "ability activates and starts cooldown");
         TestAssert.True(!AbilityPipeline.TryActivate(ref state, in skill, in weapon, Vector2.Zero, Vector2.UnitX, 0.1f, default, Vector2.One).Activated, "cooldown blocks repeat activation");

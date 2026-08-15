@@ -21,16 +21,17 @@
 - Asset decoding is owned by `Engine.Assets` in unmanaged storage; Vulkan texture uploads are render-thread-owned, fence-backed, publish handles only after completion, and support deferred safe texture retirement.
 - Vulkan validation and real Linux/macOS runs remain environment-dependent.
 - Live batch command recording is serial after the Milestone 13 rendering audit; parallel extraction remains available where measured useful.
+- The supported sample presentation is 2.5D isometric only, using `IsometricCamera`, `IsometricProjection`, diamond tile extraction, and stable depth ordering.
 - Material handles select descriptor-backed texture resources; indexed mode uses stable descriptor-array indices with per-texture-set fallback for unsupported devices. Independent shader-parameter material assets are not implemented.
 - Animation frames currently use eight horizontal atlas cells when a non-zero frame is supplied.
-- The default Release benchmark catalog contains 35 representative cases; timing changes are diagnostic warnings and allocation regressions remain failures.
-- `--arpg-sample` is the canonical bounded gameplay scenario flag. `--phase1` remains only as a compatibility alias and is not used for engine or gameplay type names.
+- The default Release benchmark catalog contains 44 representative cases; timing changes are diagnostic warnings and allocation regressions remain failures.
+- `IsometricSandbox` is the canonical ARPG executable; `IsometricSimulation` is the separate bounded simulation executable.
 - `World` remains the established public world/session API; a separate `GameWorldContext` migration has not been performed.
 
 ## Next Actions
 
 - Known limitations and their follow-up candidates are recorded in KnownIssues.md and Roadmap.md.
-- Current shipped feature inventory is maintained in Implemented.md; the detailed content checklist is maintained in SamplePlanGameImplemented.md.
+- Current shipped feature inventory is maintained in Implemented.md; verified history is maintained in CompletedMilestones.md.
 
 ## Resume Rules
 

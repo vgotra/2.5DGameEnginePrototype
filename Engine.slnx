@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="samples/IsometricSandbox/IsometricSandbox.csproj" />
+  <Project Path="samples/IsometricSimulation/IsometricSimulation.csproj" />
   <Project Path="benchmarks/Engine.Benchmark/Engine.Benchmark.csproj" />
   <Project Path="src/Engine.Audio/Engine.Audio.csproj" />
   <Project Path="src/Engine.App/Engine.App.csproj" />

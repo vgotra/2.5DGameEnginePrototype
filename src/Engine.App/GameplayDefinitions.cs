@@ -46,7 +46,8 @@ public readonly record struct MonsterDefinition(
     int Health,
     TextureHandle Texture,
     Vector2 SpriteSize,
-    Vector4 Color);
+    Vector4 Color,
+    Vector4 BottomColor = default);
 
 public readonly record struct NpcDefinition(
     int Id,
@@ -81,9 +82,9 @@ public static class NpcDefinitions
         };
 }
 
-public readonly record struct WeaponDefinition(int Id, float Damage, float ProjectileSpeed, float ProjectileLifetime);
+public readonly record struct WeaponDefinition(ItemId Id, float Damage, float ProjectileSpeed, float ProjectileLifetime);
 
-public readonly record struct SkillDefinition(int Id, float Cooldown, float Power);
+public readonly record struct SkillDefinition(SkillId Id, float Cooldown, float Power);
 
 public readonly record struct GameplaySkillDefinition(
     SkillId Id,
@@ -166,7 +167,6 @@ public struct ItemState
 
 public struct AbilityState
 {
-    public int Id;
     public float CooldownRemaining;
 }
 

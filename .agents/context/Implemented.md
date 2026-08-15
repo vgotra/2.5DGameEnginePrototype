@@ -28,15 +28,16 @@
 ## Rendering Audit
 
 - Added renderer-owned serial/parallel command-preparation audit helpers with deterministic chunking and checksums.
-- Added representative renderer audit workloads and smoke parity coverage; the active benchmark gate is now a focused 35-case catalog.
+- Added representative renderer audit workloads and smoke parity coverage; the active benchmark gate is now a focused 44-case catalog.
 - Simplified live renderer command recording to one serial secondary command buffer after the audit measured parallel preparation overhead above serial work; the audit path reports zero steady-state benchmark allocations after warm-up.
 
 ## Realistic ARPG Benchmark
 
 - Added a deterministic workload with 1 player, 250 monsters, 100 projectiles, and 500 pooled effects.
 - Added serial, adaptive-parallel, and forced-parallel gameplay benchmark cases with CPU sprite extraction.
-- Added `--arpg` sample mode with camera-projected gameplay-sized rendering and bounded `--frames` runs.
-- Added console coverage for population, determinism, mode parity, adaptive policy, extraction, and option parsing.
+- Added the canonical ARPG sample with camera-projected gameplay-sized rendering and bounded `--frames` runs.
+- Added the separate IsometricSimulation executable for deterministic serial/parallel workload validation.
+- Added console coverage for population, determinism, execution parity, adaptive policy, extraction, and bounded options.
 
 ## Gameplay API
 
@@ -78,7 +79,7 @@
 ## Game and Sample
 
 - Archer in the Forest sample with player movement/jump, critter wandering/fleeing, projectiles, scoring, restart, scene lifetime, and bounded simulation mode.
-- Isometric rendering with stable entity depth ordering.
+- Canonical 2.5D isometric rendering with diamond tile extraction and stable entity depth ordering.
 
 ## Rendering and Shaders
 

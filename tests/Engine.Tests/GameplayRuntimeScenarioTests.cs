@@ -14,7 +14,8 @@ internal static class GameplayRuntimeScenarioTests
         new(nameof(Ai_ChoosesSupportFollowAndAttackIntents), Ai_ChoosesSupportFollowAndAttackIntents),
         new(nameof(Ai_MapsIntentsToSafeCharacterActions), Ai_MapsIntentsToSafeCharacterActions),
         new(nameof(CompanionTactics_SelectDeterministicPriorities), CompanionTactics_SelectDeterministicPriorities),
-        new(nameof(GameContent_DefinesScenesAndQuest), GameContent_DefinesScenesAndQuest)
+        new(nameof(GameContent_DefinesScenesAndQuest), GameContent_DefinesScenesAndQuest),
+        new(nameof(RogueVerticalSlice_ComposesLoadoutCombatAndReaction), RogueVerticalSlice_ComposesLoadoutCombatAndReaction)
     ];
 
     private static void Effects_StackAndExpireDeterministically()
@@ -106,5 +107,32 @@ internal static class GameplayRuntimeScenarioTests
         QuestDefinition quest = GameContent.CreateGoblinProblem();
         TestAssert.True(quest.Id == GameContent.GoblinProblem && quest.Reward.Gold == 100, "goblin quest is defined");
         TestAssert.True(GameContent.VillageScene.Value != GameContent.GoblinForestScene.Value, "content has distinct scenes");
+    }
+
+    private static void RogueVerticalSlice_ComposesLoadoutCombatAndReaction()
+    {
+        GameplayCatalog catalog = new();
+        catalog.RegisterDefaultItems();
+        catalog.RegisterDefaultSkills();
+        Inventory inventory = default;
+        Equipment equipment = default;
+        SkillKnowledge knowledge = default;
+        SkillLoadout loadout = default;
+        TestAssert.True(InventorySystem.TryAdd(ref inventory, GameContent.GoblinSlayerBow, Inventory.Capacity), "rogue starts with bow");
+        TestAssert.True(EquipmentSystem.TryEquip(ref equipment, ref inventory, GameContent.GoblinSlayerBow, in catalog), "rogue equips bow");
+        catalog.TryGet(SkillIds.PowerShot, out GameplaySkillDefinition powerShot);
+        catalog.TryGet(SkillIds.PoisonArrow, out GameplaySkillDefinition poisonArrow);
+        TestAssert.True(knowledge.Learn(in powerShot) && knowledge.Learn(in poisonArrow), "rogue learns representative skills");
+        TestAssert.True(loadout.AssignSkill(0, SkillIds.PowerShot, in knowledge) && loadout.AssignSkill(1, SkillIds.PoisonArrow, in knowledge), "rogue equips representative skills");
+        Attributes attributes = HeroDefinitions.Create(HeroIds.Rogue).Attributes;
+        CombatStats beforeEquipment = StatSystem.Calculate(in attributes, 0, 0);
+        CombatStats afterEquipment = StatSystem.Calculate(in attributes, in equipment, in catalog);
+        TestAssert.True(afterEquipment.AttackPower > beforeEquipment.AttackPower, "equipment changes derived attack power");
+        Health health = new(40);
+        GameplayEffect effect = new() { Id = GameContent.Poison, RemainingTicks = 2 };
+        TestAssert.True(CombatSystem.ApplyDamage(ref health, (int)afterEquipment.AttackPower + 3), "skill applies deterministic damage");
+        TestAssert.True(CombatSystem.TryApply(ref health, ref effect, 1) && effect.Id == GameContent.Poison, "skill applies poison effect");
+        PresentationReaction reaction = new(30, new VfxId("poison-arrow-impact"), new SoundId("poison-arrow"), default, default, 1);
+        TestAssert.True(reaction.Vfx.Value == "poison-arrow-impact" && reaction.Sound.Value == "poison-arrow", "combat reaction remains renderer-neutral");
     }
 }
