@@ -7,6 +7,15 @@ namespace Engine.Benchmark.Benchmarks;
 
 internal static class ExtractionBenchmarks
 {
+    public static BenchmarkCase[] CreateQuick()
+    {
+        TerrainSurface grid = OpenGrid(4);
+        IsometricCamera camera = new(new Vector2(320, 240));
+        camera.Follow(new Vector2(2, 2), grid);
+        SpritePacket[] sprites = new SpritePacket[32];
+        return [new BenchmarkCase("Extraction_QuickSmoke", 1, () => SpriteExtraction.ExtractTiles(grid, camera, null, null, sprites))];
+    }
+
     public static BenchmarkCase[] Create()
     {
         return

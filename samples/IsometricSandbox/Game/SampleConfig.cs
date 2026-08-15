@@ -28,7 +28,7 @@ public static class SampleConfig
     public const float JumpHeight = 18f;
 
     // Minimum time the splash screen stays visible during startup, in seconds.
-    public const float SplashMinimumSeconds = 3.0f;
+    public const float SplashMinimumSeconds = 1f;
 
     // Weapon and projectile tuning.
     public const int MaxArrows = 32;

@@ -47,6 +47,23 @@
 - Added player ability cooldowns, weapon/projectile activation, NPC definitions and behavior state, projectile damage, and impact/muzzle VFX flow.
 - Added fixed-capacity pooled VFX extraction with fixed-step updates and deferred lifetime handling.
 
+## Gameplay Runtime and Content
+
+- Added typed hero, enemy, NPC, skill, item, effect, quest, scene, map, VFX, sound, and logical model identifiers with immutable definition lookup.
+- Added `GameContent`, `GameplayContracts`, and value-type runtime state for attributes, derived stats, effects, quests, AI intents, companions, navigation, combat reactions, and dialogue/capability composition.
+- Added the Village → Goblin Forest gameplay scenario with quest activation, directed travel unlock, goblin spawning, Cleric companion support, deterministic combat progress, loot/equipment reward, and return completion.
+
+## Input, Movement, and Navigation
+
+- Added device-neutral keyboard, mouse, gamepad, and virtual action bindings with fixed-step `PlayerCommand` and `CharacterIntent` consumption.
+- Added ten-slot hotbar/action-set mapping, modifier-based gamepad skill slots, deterministic movement commands, collision-aware grid navigation, cached routes, and renderer-neutral navigation reactions.
+
+## glTF Character Asset Pipeline
+
+- Added build-time glTF/GLB decoding for the supported mesh, material, texture, node, skin, joint, weight, and skeletal-animation subset.
+- Added deterministic texture sampling, skeletal pose evaluation, weighted skinning, software sprite raster baking, atlas frame metadata, and logical cooked-character asset registration.
+- Runtime loads cooked atlas data once through the texture library and retains PNG/procedural fallback assets when generated glTF output is absent. Runtime gameplay never reads source glTF or bake manifests.
+
 ## Structural Command Buffer
 
 - Replaced `WorldCommandBuffer` with FIFO `EntityCommands` supporting deferred Create, Destroy, Add, and Remove operations.

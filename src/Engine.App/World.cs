@@ -9,9 +9,15 @@ public sealed class World
     private readonly Engine.Ecs.Sparse.World _ecsWorld = new();
     private readonly EntityCommands _commands = new();
 
-    internal World(string name) => Name = name;
+    internal World(string name)
+    {
+        Name = name;
+        Map = new WorldMap();
+    }
 
     public string Name { get; }
+    public WorldMap Map { get; }
+    public GameplayCatalog Catalog { get; } = new();
     public Scene? ActiveScene { get; private set; }
     public Engine.Ecs.Sparse.World EcsWorld => _ecsWorld;
     public EntityCommands Commands => _commands;
@@ -27,6 +33,12 @@ public sealed class World
         return RegisterSpawn(entity);
     }
 
+    public Entity SpawnHero(HeroId id, MapLocation location)
+    {
+        if (!Catalog.TryGet(id, out HeroDefinition definition)) throw new KeyNotFoundException($"Hero '{id.Value}' is not registered.");
+        return SpawnHero(definition with { Position = location.Position });
+    }
+
     public Entity SpawnPlayer(in HeroDefinition definition) => SpawnHero(in definition);
 
     public Entity SpawnMonster(in MonsterDefinition definition)
@@ -39,6 +51,12 @@ public sealed class World
         return RegisterSpawn(entity);
     }
 
+    public Entity SpawnEnemy(EnemyId id, MapLocation location)
+    {
+        if (!Catalog.TryGet(id, out MonsterDefinition definition)) throw new KeyNotFoundException($"Enemy '{id.Value}' is not registered.");
+        return SpawnMonster(definition with { Position = location.Position });
+    }
+
     public Entity SpawnNpc(in MonsterDefinition definition) => SpawnMonster(in definition);
 
     public Entity SpawnNpc(in NpcDefinition definition)
@@ -49,6 +67,12 @@ public sealed class World
         _commands.Add(entity, new Health(definition.Health));
         _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
         return RegisterSpawn(entity);
+    }
+
+    public Entity SpawnNpc(NpcId id, MapLocation location)
+    {
+        if (!Catalog.TryGet(id, out NpcDefinition definition)) throw new KeyNotFoundException($"NPC '{id.Value}' is not registered.");
+        return SpawnNpc(definition with { Position = location.Position });
     }
 
     public Entity SpawnProjectile(in ProjectileDefinition definition)

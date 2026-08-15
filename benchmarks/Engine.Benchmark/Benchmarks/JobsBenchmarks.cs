@@ -33,9 +33,11 @@ internal static class JobsBenchmarks
 
     private static void RunRunWait()
     {
-        JobHandle last = JobHandle.None;
-        for (int i = 0; i < 64; i++) last = _jobs!.Run(_work);
-        _jobs!.Wait(last);
+        for (int i = 0; i < 64; i++)
+        {
+            JobHandle handle = _jobs!.Run(_work);
+            _jobs.Wait(handle);
+        }
     }
 
     private static void RunParallelFor()
@@ -46,9 +48,11 @@ internal static class JobsBenchmarks
 
     private static void RunRunWaitBatch()
     {
-        JobHandle last = JobHandle.None;
-        for (int i = 0; i < 16; i++) last = _jobs!.Run(_work);
-        _jobs!.Wait(last);
+        for (int i = 0; i < 16; i++)
+        {
+            JobHandle handle = _jobs!.Run(_work);
+            _jobs.Wait(handle);
+        }
     }
 
     private static void RunTinyParallelFor()

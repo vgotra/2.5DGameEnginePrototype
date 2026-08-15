@@ -4,7 +4,7 @@ using IsometricSandbox.Game;
 //  IsometricSandbox — "Archer in the Forest"
 //  A small end-to-end sample of the engine. This file only parses the
 //  command line and runs the ECS game app; the work lives in Game\:
-//    Options       — command-line flags (--cap, --frames, --fullscreen, --metrics, --parallel, --simulation, --arpg)
+//    Options       — command-line flags (--cap, --frames, --fullscreen, --metrics, --parallel, --simulation, --arpg, --arpg-sample; --phase1 is retained as a compatibility alias)
 //    ArcherGameApp — the GameHost: window/renderer/world wiring + frame loop
 //    SampleConfig  — the tunables (window size, speeds, sim scale, ...)
 //

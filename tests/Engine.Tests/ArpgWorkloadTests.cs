@@ -15,6 +15,7 @@ internal static class ArpgWorkloadTests
         new(nameof(AdaptivePolicy_UsesThreshold), AdaptivePolicy_UsesThreshold),
         new(nameof(Extraction_ProjectsGameplaySizedSprites), Extraction_ProjectsGameplaySizedSprites),
         new(nameof(Options_ParseArpgWithoutChangingSimulation), Options_ParseArpgWithoutChangingSimulation),
+        new(nameof(Options_ParseArpgSampleAlias), Options_ParseArpgSampleAlias),
         new(nameof(Options_DefaultAndCustomFrameCaps), Options_DefaultAndCustomFrameCaps),
     ];
 
@@ -77,6 +78,11 @@ internal static class ArpgWorkloadTests
         Options arpg = Options.Parse(["--arpg"]);
         Options simulation = Options.Parse(["--simulation"]);
         TestAssert.True(arpg.Arpg && !arpg.Simulation && simulation.Simulation && !simulation.Arpg, "sample options preserve ARPG and simulation modes");
+    }
+
+    private static void Options_ParseArpgSampleAlias()
+    {
+        TestAssert.True(Options.Parse(["--arpg-sample"]).GameplayScenario, "ARPG sample selects the gameplay scenario path");
     }
 
     private static void Options_DefaultAndCustomFrameCaps()

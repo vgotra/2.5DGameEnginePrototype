@@ -15,6 +15,7 @@ internal static class Program
         string? machine = null;
         int? iterations = null;
         bool save = false;
+        bool quick = false;
         string compare = "last";
         double allocTolerance = DefaultAllocTolerance;
 
@@ -23,6 +24,7 @@ internal static class Program
             switch (args[i])
             {
                 case "--save": save = true; break;
+                case "--quick": quick = true; break;
                 case "--machine": machine = NextValue(args, ref i); break;
                 case "--iterations": iterations = int.Parse(NextValue(args, ref i), CultureInfo.InvariantCulture); break;
                 case "--alloc-tolerance": allocTolerance = double.Parse(NextValue(args, ref i), CultureInfo.InvariantCulture); break;
@@ -51,14 +53,15 @@ internal static class Program
         BenchRunResult run;
         try
         {
-            BenchmarkCase[] catalog = BenchmarkCatalog.Create(iterations);
+            BenchmarkCase[] catalog = quick ? BenchmarkCatalog.CreateQuick() : BenchmarkCatalog.Create(iterations);
             Console.WriteLine($"Benchmark catalog: {catalog.Length} representative cases across extraction, terrain, ECS, jobs, ARPG, and rendering.");
-            run = new(
-                SchemaVersion,
-                machine ?? Environment.MachineName,
-                TryGetCommit(),
-                DateTime.UtcNow,
-                catalog.Select(BenchRunner.Run).ToList());
+            List<BenchmarkResult> results = new(catalog.Length);
+            for (int i = 0; i < catalog.Length; i++)
+            {
+                Console.WriteLine($"[{i + 1}/{catalog.Length}] {catalog[i].Name}");
+                results.Add(BenchRunner.Run(catalog[i]));
+            }
+            run = new(SchemaVersion, machine ?? Environment.MachineName, TryGetCommit(), DateTime.UtcNow, results);
         }
         finally
         {
@@ -105,6 +108,7 @@ internal static class Program
 
             Options:
               --save                  Write results as the committed baseline (benchmarks/results/baseline.json).
+              --quick                 Run the bounded serial/terrain/ARPG smoke catalog; skips worker-heavy and renderer cases.
               --compare <target>      Compare against 'last' (default), 'baseline', or 'none'.
               --iterations <count>    Override per-benchmark iteration counts.
               --machine <name>        Machine tag recorded in results (default: machine name).

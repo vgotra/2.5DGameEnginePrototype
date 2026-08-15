@@ -20,6 +20,8 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, I
 
     private TextureAssetCatalog? _assets;
     private TextureAssetHandle[] _assetHandles = [];
+    private GltfBakeEntry[] _gltfEntries = [];
+    private readonly Dictionary<string, GltfCookedCharacter> _cookedCharacters = new(StringComparer.Ordinal);
 
     public TextureHandle Player { get; private set; }
     public TextureHandle Deer { get; private set; }
@@ -103,6 +105,66 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, I
     public TextureHandle? TryGetTile(string name) => _tiles.TryGetValue(name, out TextureHandle handle) ? handle : null;
 
     public TextureHandle? TryGet(string name) => TryGetTile(name);
+
+    public bool LoadGltfManifest(string path, out string error)
+    {
+        if (!GltfBakeManifestReader.TryRead(path, out GltfBakeEntry[] entries, out error)) return false;
+        _gltfEntries = entries;
+        return true;
+    }
+
+    public int RegisterManifestAtlases(string manifestPath, out string error)
+    {
+        error = string.Empty;
+        if (!LoadGltfManifest(manifestPath, out error)) return 0;
+        int registered = 0;
+        string baseDirectory = Path.GetDirectoryName(Path.GetFullPath(manifestPath)) ?? string.Empty;
+        for (int i = 0; i < _gltfEntries.Length; i++)
+        {
+            GltfBakeEntry entry = _gltfEntries[i];
+            string atlasPath = Path.Combine(baseDirectory, entry.Atlas);
+            PngImage? image = PngLoader.Decode(atlasPath);
+            if (!image.HasValue) continue;
+            GltfSpriteFrame[] frames = new GltfSpriteFrame[Math.Max(1, entry.Directions * Math.Max(1, entry.Clips.Length == 0 ? 1 : entry.Clips[0].FrameCount / Math.Max(1, entry.Directions)))];
+            int frameCount = frames.Length;
+            for (int frame = 0; frame < frameCount; frame++)
+            {
+                int direction = frame % entry.Directions;
+                int row = frame / entry.Directions;
+                frames[frame] = new GltfSpriteFrame(frame, direction, new Vector2((float)(direction * entry.FrameWidth) / entry.AtlasWidth, (float)(row * entry.FrameHeight) / entry.AtlasHeight), new Vector2((float)entry.FrameWidth / entry.AtlasWidth, (float)entry.FrameHeight / entry.AtlasHeight), Vector2.Zero);
+            }
+            GltfSpriteAtlas atlas = new(entry.Id, image.Value.Data, image.Value.Width, image.Value.Height, entry.FrameWidth, entry.FrameHeight, frameCount, entry.Directions) { Clip = entry.Clips.Length == 0 ? "default" : entry.Clips[0].Name, FramesPerSecond = entry.Clips.Length == 0 ? 0 : entry.Clips[0].FramesPerSecond, Frames = frames };
+            UploadGltfAtlas(in atlas);
+            registered++;
+        }
+        return registered;
+    }
+
+    public bool TryGetGltfEntry(string id, out GltfBakeEntry entry)
+    {
+        for (int i = 0; i < _gltfEntries.Length; i++)
+            if (string.Equals(_gltfEntries[i].Id, id, StringComparison.Ordinal)) { entry = _gltfEntries[i]; return true; }
+        entry = default;
+        return false;
+    }
+
+    public TextureHandle UploadGltfAtlas(in GltfSpriteAtlas atlas)
+    {
+        TextureHandle handle = renderer.UploadTexture(atlas.Rgba, atlas.Width, atlas.Height, TextureFilter.Nearest);
+        GltfBakeClip[] clips = [];
+        for (int i = 0; i < _gltfEntries.Length; i++)
+            if (string.Equals(_gltfEntries[i].Id, atlas.StableId, StringComparison.Ordinal)) { clips = _gltfEntries[i].Clips; break; }
+        SpriteAnimationClip[] runtimeClips = new SpriteAnimationClip[clips.Length];
+        for (int i = 0; i < clips.Length; i++) runtimeClips[i] = new SpriteAnimationClip(clips[i].Name, clips[i].FirstFrame, clips[i].FrameCount, clips[i].FramesPerSecond);
+        Vector2[] offsets = new Vector2[atlas.Frames.Length];
+        Vector2[] scales = new Vector2[atlas.Frames.Length];
+        for (int i = 0; i < atlas.Frames.Length; i++) { offsets[i] = atlas.Frames[i].UvOffset; scales[i] = atlas.Frames[i].UvScale; }
+        _cookedCharacters[atlas.StableId] = new GltfCookedCharacter(new GltfAssetId(atlas.StableId), handle, atlas.FrameWidth, atlas.FrameHeight, atlas.FrameCount, atlas.Directions, runtimeClips, offsets, scales);
+        return handle;
+    }
+
+    public bool TryGetCookedCharacter(string id, out GltfCookedCharacter character)
+        => _cookedCharacters.TryGetValue(id, out character);
 
     private void ApplyDecoded(int step, in DecodedTextureData decoded)
     {

@@ -38,7 +38,7 @@ Concrete values for the placeholder-based skills (see `.agents/skills/README.md`
 - Vulkan SDK (`vulkan-1.dll` + `glslc` for the build-time shader compile)
 
 ## Sample flags / controls
-- Flags: `--fullscreen` (borderless start), `--cap <fps>` (frame-rate cap), `--metrics` (rolling table every 120 frames), `--parallel` (force supported parallel extraction paths; live Vulkan batch command recording remains serial after the rendering audit), `--simulation` (128×128 map + 20K critter ARPG-scale workload), `--arpg` (realistic ARPG workload), and `--frames <n>` (bounded run for verification).
+- Flags: `--fullscreen` (borderless start), `--cap <fps>` (frame-rate cap), `--metrics` (rolling table every 120 frames), `--parallel` (force supported parallel extraction paths; live Vulkan batch command recording remains serial after the rendering audit), `--simulation` (128×128 map + 20K critter ARPG-scale workload), `--arpg` (realistic ARPG workload), `--arpg-sample` (bounded Village → Goblin Forest gameplay scenario), `--phase1` (temporary compatibility alias for `--arpg-sample`), and `--frames <n>` (bounded run for verification).
 - Controls: `WASD`/arrows move, mouse aim, left-click shoot, `Space` jump, `R` restart, `F11` fullscreen toggle, `Escape` exit. Score is shown in the window title.
 
 ## Benchmark gate
@@ -51,6 +51,8 @@ Concrete values for the placeholder-based skills (see `.agents/skills/README.md`
 - Source: optional PNGs in `assets\textures\` copied to output `textures\` (`PreserveNewest`); each missing file is logged `[assets] missing ...` and falls back to procedural/colored art.
 - Texture names (sample): `player`, `deer`, `rabbit`, `grass`, `water`, `tree`, `bonfire`, `wall`.
 - Placeholder generator: `tools\GeneratePlaceholderTextures.ps1` (skip existing unless `-Force`).
+- Optional glTF source assets live under `assets\gltf\`. `tools\BuildGeneratedGameAssets.ps1` validates and packages deterministic output under `assets\generated\game` or the sample output `assets` directory. Missing source assets produce an empty manifest and preserve fallback visuals.
+- Source glTF files and bake manifests are build-time inputs only. Fixed-step simulation and runtime gameplay use logical cooked-character registrations and uploaded atlas handles without filesystem access.
 
 ## Shaders
 - Sources: `assets\shaders\*.glsl`; compiled to `.spv` automatically at build (incremental, `glslc`); manual fallback `<ManualShaderCompileScript>`; gate with `<ShaderRequiredProperty>`.

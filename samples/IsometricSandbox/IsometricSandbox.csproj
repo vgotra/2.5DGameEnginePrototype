@@ -20,4 +20,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <Target Name="BuildGeneratedGameAssets" BeforeTargets="BeforeBuild" Condition="Exists('$(MSBuildThisFileDirectory)..\..\tools\BuildGeneratedGameAssets.ps1')">
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\tools\BuildGeneratedGameAssets.ps1&quot; -OutputDirectory &quot;$(OutputPath)assets&quot;" />
+  </Target>
 </Project>

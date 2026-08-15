@@ -32,6 +32,13 @@ public sealed unsafe class SdlInput(SdlWindow window) : IInputState
         Set(GameKey.Space, IsDown(SDL_Scancode.SDL_SCANCODE_SPACE));
         Set(GameKey.Fullscreen, IsDown(SDL_Scancode.SDL_SCANCODE_F11));
         Set(GameKey.Restart, IsDown(SDL_Scancode.SDL_SCANCODE_R));
+        Set(GameKey.E, IsDown(SDL_Scancode.SDL_SCANCODE_E));
+        Set(GameKey.I, IsDown(SDL_Scancode.SDL_SCANCODE_I));
+        Set(GameKey.Number1, IsDown(SDL_Scancode.SDL_SCANCODE_1)); Set(GameKey.Number2, IsDown(SDL_Scancode.SDL_SCANCODE_2));
+        Set(GameKey.Number3, IsDown(SDL_Scancode.SDL_SCANCODE_3)); Set(GameKey.Number4, IsDown(SDL_Scancode.SDL_SCANCODE_4));
+        Set(GameKey.Number5, IsDown(SDL_Scancode.SDL_SCANCODE_5)); Set(GameKey.Number6, IsDown(SDL_Scancode.SDL_SCANCODE_6));
+        Set(GameKey.Number7, IsDown(SDL_Scancode.SDL_SCANCODE_7)); Set(GameKey.Number8, IsDown(SDL_Scancode.SDL_SCANCODE_8));
+        Set(GameKey.Number9, IsDown(SDL_Scancode.SDL_SCANCODE_9)); Set(GameKey.Number0, IsDown(SDL_Scancode.SDL_SCANCODE_0));
     }
 
     public Vector2 MousePosition => _mousePosition;

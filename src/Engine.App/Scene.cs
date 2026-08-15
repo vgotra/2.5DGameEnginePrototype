@@ -13,13 +13,19 @@ public sealed class Scene
         Name = name;
         _world = world;
         _ecsWorld = ecsWorld;
+        Map = new SceneMap(new MapId(name));
         IsLoaded = true;
     }
 
     public string Name { get; }
+    public SceneMap Map { get; }
     public bool IsLoaded { get; private set; }
 
     public Entity SpawnMonster(in MonsterDefinition definition) => _world.SpawnMonster(in definition);
+
+    public Entity SpawnHero(HeroId id, string marker) => _world.SpawnHero(id, Map.Resolve(marker));
+    public Entity SpawnEnemy(EnemyId id, string marker) => _world.SpawnEnemy(id, Map.Resolve(marker));
+    public Entity SpawnNpc(NpcId id, string marker) => _world.SpawnNpc(id, Map.Resolve(marker));
 
     public Entity SpawnEffect(in EffectDefinition definition) => _world.SpawnEffect(in definition);
 

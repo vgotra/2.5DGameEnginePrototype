@@ -22,4 +22,6 @@ internal static class BenchmarkCatalog
         for (int i = 0; i < cases.Length; i++) overridden[i] = cases[i] with { Iterations = count };
         return overridden;
     }
+
+    public static BenchmarkCase[] CreateQuick() => ExtractionBenchmarks.CreateQuick();
 }

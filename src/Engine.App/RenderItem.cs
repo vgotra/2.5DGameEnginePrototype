@@ -16,4 +16,6 @@ public readonly record struct RenderItem(
     public byte AnimationFrame { get; init; }
     public BlendMode Blend { get; init; } = BlendMode.Alpha;
     public Vector2 ScreenOffset { get; init; }
+    public Vector2 UvScale { get; init; } = Vector2.One;
+    public Vector2 UvOffset { get; init; }
 }

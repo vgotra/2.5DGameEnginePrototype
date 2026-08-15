@@ -54,6 +54,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private readonly bool _simulation;
     private readonly bool _forceParallel;
     private readonly bool _arpg;
+    private readonly bool _gameplayScenario;
     private readonly double _frameCap;
     private readonly ArpgWorkload? _arpgWorkload;
     private readonly int? _frameLimit;
@@ -66,6 +67,9 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private int _lastScore = -1;
     private string _title = SampleConfig.WindowTitle;
     private int _lastSpriteCount;
+    private Scene? _activeScene;
+    private GameProgression? _gameProgression;
+    private InputActionBuffer _inputActions;
 
     private SpritePacket[][]? _bands;
     private int[]? _bandCounts;
@@ -90,6 +94,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _simulation = options.Simulation;
         _forceParallel = options.ForceParallel;
         _arpg = options.Arpg;
+        _gameplayScenario = options.GameplayScenario;
         _frameCap = options.FrameCap;
         _arpgWorkload = _arpg ? new ArpgWorkload(1337, jobs) : null;
         _frameLimit = options.FrameLimit;
@@ -163,8 +168,12 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnSplashComplete()
     {
         _runtimeWorld = base.CreateWorld("Sanctuary");
-        _runtimeWorld.LoadScene("Forest");
-        InitializeWorld();
+        if (_gameplayScenario) InitializeGameWorld();
+        else
+        {
+            _runtimeWorld.LoadScene("Forest");
+            InitializeWorld();
+        }
         PresentationDiagnostics presentation = _renderer.Presentation;
         Console.WriteLine($"presentation  requested={presentation.RequestedMode}  selected={presentation.SelectedMode}  fallback={presentation.UsedFallback}  images={presentation.SwapchainImageCount}  cap={(_frameCap > 0 ? _frameCap.ToString("F0") : "unbounded")}");
         _playerMove.Player = _player;
@@ -181,6 +190,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnPerFrame()
     {
         _playerMove.CaptureInput();
+        if (_gameplayScenario) InputActionMapper.CaptureCurrent(Input, ref _inputActions);
         if (_frameLimit is int limit && ++_frameCount >= limit)
         {
             Window.Close();
@@ -201,6 +211,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnFixedStep(float deltaSeconds)
     {
+        if (_gameplayScenario) _gameProgression?.Tick(_inputActions.Snapshot());
         _presentation.BeginStep(EcsWorld);
         _vfxPool.Update(deltaSeconds);
         ref AbilityState abilityState = ref EcsWorld.Get<AbilityState>(_player);
@@ -329,6 +340,37 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         _critters.Player = _player;
         SpawnCritters();
         runtimeWorld.ApplyCommands();
+    }
+
+    private void InitializeGameWorld()
+    {
+        RuntimeWorld world = _runtimeWorld!;
+        GameContent.ConfigureWorld(world);
+        Scene village = world.LoadScene(GameContent.VillageScene.Value);
+        GameContent.ConfigureVillage(village);
+        Scene forest = world.LoadScene(GameContent.GoblinForestScene.Value);
+        GameContent.ConfigureGoblinForest(forest);
+        world.ChangeScene(GameContent.VillageScene.Value);
+        _activeScene = village;
+        string manifestPath = Path.Combine(AppContext.BaseDirectory, "assets", "game-bake.json");
+        _textures.RegisterManifestAtlases(manifestPath, out _);
+
+        world.Catalog.Register(HeroIds.Rogue, new HeroDefinition(HeroType.Archer, Vector2.Zero, SampleConfig.PlayerRadius, _textures.Player, PlayerSize, White));
+        world.Catalog.Register(GameContent.GoblinWarrior, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1.2f, 0.4f, 12, _textures.Deer, new Vector2(36, 44), new Vector4(0.7f, 0.3f, 0.2f, 1f)));
+        world.Catalog.Register(GameContent.GoblinArcher, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1f, 0.35f, 8, _textures.Rabbit, new Vector2(32, 40), new Vector4(0.8f, 0.4f, 0.2f, 1f)));
+        world.Catalog.Register(GameContent.GoblinShaman, new MonsterDefinition(MonsterType.GoblinShaman, Vector2.Zero, 0.8f, 0.4f, 16, _textures.Rabbit, new Vector2(34, 44), new Vector4(0.5f, 0.2f, 0.8f, 1f)));
+
+        MapLocation start = village.Map.Resolve("player-start");
+        _player = world.SpawnHero(HeroIds.Rogue, start);
+        world.Commands.Add(_player, PlayerState.At(start.Position));
+        world.Commands.Add(_player, new AbilityState());
+        world.Commands.Add(_player, new CharacterMovement { Mode = CharacterIntentKind.Stop });
+        _playerStart = start.Position;
+        _critters.Player = _player;
+        world.ApplyCommands();
+        _spawner = new SampleEntitySpawner(world, _textures);
+        _gameProgression = new GameProgression(world, Terrain!);
+        _gameProgression.Start(_player);
     }
 
     private void SpawnCritters()
