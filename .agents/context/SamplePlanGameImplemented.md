@@ -8,6 +8,9 @@ Current implementation identifiers are functional (`GameContent`, `GameProgressi
 - Renderer-neutral `SceneMap`, named markers, `MapLocation`, `WorldMap`, unlock state, and directed travel connections.
 - Deferred typed scene spawns through `EntityCommands` and `GameplayCatalog` definitions.
 - Value-type attributes, derived stats, inventory, equipment, effects, quests, AI intents, companions, and presentation reactions.
+- Four playable hero archetypes preserve Rogue/Archer compatibility while providing typed stat and combat definitions.
+- Skills separate fixed-capacity knowledge, levels, and learned-only ten-slot loadouts; representative skills are cataloged for all four archetypes.
+- Inventory and equipment provide fixed-capacity item operations, nine equipment slots, deterministic replacement/unequip, catalog validation, and derived-stat modifiers.
 
 ## Gameplay scenario
 
@@ -15,6 +18,11 @@ Current implementation identifiers are functional (`GameContent`, `GameProgressi
 - Game content definitions include Elder Marcus, blacksmith, goblin warrior/archer/shaman, cleric companion, Goblin Problem, and Goblin Slayer Bow reward.
 - Fixed-step progression now accepts the quest, unlocks/travels to Goblin Forest, spawns enemies and companion, records deterministic combat kills, awards loot/gold, and returns to Village to complete the quest.
 - Existing normal, `--simulation`, and `--arpg` sample paths remain available.
+- NPC definitions compose typed dialogue, merchant, quest-giver, companion, combatant, and AI capabilities without specialized entity classes.
+- Quest runtime supports deterministic kill, talk, and return objectives with exactly-once reward claiming.
+- AI intents map to validated character actions, and companion tactics provide deterministic support, defensive, aggressive, ranged, stay-close, protect-player, and focus-target priorities.
+- Typed scene definitions provide fixed-capacity markers, entry points, and deferred hero/enemy/NPC/item/effect spawns.
+- World-map travel tracks the first unlocked current location and directed unlocked connections without coupling map travel to scene loading.
 
 ## glTF source seam
 
@@ -37,6 +45,9 @@ Current implementation identifiers are functional (`GameContent`, `GameProgressi
 - Standard gamepad actions map to skills 1–4; the secondary modifier maps the same face actions to skills 5–8.
 - Virtual input preserves held state while latching and consuming pressed edges through `PlayerCommand`.
 - Physical number keys now map to skill slots 1–10, and gameplay progression interaction is routed through `CharacterIntent`.
+- Runtime-configurable keyboard and mouse bindings support defaults, multiple bindings, replacement, removal, conflict rejection, and reset without persistence coupling.
+- Unified input, movement, navigation, intent, hotbar, gamepad action sets, and virtual controls are implemented as renderer-neutral contracts.
+- Texture handles support explicit renderer-neutral release, deferred Vulkan-safe retirement, indexed descriptor-slot reuse, and sample-owned atlas replacement/disposal.
 - `NavigationRuntime` applies fixed-step `CharacterIntent` movement for the ARPG player and Cleric companion through `CharacterMovement`; existing terrain/collision systems remain compatible.
 - ARPG primary-click aim now produces move-to requests; player and companion navigation resolves candidate positions through terrain occupancy checks, with deterministic blocked-destination coverage.
 - Deterministic grid navigation now routes ARPG player and companion movement around obstacles using stable breadth-first neighbor ordering.
@@ -46,5 +57,6 @@ Current implementation identifiers are functional (`GameContent`, `GameProgressi
 
 ## Remaining work
 
-- Complete a full production glTF art set and broaden asset lifetime management, atlas repacking, and runtime asset eviction.
+- Complete a full production glTF art set and add automatic asset lifetime management, atlas repacking, and runtime memory-pressure eviction.
 - Consider a future `World` → `GameWorldContext` public API migration only if the existing engine API can be changed without compatibility cost.
+- Complete the production-quality vertical slice and future production systems retained in the remaining sections of `SamplePlan.md`.

@@ -262,6 +262,9 @@ public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
     public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height, TextureFilter filter = TextureFilter.Linear)
         => _textureUploader.UploadTexture(rgba, width, height, filter);
 
+    public bool ReleaseTexture(TextureHandle texture)
+        => _textureUploader.ReleaseTexture(texture);
+
     public void BeginFrame(Vector2 viewport)
     {
         if (_swapchain.IsNull) throw new InvalidOperationException("Swapchain is not ready.");

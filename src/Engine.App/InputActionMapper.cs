@@ -5,6 +5,14 @@ namespace Engine.App;
 
 public static class InputActionMapper
 {
+    private static readonly InputBindingMap DefaultMap = new();
+
+    public static void Sample(IInputState input, ref InputActionBuffer buffer, InputBindingMap bindings)
+    {
+        input.Update();
+        CaptureCurrent(input, ref buffer, bindings);
+    }
+
     public static void Sample(IInputState input, ref InputActionBuffer buffer)
     {
         input.Update();
@@ -12,27 +20,31 @@ public static class InputActionMapper
     }
 
     public static void CaptureCurrent(IInputState input, ref InputActionBuffer buffer)
+        => CaptureCurrent(input, ref buffer, DefaultMap);
+
+    public static void CaptureCurrent(IInputState input, ref InputActionBuffer buffer, InputBindingMap bindings)
     {
-        buffer.Move = new Vector2(
-            Axis(input.IsDown(GameKey.Right), input.IsDown(GameKey.Left)),
-            Axis(input.IsDown(GameKey.Down), input.IsDown(GameKey.Up)));
+        float moveX = 0f, moveY = 0f;
         buffer.Aim = input.MousePosition;
         buffer.Held = 0;
         buffer.Pressed = 0;
-        Set(ref buffer, InputAction.PrimaryAttack, input.IsMouseDown, input.MousePressed);
-        Set(ref buffer, InputAction.Dodge, input.IsDown(GameKey.Space), input.WasPressed(GameKey.Space));
-        Set(ref buffer, InputAction.Interact, input.IsDown(GameKey.E), input.WasPressed(GameKey.E));
-        Set(ref buffer, InputAction.Inventory, input.IsDown(GameKey.I), input.WasPressed(GameKey.I));
-        SetSkill(ref buffer, input, InputAction.Skill1, GameKey.Number1);
-        SetSkill(ref buffer, input, InputAction.Skill2, GameKey.Number2);
-        SetSkill(ref buffer, input, InputAction.Skill3, GameKey.Number3);
-        SetSkill(ref buffer, input, InputAction.Skill4, GameKey.Number4);
-        SetSkill(ref buffer, input, InputAction.Skill5, GameKey.Number5);
-        SetSkill(ref buffer, input, InputAction.Skill6, GameKey.Number6);
-        SetSkill(ref buffer, input, InputAction.Skill7, GameKey.Number7);
-        SetSkill(ref buffer, input, InputAction.Skill8, GameKey.Number8);
-        SetSkill(ref buffer, input, InputAction.Skill9, GameKey.Number9);
-        SetSkill(ref buffer, input, InputAction.Skill10, GameKey.Number0);
+        ReadOnlySpan<ActionBinding> map = bindings.Bindings;
+        for (int i = 0; i < map.Length; i++)
+        {
+            ActionBinding binding = map[i];
+            bool held = binding.Kind == InputBindingKind.Keyboard ? input.IsDown((GameKey)binding.Code) : input.IsMouseButtonDown((MouseButton)binding.Code);
+            bool pressed = binding.Kind == InputBindingKind.Keyboard ? input.WasPressed((GameKey)binding.Code) : input.WasMouseButtonPressed((MouseButton)binding.Code);
+            if (binding.Action == InputAction.Move)
+            {
+                if (held && (binding.Code == (int)GameKey.Left || binding.Code == (int)GameKey.A)) moveX -= 1f;
+                if (held && (binding.Code == (int)GameKey.Right || binding.Code == (int)GameKey.D)) moveX += 1f;
+                if (held && (binding.Code == (int)GameKey.Up || binding.Code == (int)GameKey.W)) moveY -= 1f;
+                if (held && (binding.Code == (int)GameKey.Down || binding.Code == (int)GameKey.S)) moveY += 1f;
+                continue;
+            }
+            Set(ref buffer, binding.Action, held, pressed);
+        }
+        buffer.Move = Vector2.Clamp(new Vector2(moveX, moveY), -Vector2.One, Vector2.One);
     }
 
     private static float Axis(bool positive, bool negative) => (positive ? 1f : 0f) - (negative ? 1f : 0f);
@@ -44,6 +56,4 @@ public static class InputActionMapper
         if (pressed) buffer.Pressed |= mask;
     }
 
-    private static void SetSkill(ref InputActionBuffer buffer, IInputState input, InputAction action, GameKey key)
-        => Set(ref buffer, action, input.IsDown(key), input.WasPressed(key));
 }

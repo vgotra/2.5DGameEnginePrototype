@@ -16,3 +16,7 @@ description: Applies a review checklist when reviewing code: correctness, the re
 - SIMPLICITY: smallest change that works; no speculative abstraction. SEE `code-style`.
 - VERIFICATION: does the change build and pass the verify loop? SEE `build-and-verify`.
 - CLARITY: names and structure make intent obvious; zero comments needed.
+- NAMING: reject unclear abbreviations, single-letter locals, and names that do not explain what a value represents or controls.
+- MAGIC VALUES: reject unexplained numeric literals when a descriptive constant would communicate the intent.
+- BOOLEAN INTENT: prefer named boolean expressions when a compound condition represents a meaningful state.
+- EXPRESSION CLARITY: split or format compressed expressions when their structure or purpose is difficult to understand.

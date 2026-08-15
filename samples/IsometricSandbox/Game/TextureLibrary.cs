@@ -12,6 +12,7 @@ namespace IsometricSandbox.Game;
 public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, IDisposable
 {
     private readonly Dictionary<string, TextureHandle> _tiles = new();
+    private readonly HashSet<TextureHandle> _ownedTextures = new();
     private readonly string[] _tileNames = { "grass", "water", "tree", "bonfire", "wall" };
     private int _terminalCount;
     private readonly long[] _startedAt = new long[8];
@@ -56,6 +57,7 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, I
             return;
         }
         TextureHandle texture = renderer.UploadTexture(image.Value.Data, image.Value.Width, image.Value.Height, TextureFilter.Nearest);
+        _ownedTextures.Add(texture);
         switch (step)
         {
             case 0: Player = texture; break;
@@ -150,7 +152,9 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, I
 
     public TextureHandle UploadGltfAtlas(in GltfSpriteAtlas atlas)
     {
+        if (_cookedCharacters.TryGetValue(atlas.StableId, out GltfCookedCharacter previous)) ReleaseOwned(previous.Atlas);
         TextureHandle handle = renderer.UploadTexture(atlas.Rgba, atlas.Width, atlas.Height, TextureFilter.Nearest);
+        _ownedTextures.Add(handle);
         GltfBakeClip[] clips = [];
         for (int i = 0; i < _gltfEntries.Length; i++)
             if (string.Equals(_gltfEntries[i].Id, atlas.StableId, StringComparison.Ordinal)) { clips = _gltfEntries[i].Clips; break; }
@@ -171,18 +175,18 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, I
         switch (step)
         {
             case 0:
-                Player = renderer.UploadTexture(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
+                Player = UploadOwned(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
                 break;
             case 1:
-                Deer = renderer.UploadTexture(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
+                Deer = UploadOwned(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
                 break;
             case 2:
-                Rabbit = renderer.UploadTexture(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
+                Rabbit = UploadOwned(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
                 break;
             default:
                 int index = step - 3;
                 if (index >= _tileNames.Length) break;
-                _tiles[_tileNames[index]] = renderer.UploadTexture(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
+                _tiles[_tileNames[index]] = UploadOwned(decoded.AsSpan(), decoded.Width, decoded.Height, decoded.Filter);
                 break;
         }
     }
@@ -191,9 +195,9 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, I
     {
         switch (step)
         {
-            case 0: Player = ProceduralTextures.UkraineFlag(renderer); break;
-            case 1: Deer = ProceduralTextures.Blob(renderer, new(0.3f, 0.6f, 0.35f, 1f)); break;
-            case 2: Rabbit = ProceduralTextures.Blob(renderer, new(0.95f, 0.55f, 0.65f, 1f)); break;
+            case 0: Player = TrackOwned(ProceduralTextures.UkraineFlag(renderer)); break;
+            case 1: Deer = TrackOwned(ProceduralTextures.Blob(renderer, new(0.3f, 0.6f, 0.35f, 1f))); break;
+            case 2: Rabbit = TrackOwned(ProceduralTextures.Blob(renderer, new(0.95f, 0.55f, 0.65f, 1f))); break;
         }
     }
 
@@ -215,5 +219,28 @@ public sealed class TextureLibrary(IRenderer renderer) : ITileTextureProvider, I
     private static string AssetPath(string name)
         => Path.Combine(AppContext.BaseDirectory, "textures", name + ".png");
 
-    public void Dispose() => _assets?.Dispose();
+    private TextureHandle UploadOwned(ReadOnlySpan<byte> rgba, int width, int height, TextureFilter filter)
+    {
+        TextureHandle handle = renderer.UploadTexture(rgba, width, height, filter);
+        _ownedTextures.Add(handle);
+        return handle;
+    }
+
+    private TextureHandle TrackOwned(TextureHandle handle)
+    {
+        _ownedTextures.Add(handle);
+        return handle;
+    }
+
+    private void ReleaseOwned(TextureHandle handle)
+    {
+        if (_ownedTextures.Remove(handle)) renderer.ReleaseTexture(handle);
+    }
+
+    public void Dispose()
+    {
+        foreach (TextureHandle handle in _ownedTextures) renderer.ReleaseTexture(handle);
+        _ownedTextures.Clear();
+        _assets?.Dispose();
+    }
 }

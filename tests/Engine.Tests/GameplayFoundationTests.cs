@@ -1,5 +1,7 @@
 using System.Numerics;
 using Engine.App;
+using SparseEntity = Engine.Ecs.Sparse.Entity;
+using Engine.Platform;
 
 namespace Engine.Tests;
 
@@ -10,7 +12,10 @@ internal static class GameplayFoundationTests
         new(nameof(TypedIds_DoNotMix), TypedIds_DoNotMix),
         new(nameof(SceneMap_ResolvesStableMarkers), SceneMap_ResolvesStableMarkers),
         new(nameof(WorldMap_RequiresUnlockedConnectedLocations), WorldMap_RequiresUnlockedConnectedLocations),
+        new(nameof(WorldMap_TracksCurrentLocationAndTravel), WorldMap_TracksCurrentLocationAndTravel),
         new(nameof(PlayerCommand_SeparatesPressedAndHeldActions), PlayerCommand_SeparatesPressedAndHeldActions)
+        ,new(nameof(InputBindings_DefaultsAndRebinding), InputBindings_DefaultsAndRebinding)
+        ,new(nameof(InputBindings_MapCustomMouseAndKeyboard), InputBindings_MapCustomMouseAndKeyboard)
         ,new(nameof(Hotbar_EnforcesTenSlotsAndResolvesSkills), Hotbar_EnforcesTenSlotsAndResolvesSkills)
         ,new(nameof(Navigation_IsDeterministic), Navigation_IsDeterministic)
         ,new(nameof(VirtualInput_MatchesPlayerCommand), VirtualInput_MatchesPlayerCommand)
@@ -19,6 +24,7 @@ internal static class GameplayFoundationTests
         ,new(nameof(NavigationRuntime_ResolvesBlockedDestination), NavigationRuntime_ResolvesBlockedDestination)
         ,new(nameof(Navigation_BuildsStableGridPath), Navigation_BuildsStableGridPath)
         ,new(nameof(NavigationResults_ArePresentationNeutral), NavigationResults_ArePresentationNeutral)
+        ,new(nameof(NpcDefinitions_AttachDeclaredCapabilities), NpcDefinitions_AttachDeclaredCapabilities)
     ];
 
     private static void TypedIds_DoNotMix()
@@ -90,6 +96,22 @@ internal static class GameplayFoundationTests
         TestAssert.True(reaction.Kind == 20 && reaction.Vfx.Value is null, "navigation reactions remain renderer-neutral");
     }
 
+    private static void NpcDefinitions_AttachDeclaredCapabilities()
+    {
+        GameplayCatalog catalog = new();
+        catalog.RegisterDefaultNpcs();
+        TestAssert.True(catalog.TryGet(GameContent.ElderMarcus, out NpcDefinition elder), "elder definition is registered");
+        TestAssert.True((elder.Capabilities.Flags & NpcCapability.QuestGiver) != 0 && elder.Quest == GameContent.GoblinProblem, "elder exposes quest capability");
+        TestAssert.True(catalog.TryGet(GameContent.VillageBlacksmith, out NpcDefinition blacksmith) && (blacksmith.Capabilities.Flags & NpcCapability.Merchant) != 0, "blacksmith exposes merchant capability");
+        TestGame game = new();
+        World world = game.Create("npc-capabilities");
+        SparseEntity entity = world.SpawnNpc(elder);
+        TestAssert.True(!world.EcsWorld.IsAlive(entity), "npc spawn remains deferred");
+        world.ApplyCommands();
+        TestAssert.True(world.EcsWorld.Has<NpcCapabilities>(entity), "declared NPC capabilities attach after command application");
+        TestAssert.True(world.EcsWorld.Get<NpcCapabilities>(entity).Flags == (NpcCapability.Dialogue | NpcCapability.QuestGiver), "NPC capability flags remain exact");
+    }
+
     private static void SceneMap_ResolvesStableMarkers()
     {
         MapId mapId = new("village");
@@ -113,6 +135,26 @@ internal static class GameplayFoundationTests
         TestAssert.True(map.CanTravel(village, forest), "connected unlocked destinations can be entered");
     }
 
+    private static void WorldMap_TracksCurrentLocationAndTravel()
+    {
+        WorldMap map = new();
+        WorldMapLocationId village = new("village");
+        WorldMapLocationId forest = new("forest");
+        WorldMapLocationId ruins = new("ruins");
+        map.Register(new WorldLocation(village, new SceneId("village"), true));
+        map.Register(new WorldLocation(forest, new SceneId("forest")));
+        map.Register(new WorldLocation(ruins, new SceneId("ruins")));
+        map.Connect(village, forest);
+        map.Connect(forest, ruins);
+        TestAssert.True(map.HasCurrentLocation && map.CurrentLocation == village, "first unlocked location becomes current");
+        map.Unlock(forest);
+        TestAssert.True(map.CurrentLocation == village, "unlocking a later location does not change current location");
+        TestAssert.True(map.TravelTo(forest) && map.CurrentLocation == forest, "connected unlocked travel updates current location");
+        TestAssert.True(!map.TravelTo(village) && map.CurrentLocation == forest, "directed reverse travel is rejected");
+        TestAssert.True(!map.TravelTo(new WorldMapLocationId("missing")) && map.CurrentLocation == forest, "unknown travel preserves current location");
+        TestAssert.True(map.TryGetScene(forest, out SceneId scene) && scene.Value == "forest", "world location resolves scene ID");
+    }
+
     private static void PlayerCommand_SeparatesPressedAndHeldActions()
     {
         uint pressed = 1u << (int)InputAction.PrimaryAttack;
@@ -120,5 +162,51 @@ internal static class GameplayFoundationTests
         PlayerCommand command = new(Vector2.UnitX, Vector2.UnitY, pressed, held);
         TestAssert.True(command.IsPressed(InputAction.PrimaryAttack), "pressed edge is available");
         TestAssert.True(!command.IsPressed(InputAction.Move) && command.IsHeld(InputAction.Move), "held state is distinct from pressed edge");
+    }
+
+    private sealed class TestGame : Game
+    {
+        public World Create(string name) => CreateWorld(name);
+    }
+
+    private static void InputBindings_DefaultsAndRebinding()
+    {
+        InputBindingMap map = new();
+        TestAssert.True(map.Count == 22, "default bindings preserve the gameplay map");
+        ActionBinding custom = new(InputAction.PrimaryAttack, InputBindingKind.Keyboard, (int)GameKey.F);
+        TestAssert.True(map.Replace(InputAction.PrimaryAttack, custom), "binding replacement succeeds");
+        TestAssert.True(!map.Add(new(InputAction.Dodge, InputBindingKind.Keyboard, (int)GameKey.F)), "conflicting bindings are rejected");
+        TestAssert.True(map.Remove(InputAction.PrimaryAttack), "binding removal succeeds");
+        map.ResetDefaults();
+        TestAssert.True(map.Count == 22, "reset restores defaults");
+    }
+
+    private static void InputBindings_MapCustomMouseAndKeyboard()
+    {
+        InputBindingMap map = new([]);
+        TestAssert.True(map.Add(new(InputAction.PrimaryAttack, InputBindingKind.Mouse, (int)MouseButton.Right)), "mouse binding adds");
+        TestAssert.True(map.Add(new(InputAction.Skill1, InputBindingKind.Keyboard, (int)GameKey.F)), "keyboard binding adds");
+        FakeInput input = new() { RightMouseDown = true, RightMousePressed = true, FDown = true, FPressed = true };
+        InputActionBuffer buffer = default;
+        InputActionMapper.CaptureCurrent(input, ref buffer, map);
+        TestAssert.True(buffer.Snapshot().IsPressed(InputAction.PrimaryAttack), "custom mouse press maps to action");
+        TestAssert.True(buffer.Snapshot().IsHeld(InputAction.Skill1), "custom keyboard hold maps to action");
+    }
+
+    private sealed class FakeInput : IInputState
+    {
+        public bool RightMouseDown;
+        public bool RightMousePressed;
+        public bool FDown;
+        public bool FPressed;
+        public void Update() { }
+        public bool IsDown(GameKey key) => key == GameKey.F && FDown;
+        public bool WasPressed(GameKey key) => key == GameKey.F && FPressed;
+        public bool WasReleased(GameKey key) => false;
+        public bool IsMouseButtonDown(MouseButton button) => button == MouseButton.Right && RightMouseDown;
+        public bool WasMouseButtonPressed(MouseButton button) => button == MouseButton.Right && RightMousePressed;
+        public Vector2 MousePosition => Vector2.Zero;
+        public bool IsMouseDown => false;
+        public bool MousePressed => false;
     }
 }

@@ -11,13 +11,14 @@
 - Gameplay contracts are renderer-neutral and organized around typed IDs, `GameContent`, `GameplayContracts`, deferred entity commands, scene maps, world-map travel, quests, effects, AI intents, companions, navigation, and fixed-capacity hotbars.
 - The bounded gameplay scenario covers Village → Goblin Forest quest acceptance, travel unlock, goblin encounters, Cleric companion support, deterministic loot/equipment rewards, and return completion.
 - Input is sampled through device-neutral action bindings and consumed as `PlayerCommand`/`CharacterIntent` during the fixed step; keyboard, gamepad, and virtual controls share the same action vocabulary.
+- Keyboard and mouse gameplay bindings are runtime-configurable with deterministic conflict handling; persistence remains deferred.
 - The offline glTF pipeline decodes the supported source subset, evaluates skeletal poses, rasterizes deterministic sprite atlases, and publishes cooked animation metadata. Runtime simulation uses cooked atlas handles and fallback PNG/procedural visuals only.
 
 ## Active Constraints
 
 - Sparse queries support one-, two-, and three-component intersections with opt-in parallel execution.
 - Fixed-step movement and collision remain deterministic and main-thread driven.
-- Asset decoding is owned by `Engine.Assets` in unmanaged storage; Vulkan texture uploads are render-thread-owned, fence-backed, and publish handles only after completion.
+- Asset decoding is owned by `Engine.Assets` in unmanaged storage; Vulkan texture uploads are render-thread-owned, fence-backed, publish handles only after completion, and support deferred safe texture retirement.
 - Vulkan validation and real Linux/macOS runs remain environment-dependent.
 - Live batch command recording is serial after the Milestone 13 rendering audit; parallel extraction remains available where measured useful.
 - Material handles select descriptor-backed texture resources; indexed mode uses stable descriptor-array indices with per-texture-set fallback for unsupported devices. Independent shader-parameter material assets are not implemented.

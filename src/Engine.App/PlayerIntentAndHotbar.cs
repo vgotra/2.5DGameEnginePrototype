@@ -14,10 +14,23 @@ public static class PlayerIntentMapper
     {
         if (command.Move.LengthSquared() > 0.0001f) return new CharacterIntent(CharacterIntentKind.Move, Vector2.Normalize(command.Move), default, default, default, default);
         if (command.IsPressed(InputAction.Interact)) return new CharacterIntent(CharacterIntentKind.Interact, default, default, default, default, default);
+        for (int slot = 0; slot < SkillLoadout.MaxSlots; slot++)
+        {
+            InputAction action = (InputAction)((int)InputAction.Skill1 + slot);
+            if (command.IsPressed(action)) return new CharacterIntent(CharacterIntentKind.Cast, default, default, default, loadout.Get(slot), default);
+        }
+        return new CharacterIntent(CharacterIntentKind.Stop, default, default, default, default, default);
+    }
+
+    public static CharacterIntent FromCommand(in PlayerCommand command, in SkillLoadout loadout, in SkillKnowledge knowledge)
+    {
+        if (command.Move.LengthSquared() > 0.0001f) return new CharacterIntent(CharacterIntentKind.Move, Vector2.Normalize(command.Move), default, default, default, default);
+        if (command.IsPressed(InputAction.Interact)) return new CharacterIntent(CharacterIntentKind.Interact, default, default, default, default, default);
         for (int i = 0; i < SkillLoadout.MaxSlots; i++)
         {
             InputAction action = (InputAction)((int)InputAction.Skill1 + i);
-            if (command.IsPressed(action)) return new CharacterIntent(CharacterIntentKind.Cast, default, default, default, loadout.Get(i), default);
+            SkillId skill = loadout.Get(i);
+            if (command.IsPressed(action) && skill.Value is not null && knowledge.IsKnown(skill)) return new CharacterIntent(CharacterIntentKind.Cast, default, default, default, skill, default);
         }
         return new CharacterIntent(CharacterIntentKind.Stop, default, default, default, default, default);
     }
@@ -32,9 +45,12 @@ public struct Hotbar
     public readonly SkillId GetSkill(int slot) => slot is >= 0 and < Capacity ? slot switch { 0 => _skill1, 1 => _skill2, 2 => _skill3, 3 => _skill4, 4 => _skill5, 5 => _skill6, 6 => _skill7, 7 => _skill8, 8 => _skill9, _ => _skill10 } : default;
     public readonly ItemId GetItem(int slot) => slot is >= 0 and < Capacity ? slot switch { 0 => _item1, 1 => _item2, 2 => _item3, 3 => _item4, 4 => _item5, 5 => _item6, 6 => _item7, 7 => _item8, 8 => _item9, _ => _item10 } : default;
     public bool AssignSkill(int slot, SkillId skill) { if (slot is < 0 or >= Capacity) return false; SetSkill(slot, skill); return true; }
+    public bool AssignSkill(int slot, SkillId skill, in SkillKnowledge knowledge) => slot is >= 0 and < Capacity && skill.Value is not null && knowledge.IsKnown(skill) && SetKnownSkill(slot, skill);
+    public bool RemoveSkill(int slot) { if (slot is < 0 or >= Capacity) return false; SetSkill(slot, default); return true; }
     public bool AssignItem(int slot, ItemId item) { if (slot is < 0 or >= Capacity) return false; SetItem(slot, item); return true; }
 
     private void SetSkill(int slot, SkillId value) { switch (slot) { case 0: _skill1 = value; break; case 1: _skill2 = value; break; case 2: _skill3 = value; break; case 3: _skill4 = value; break; case 4: _skill5 = value; break; case 5: _skill6 = value; break; case 6: _skill7 = value; break; case 7: _skill8 = value; break; case 8: _skill9 = value; break; default: _skill10 = value; break; } }
+    private bool SetKnownSkill(int slot, SkillId value) { SetSkill(slot, value); return true; }
     private void SetItem(int slot, ItemId value) { switch (slot) { case 0: _item1 = value; break; case 1: _item2 = value; break; case 2: _item3 = value; break; case 3: _item4 = value; break; case 4: _item5 = value; break; case 5: _item6 = value; break; case 6: _item7 = value; break; case 7: _item8 = value; break; case 8: _item9 = value; break; default: _item10 = value; break; } }
 }
 

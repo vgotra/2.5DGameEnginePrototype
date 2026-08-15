@@ -4,9 +4,9 @@ One terminology choice first: I would use **IDs as `readonly record struct` / st
 
 ## Codex implementation plan — Phase 1
 
-> Implemented requirements are summarized in [SamplePlanGameImplemented.md](SamplePlanGameImplemented.md). The Phase 1 label remains as historical planning context; current code uses functional engine and gameplay names.
+> Sections marked **Implemented** are summarized in [SamplePlanGameImplemented.md](SamplePlanGameImplemented.md). The Phase 1 label remains historical planning context; current code uses functional engine and gameplay names. Only unmarked/future guidance is an active planning target.
 
-### 1. Establish the gameplay vocabulary
+### 1. Establish the gameplay vocabulary — Implemented
 
 Use conventional ARPG terminology:
 
@@ -43,7 +43,7 @@ So **World must not become another God Object containing gameplay logic**.
 
 ---
 
-# 2. Four playable hero archetypes
+# 2. Four playable hero archetypes — Implemented
 
 Start with exactly:
 
@@ -112,7 +112,7 @@ Derived values should normally be calculated from attributes + equipment + effec
 
 ---
 
-# 3. Entity spawning API
+# 3. Entity spawning API — Implemented
 
 This is one of the most important APIs.
 
@@ -172,7 +172,7 @@ The scene/map resolves those markers.
 
 ---
 
-# 4. Spawn definitions, not constructors everywhere
+# 4. Spawn definitions, not constructors everywhere — Implemented
 
 Do **not** let game code do this:
 
@@ -225,7 +225,7 @@ Later this can move to JSON/TOML/YAML/asset database without changing the gamepl
 
 ---
 
-# 5. Unified gameplay effects
+# 5. Unified gameplay effects — Implemented
 
 This is probably the **single most useful abstraction** for this engine.
 
@@ -298,7 +298,7 @@ This dramatically reduces special-case code.
 
 ---
 
-# 6. Combat event pipeline
+# 6. Combat event pipeline — Implemented
 
 Don't hardcode everything inside `Attack()`.
 
@@ -356,7 +356,7 @@ without putting all those systems into the weapon.
 
 ---
 
-# 7. VFX, sound and floating text are gameplay reactions
+# 7. VFX, sound and floating text are gameplay reactions — Implemented
 
 For example data-driven:
 
@@ -377,7 +377,7 @@ caster.Cast(SkillId.Fireball, goblin);
 
 ---
 
-# 8. Skills — maximum 10 equipped
+# 8. Skills — maximum 10 equipped — Implemented
 
 I suggest separating:
 
@@ -426,7 +426,7 @@ Implement perhaps **2 skills per class** to prove the architecture.
 
 ---
 
-# 9. Equipment + inventory
+# 9. Equipment + inventory — Implemented
 
 Keep inventory completely UI-independent.
 
@@ -480,7 +480,7 @@ rather than manually modifying `hero.Strength` every time equipment changes.
 
 ---
 
-# 10. NPCs
+# 10. NPCs — Implemented
 
 Don't create:
 
@@ -541,7 +541,7 @@ Same fundamental entity architecture; different capabilities.
 
 ---
 
-# 11. Quests
+# 11. Quests — Implemented
 
 Keep quests extremely simple initially.
 
@@ -587,7 +587,7 @@ covers a surprisingly large percentage of ARPG quests.
 
 ---
 
-# 12. Replace complicated FSMs with **Intent + Action**
+# 12. Replace complicated FSMs with **Intent + Action** — Implemented
 
 I particularly recommend this.
 
@@ -649,7 +649,7 @@ That is vastly easier to understand than a conventional giant FSM.
 
 ---
 
-# 13. AI companions
+# 13. AI companions — Implemented
 
 This architecture naturally supports solo-player companions.
 
@@ -687,7 +687,7 @@ This gives the "game friends" idea without requiring sophisticated AI.
 
 ---
 
-# 14. Scenes
+# 14. Scenes — Implemented
 
 Example API:
 
@@ -748,7 +748,7 @@ This boundary will matter enormously later.
 
 ---
 
-# 15. World map
+# 15. World map — Implemented
 
 Keep it as a graph, not another giant scene.
 
@@ -951,9 +951,9 @@ I would make the next Codex task a **small playable vertical slice**: *Village �
 
 Input → Player Command → Character Controller layer to the Codex plan.
 
-# 20. Input: keyboard, mouse, gamepad, virtual controls
+# 20. Input: keyboard, mouse, gamepad, virtual controls — Implemented
 
-> Implemented baseline moved to `SamplePlanGameImplemented.md`: shared action bindings, virtual input, and gamepad modifier action sets are available. Remaining work is expanding physical keyboard rebinding coverage.
+> Implemented baseline moved to `SamplePlanGameImplemented.md`, including runtime keyboard and mouse rebinding, virtual input, and gamepad modifier action sets.
 
 Gameplay code should never check physical keys:
 
@@ -1022,7 +1022,7 @@ Inventory         Menu
 
 And importantly: bindings must be remappable.
 
-# 21. One unified API
+# 21. One unified API — Implemented
 
 The character controller shouldn't care whether input came from keyboard, gamepad, Steam Deck-like controls, or virtual/mobile joystick.
 
@@ -1074,7 +1074,7 @@ Cleric
 
 So humans and AI can reuse much of the same movement/combat machinery.
 
-# 22. Movement must be extremely simple for game code
+# 22. Movement must be extremely simple for game code — Implemented
 
 For a 2.5D isometric ARPG, game logic shouldn't deal with Vulkan, transforms, physics internals, etc.
 
@@ -1110,7 +1110,7 @@ hero.MoveTo(mouse.MapLocation);
 
 That gives us both modern controller movement and classic Diablo-style mouse movement.
 
-# 23. Use MapLocation, not rendering coordinates
+# 23. Use MapLocation, not rendering coordinates — Implemented
 
 Continue our previous rule:
 ```csharp
@@ -1143,7 +1143,7 @@ if (player.Location.IsInside(AreaId.OldRuins))
 
 Engine internals can still use vectors, matrices, Vulkan coordinates, navigation coordinates, etc.
 
-# 24. Character movement component
+# 24. Character movement component — Implemented
 
 I'd keep the initial controller tiny:
 
@@ -1177,7 +1177,7 @@ motor.Stop();
 
 Don't build a giant CharacterControllerBase<TMovementStrategy...> hierarchy.
 
-# 25. Navigation
+# 25. Navigation — Implemented
 
 For enemies/NPCs/click-to-move, hide navigation behind:
 
@@ -1214,9 +1214,9 @@ return MoveTo(ctx.Target.Location);
 
 Very readable.
 
-# 26. Shortcuts / hotbar
+# 26. Shortcuts / hotbar — Implemented
 
-> Implemented baseline moved to `SamplePlanGameImplemented.md`: fixed-capacity ten-slot hotbar and indexed skill loadout lookup are available.
+> Implemented baseline moved to `SamplePlanGameImplemented.md`: fixed-capacity ten-slot hotbar, indexed skill loadout lookup, and learned-skill validation are available.
 
 We should explicitly create a Hotbar, separate from keyboard bindings.
 
@@ -1251,7 +1251,7 @@ Virtual Button ─┘
 
 This is much cleaner.
 
-# 27. Gamepad should not require 10 physical skill buttons
+# 27. Gamepad should not require 10 physical skill buttons — Implemented
 
 Ten skills create a controller problem.
 
@@ -1287,7 +1287,7 @@ That's already enough for an ARPG without making the controller feel like an air
 
 We can still allow up to 10 skills, while a particular control scheme decides how they are exposed.
 
-# 28. Virtual controls
+# 28. Virtual controls — Implemented
 
 Design this now even if we don't implement mobile UI yet.
 
@@ -1319,7 +1319,7 @@ This means future touch controls don't modify gameplay code at all.
 
 Same concept could support accessibility controllers or unusual devices later.
 
-# 29. Separate Input from Intent
+# 29. Separate Input from Intent — Implemented
 
 I'd actually refine our earlier architecture to:
 
@@ -1369,7 +1369,7 @@ CharacterIntent.Interact(npc);
 
 This becomes our simplified replacement for a giant state machine.
 
-# 30. The resulting architecture
+# 30. The resulting architecture — Implemented
 
 I would now give Codex this target:
 

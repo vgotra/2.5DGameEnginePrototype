@@ -48,6 +48,8 @@ public sealed unsafe class SdlInput(SdlWindow window) : IInputState
     public bool IsDown(GameKey key) => (_current & Mask(key)) != 0;
     public bool WasPressed(GameKey key) => (_current & Mask(key)) != 0 && (_previous & Mask(key)) == 0;
     public bool WasReleased(GameKey key) => (_current & Mask(key)) == 0 && (_previous & Mask(key)) != 0;
+    public bool IsMouseButtonDown(MouseButton button) => button == MouseButton.Left && _mouseDown;
+    public bool WasMouseButtonPressed(MouseButton button) => button == MouseButton.Left && _mousePressed;
 
     private void Set(GameKey key, bool down) { if (down) _current |= Mask(key); }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

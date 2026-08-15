@@ -11,6 +11,7 @@ internal unsafe sealed class IndexedDescriptorAllocator : IDisposable
     private readonly VkDescriptorSetLayout _layout;
     private VkDescriptorSet _set;
     private uint _nextIndex;
+    private readonly Stack<uint> _releasedIndices = new();
 
     public VkDescriptorSetLayout Layout => _layout;
     public VkDescriptorSet Set => _set;
@@ -77,8 +78,15 @@ internal unsafe sealed class IndexedDescriptorAllocator : IDisposable
 
     public uint AllocateIndex()
     {
+        if (_releasedIndices.Count > 0) return _releasedIndices.Pop();
         if (_nextIndex >= Capacity) throw new InvalidOperationException("Indexed texture descriptor capacity exhausted.");
         return _nextIndex++;
+    }
+
+    public void ReleaseIndex(uint index)
+    {
+        if (index >= _nextIndex) return;
+        _releasedIndices.Push(index);
     }
 
     public void Write(uint index, VkImageView view, VkSampler sampler)

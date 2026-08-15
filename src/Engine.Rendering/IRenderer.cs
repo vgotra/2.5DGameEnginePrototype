@@ -8,5 +8,6 @@ public interface IRenderer : IDisposable
     void Submit(ReadOnlySpan<SpritePacket> sprites);
     void EndFrame();
     TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height, TextureFilter filter = TextureFilter.Linear);
+    bool ReleaseTexture(TextureHandle texture);
     void Resize(int width, int height);
 }

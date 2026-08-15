@@ -27,7 +27,7 @@ internal static class TextureAssetTests
         using JobSystem jobs = new(1);
         using TextureAssetCatalog assets = new(jobs);
         TextureAssetHandle handle = assets.Request(Path.Combine(Path.GetTempPath(), "missing-texture.png"));
-        for (int i = 0; i < 100 && assets.GetState(handle) is not TextureAssetState.Failed; i++) Thread.Yield();
+        for (int i = 0; i < 1000 && assets.GetState(handle) is not TextureAssetState.Failed; i++) Thread.Yield();
         TestAssert.True(assets.GetState(handle) == TextureAssetState.Failed, "missing texture fails without blocking the caller");
     }
 

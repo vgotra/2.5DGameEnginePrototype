@@ -29,6 +29,10 @@ public sealed class World
         _commands.Add(entity, new Velocity(Vector2.Zero));
         _commands.Add(entity, new Collider(definition.ColliderRadius));
         _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        Attributes attributes = definition.Attributes;
+        CombatStats stats = definition.CombatStats.MaxHealth > 0f ? definition.CombatStats : StatSystem.Calculate(in attributes, 0, 0);
+        _commands.Add(entity, attributes);
+        _commands.Add(entity, stats);
         _commands.Add(entity, new HeroState { Type = definition.Type });
         return RegisterSpawn(entity);
     }
@@ -64,6 +68,9 @@ public sealed class World
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));
         _commands.Add(entity, new NpcState { Id = definition.Id, Speed = definition.Speed, Radius = definition.ColliderRadius });
+        if (definition.Capabilities.Flags != 0) _commands.Add(entity, definition.Capabilities);
+        if ((definition.Capabilities.Flags & NpcCapability.Companion) != 0) _commands.Add(entity, new Companion { Owner = default });
+        if ((definition.Capabilities.Flags & NpcCapability.Combatant) != 0) _commands.Add(entity, new Faction { Team = definition.Team });
         _commands.Add(entity, new Health(definition.Health));
         _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
         return RegisterSpawn(entity);
@@ -108,7 +115,7 @@ public sealed class World
             return existing;
         }
 
-        Scene scene = new(name, this, _ecsWorld);
+        Scene scene = new(name, new MapId(name), this, _ecsWorld);
         _scenes.Add(name, scene);
         ActiveScene = scene;
         return scene;
@@ -119,6 +126,35 @@ public sealed class World
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         if (!_scenes.TryGetValue(name, out Scene? scene)) throw new KeyNotFoundException($"Scene '{name}' is not loaded.");
         ActiveScene = scene;
+    }
+
+    public Scene LoadScene(in SceneDefinition definition)
+    {
+        if (definition.Id.Value is null || definition.Map.Value is null) throw new ArgumentException("Scene definition requires an ID and map.");
+        if (_scenes.TryGetValue(definition.Id.Value, out Scene? existing))
+        {
+            ActiveScene = existing;
+            return existing;
+        }
+        Scene scene = new(definition.Id.Value, definition.Map, this, _ecsWorld);
+        _scenes.Add(definition.Id.Value, scene);
+        ActiveScene = scene;
+        scene.Apply(in definition);
+        return scene;
+    }
+
+    public void ChangeScene(SceneId id)
+    {
+        if (id.Value is null) throw new ArgumentException("Scene ID is required.");
+        ChangeScene(id.Value);
+    }
+
+    public MapLocation Enter(SceneId id, string entryPoint)
+    {
+        if (id.Value is null || string.IsNullOrWhiteSpace(entryPoint)) throw new ArgumentException("Scene ID and entry point are required.");
+        ChangeScene(id);
+        if (ActiveScene is null || !ActiveScene.Map.TryResolve(entryPoint, out MapLocation location)) throw new KeyNotFoundException($"Scene entry point '{entryPoint}' was not found in '{id.Value}'.");
+        return location;
     }
 
     public void UnloadScene(string name)

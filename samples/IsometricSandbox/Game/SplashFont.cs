@@ -5,15 +5,17 @@ namespace IsometricSandbox.Game;
 
 public readonly record struct SplashGlyph(Vector2 UvOffset, Vector2 UvScale, float Advance, float Height, bool Visible);
 
-public sealed class SplashFont
+public sealed class SplashFont : IDisposable
 {
     private const int FirstCharacter = 32;
     private const int CharacterCount = 95;
     private readonly SplashGlyph[] _glyphs = new SplashGlyph[CharacterCount];
+    private readonly IRenderer? _renderer;
 
     public SplashFont(IRenderer renderer, string atlasPath)
     {
         TextureHandle atlas = PngLoader.Load(renderer, atlasPath, TextureFilter.Linear) ?? default;
+        _renderer = renderer;
         Atlas = atlas;
         for (int i = 0; i < _glyphs.Length; i++)
         {
@@ -36,6 +38,11 @@ public sealed class SplashFont
     }
 
     public TextureHandle Atlas { get; }
+
+    public void Dispose()
+    {
+        if (_renderer is not null && Atlas.Value >= 0) _renderer.ReleaseTexture(Atlas);
+    }
 
     public float GetAdvance(char character, float scale) => GetGlyph(character).Advance * scale;
 

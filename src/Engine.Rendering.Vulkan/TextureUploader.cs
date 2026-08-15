@@ -19,6 +19,7 @@ public unsafe class TextureUploader : IDisposable
 
     private readonly List<TextureResource> _textures = new();
     private readonly Queue<UploadRecord> _pendingUploads = new();
+    private readonly Queue<TextureHandle> _pendingReleases = new();
     private readonly Dictionary<int, UploadRecord> _uploadRecords = new();
     private readonly UploadBatch[] _uploadBatches = new UploadBatch[TextureUploadLimits.InFlightBatches];
     private int _nextUploadTicket;
@@ -42,6 +43,8 @@ public unsafe class TextureUploader : IDisposable
         _fallbackDescriptorBinds,
         _indexedDescriptorBinds,
         _maxUploadLatencyMs);
+
+    public int RetiringTextureCount => _pendingReleases.Count;
 
     internal bool UsesIndexedDescriptors => _indexedDescriptors is not null;
 
@@ -100,6 +103,7 @@ public unsafe class TextureUploader : IDisposable
     public void ProcessUploads(int maxUploads)
     {
         PollCompletedUploads();
+        ProcessReleases();
         int submitted = 0;
         while (submitted < maxUploads && _pendingUploads.Count > 0)
         {
@@ -134,6 +138,17 @@ public unsafe class TextureUploader : IDisposable
         }
     }
 
+    public bool ReleaseTexture(TextureHandle handle)
+    {
+        if ((uint)handle.Value >= (uint)_textures.Count) return false;
+        TextureResource texture = _textures[handle.Value];
+        if (texture.Released || texture.Retiring) return true;
+        texture.Retiring = true;
+        _textures[handle.Value] = texture;
+        _pendingReleases.Enqueue(handle);
+        return true;
+    }
+
     public bool TryGetUploadResult(TextureUploadTicket ticket, out TextureHandle handle)
     {
         handle = default;
@@ -162,12 +177,36 @@ public unsafe class TextureUploader : IDisposable
     {
         if (handle.Value < 0 || handle.Value >= _textures.Count)
             return VkDescriptorSet.Null;
+        if (_textures[handle.Value].Released || _textures[handle.Value].Retiring)
+            return VkDescriptorSet.Null;
         if (_indexedDescriptors is null) _fallbackDescriptorBinds++;
         return _indexedDescriptors?.Set ?? _textures[handle.Value].DescriptorSet;
     }
 
     public uint GetDescriptorIndex(TextureHandle handle)
-        => handle.Value < 0 || handle.Value >= _textures.Count ? uint.MaxValue : _textures[handle.Value].DescriptorIndex;
+        => handle.Value < 0 || handle.Value >= _textures.Count || _textures[handle.Value].Released || _textures[handle.Value].Retiring ? uint.MaxValue : _textures[handle.Value].DescriptorIndex;
+
+    private void ProcessReleases()
+    {
+        if (_pendingReleases.Count == 0) return;
+        VkResult idle = _deviceApi.vkQueueWaitIdle(_graphicsQueue);
+        if (idle != VkResult.Success) throw new InvalidOperationException($"Texture retirement wait failed: {idle}");
+        while (_pendingReleases.Count > 0) DestroyTexture(_pendingReleases.Dequeue());
+    }
+
+    private void DestroyTexture(TextureHandle handle)
+    {
+        ref TextureResource texture = ref CollectionsMarshal.AsSpan(_textures)[handle.Value];
+        if (texture.Released) return;
+        if (_indexedDescriptors is null) _descriptorAllocator.Free(texture.DescriptorSet);
+        else if (texture.DescriptorIndex != uint.MaxValue) _indexedDescriptors.ReleaseIndex(texture.DescriptorIndex);
+        if (texture.Sampler.IsNotNull) _deviceApi.vkDestroySampler(texture.Sampler);
+        if (texture.ImageView.IsNotNull) _deviceApi.vkDestroyImageView(texture.ImageView);
+        if (texture.Image.IsNotNull) _deviceApi.vkDestroyImage(texture.Image);
+        if (texture.Memory.IsNotNull) _deviceApi.vkFreeMemory(texture.Memory);
+        texture = default;
+        texture.Released = true;
+    }
 
     private int FindFreeBatch()
     {
@@ -278,9 +317,16 @@ public unsafe class TextureUploader : IDisposable
     public void Dispose()
     {
         FlushUploads();
+        if (_pendingReleases.Count > 0)
+        {
+            VkResult idle = _deviceApi.vkQueueWaitIdle(_graphicsQueue);
+            if (idle != VkResult.Success) throw new InvalidOperationException($"Texture retirement wait failed: {idle}");
+            while (_pendingReleases.Count > 0) DestroyTexture(_pendingReleases.Dequeue());
+        }
         for (int i = _textures.Count - 1; i >= 0; i--)
         {
             var tex = _textures[i];
+            if (tex.Released) continue;
             if (tex.Sampler.IsNotNull) _deviceApi.vkDestroySampler(tex.Sampler);
             if (tex.ImageView.IsNotNull) _deviceApi.vkDestroyImageView(tex.ImageView);
             if (tex.Image.IsNotNull) _deviceApi.vkDestroyImage(tex.Image);
@@ -350,6 +396,8 @@ public unsafe class TextureUploader : IDisposable
         public uint DescriptorIndex;
         public int Width;
         public int Height;
+        public bool Retiring;
+        public bool Released;
     }
 
     private sealed class UploadRecord

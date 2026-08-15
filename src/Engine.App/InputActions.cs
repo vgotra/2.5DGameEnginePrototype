@@ -24,7 +24,8 @@ public enum InputAction : byte
     Skill7,
     Skill8,
     Skill9,
-    Skill10
+    Skill10,
+    Count
 }
 
 public readonly record struct PlayerCommand(Vector2 Move, Vector2 Aim, uint Pressed, uint Held)

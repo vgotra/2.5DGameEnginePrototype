@@ -14,3 +14,4 @@ description: Applies memory and span-processing conventions: unsafe/raw pointers
 - USE `NativeMemory.Alloc` and `NativeMemory.Free` for unmanaged heaps. FORBID `Marshal.AllocHGlobal`.
 - USE `ref`, `in`, `out`, and `ref readonly` to avoid struct copying.
 - FORBID LINQ and `foreach` in hot paths. USE standard `for` loops.
+- NAME span lengths, offsets, strides, bounds, and pointer-related values after what they represent; extract repeated or meaningful numeric literals into descriptive constants even in low-level loops.

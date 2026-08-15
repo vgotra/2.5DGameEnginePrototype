@@ -14,6 +14,7 @@ internal static class RuntimeContractsTests
         new(nameof(World_SwitchesScenesWithoutRecreatingWorld), World_SwitchesScenesWithoutRecreatingWorld),
         new(nameof(Scene_UnloadDestroysSceneEntitiesOnly), Scene_UnloadDestroysSceneEntitiesOnly),
         new(nameof(GameplaySpawns_AreDeferredAndSceneOwned), GameplaySpawns_AreDeferredAndSceneOwned),
+        new(nameof(SceneDefinitions_LoadAndEnterByTypedId), SceneDefinitions_LoadAndEnterByTypedId),
     ];
 
     private static void Game_CreatesAndOwnsActiveWorld()
@@ -66,6 +67,31 @@ internal static class RuntimeContractsTests
         TestAssert.True(world.EcsWorld.Get<MonsterState>(monsterEntity).Type == monster.Type, "monster definition type is preserved");
         world.UnloadScene(scene.Name);
         TestAssert.True(!world.EcsWorld.IsAlive(heroEntity) && !world.EcsWorld.IsAlive(monsterEntity) && !world.EcsWorld.IsAlive(itemEntity), "scene-owned spawns unload together");
+    }
+
+    private static void SceneDefinitions_LoadAndEnterByTypedId()
+    {
+        TestGame game = new();
+        World world = game.Create("Sanctuary");
+        SceneId sceneId = new("typed-forest");
+        SceneDefinition definition = new(
+            sceneId,
+            new MapId("typed-forest-map"),
+            new SceneMarkerDefinition("start", new Vector2(2, 3)),
+            default, default, default,
+            1,
+            new SceneEntryPoint("entry", "start"),
+            default,
+            new SceneSpawnDefinition(SceneSpawnKind.None, string.Empty, default, default, default, default, default),
+            default, default, default,
+            1);
+        Scene scene = world.LoadScene(in definition);
+        TestAssert.True(scene.Map.Id == definition.Map && world.LoadScene(in definition) == scene, "typed scene loading is stable");
+        MapLocation entry = world.Enter(sceneId, "entry");
+        TestAssert.True(entry.Position == new Vector2(2, 3) && ReferenceEquals(world.ActiveScene, scene), "typed entry activates scene marker");
+        bool rejected = false;
+        try { world.Enter(sceneId, "missing"); } catch (KeyNotFoundException) { rejected = true; }
+        TestAssert.True(rejected, "missing entry point is rejected");
     }
 
     private sealed class TestGame : Game

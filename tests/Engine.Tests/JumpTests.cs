@@ -126,6 +126,8 @@ internal static class JumpTests
         public bool IsDown(GameKey key) => key == GameKey.Right && RightDown;
         public bool WasPressed(GameKey key) => key == GameKey.Space && SpacePressed;
         public bool WasReleased(GameKey key) => false;
+        public bool IsMouseButtonDown(MouseButton button) => false;
+        public bool WasMouseButtonPressed(MouseButton button) => false;
         public Vector2 MousePosition => Vector2.Zero;
         public bool IsMouseDown => false;
         public bool MousePressed => false;

@@ -17,6 +17,7 @@ description: Applies hot-path, agent, and native-interop conventions: zero alloc
 - SEPARATE data from logic: pure data (vectors, timers, target IDs) lives in value-type structs; processing lives in static methods or singleton system classes that take those structs by `ref`.
 - KEEP methods short (under ~20-30 lines). The JIT/AOT inliner refuses large methods and methods with complex `try`/`catch`.
 - MINIMIZE branching in hot loops. AVOID large `if`/`else if` chains for AI state evaluation. PREFER math, bitwise operations, and precomputed masks/tables.
+- KEEP identifiers descriptive and extract protocol, layout, scale, and threshold literals into named constants. Optimization, span processing, and branch reduction must not make intent cryptic.
 
 ## Native interop
 - ENFORCE `[LibraryImport]` for OS/native-C P/Invoke. NEVER `[DllImport]` — the source generator emits marshalling at compile time, eliminating runtime marshalling stubs.

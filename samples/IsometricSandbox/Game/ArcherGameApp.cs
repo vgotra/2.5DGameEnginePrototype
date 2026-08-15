@@ -70,6 +70,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private Scene? _activeScene;
     private GameProgression? _gameProgression;
     private InputActionBuffer _inputActions;
+    private readonly InputBindingMap _inputBindings = new();
 
     private SpritePacket[][]? _bands;
     private int[]? _bandCounts;
@@ -190,7 +191,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnPerFrame()
     {
         _playerMove.CaptureInput();
-        if (_gameplayScenario) InputActionMapper.CaptureCurrent(Input, ref _inputActions);
+        if (_gameplayScenario) InputActionMapper.CaptureCurrent(Input, ref _inputActions, _inputBindings);
         if (_frameLimit is int limit && ++_frameCount >= limit)
         {
             Window.Close();
@@ -201,7 +202,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             Window.Close();
             return;
         }
-        if (!Input.MousePressed) return;
+        if (_gameplayScenario ? !_inputActions.Snapshot().IsPressed(InputAction.PrimaryAttack) : !Input.MousePressed) return;
         ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
         Camera.Follow(playerPosition.Value, Terrain!);
         ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
@@ -315,6 +316,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     public void Dispose()
     {
         _textures.Dispose();
+        _font.Dispose();
         _renderer.Dispose();
         _jobs.Dispose();
         _session.Dispose();

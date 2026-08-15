@@ -7,9 +7,19 @@ public sealed class WorldMap
 {
     private readonly Dictionary<WorldMapLocationId, WorldLocation> _locations = new();
     private readonly Dictionary<WorldMapLocationId, List<WorldMapLocationId>> _connections = new();
+    public WorldMapLocationId CurrentLocation { get; private set; }
+    public bool HasCurrentLocation { get; private set; }
 
     public bool Register(WorldLocation location)
-        => _locations.TryAdd(location.Id, location);
+    {
+        if (!_locations.TryAdd(location.Id, location)) return false;
+        if (location.Unlocked && !HasCurrentLocation)
+        {
+            CurrentLocation = location.Id;
+            HasCurrentLocation = true;
+        }
+        return true;
+    }
 
     public bool Connect(WorldMapLocationId from, WorldMapLocationId to)
     {
@@ -29,6 +39,11 @@ public sealed class WorldMap
     {
         if (!_locations.TryGetValue(id, out WorldLocation location)) return false;
         _locations[id] = location with { Unlocked = true };
+        if (!HasCurrentLocation)
+        {
+            CurrentLocation = id;
+            HasCurrentLocation = true;
+        }
         return true;
     }
 
@@ -41,4 +56,28 @@ public sealed class WorldMap
 
     public bool TryGet(WorldMapLocationId id, out WorldLocation location)
         => _locations.TryGetValue(id, out location);
+
+    public bool TravelTo(WorldMapLocationId destination)
+    {
+        return HasCurrentLocation && TravelTo(CurrentLocation, destination);
+    }
+
+    public bool TravelTo(WorldMapLocationId source, WorldMapLocationId destination)
+    {
+        if (!CanTravel(source, destination)) return false;
+        CurrentLocation = destination;
+        HasCurrentLocation = true;
+        return true;
+    }
+
+    public bool TryGetScene(WorldMapLocationId id, out SceneId scene)
+    {
+        if (_locations.TryGetValue(id, out WorldLocation location))
+        {
+            scene = location.Scene;
+            return true;
+        }
+        scene = default;
+        return false;
+    }
 }
