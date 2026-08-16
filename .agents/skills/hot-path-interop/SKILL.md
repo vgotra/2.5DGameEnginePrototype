@@ -6,7 +6,7 @@ description: Applies hot-path, agent, and native-interop conventions: zero alloc
 # Hot Path, AI Agent, and Native Interop
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Hot path
 - ENFORCE zero allocation in the hot path. NEVER `new` a reference type in `Update`/`Tick`/per-frame code. USE stack `struct`s and preallocated buffers.

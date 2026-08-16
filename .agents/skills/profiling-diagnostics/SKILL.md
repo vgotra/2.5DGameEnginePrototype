@@ -6,7 +6,7 @@ description: Applies in-app profiling conventions: frame-time metrics, counters,
 # Profiling & Diagnostics
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`; concrete flags are in `.agents/context/ProjectConfig.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - TRACK steady-state metrics in-app: average/max frame time, fixed-step count, object/sprite count, allocated bytes/frame, and GC collection counts.

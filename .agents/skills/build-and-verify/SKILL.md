@@ -5,7 +5,7 @@ description: Runs the post-change verification loop: prerequisites, build, smoke
 
 # Build and Verify
 
-Run the ordered checklist below after any change. Always run from the repository root. Substitute the `<...>` placeholders with this repo's actual project names first (see `.agents/skills/README.md`); concrete commands/flags live in `.agents/context/ProjectConfig.md`.
+Run the ordered checklist below after any change. Always run from the repository root. Substitute the `<...>` placeholders with this repo's actual project names from `.agents/context/ProjectConfig.md`.
 
 ## Prerequisites
 - The platform is Windows-first (Linux/macOS planned). SEE `platform-neutrality`.

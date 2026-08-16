@@ -6,7 +6,7 @@ description: Recompiles shader sources to bytecode after editing them, commits b
 # Shader Workflow
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying (e.g. `<ShaderSourcesDir>`, `<ShaderCompiler>`). The placeholder glossary is `.agents/skills/README.md`; concrete values are in `.agents/context/ProjectConfig.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying (e.g. `<ShaderSourcesDir>`, `<ShaderCompiler>`).
 
 ## Sources, build, deployment
 - GLSL sources live in `<ShaderSourcesDir>/`; compiled bytecode (`.spv`) is **committed** and copied to the output `shaders/` directory by the renderer project.

@@ -6,7 +6,7 @@ description: Applies asset, texture, and I/O conventions: asynchronous backgroun
 # Assets, Textures & I/O
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`; concrete paths and asset names are in `.agents/context/ProjectConfig.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - USE asynchronous background threads for all I/O operations and asset decoding. SEE `job-system`.

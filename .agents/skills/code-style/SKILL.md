@@ -8,7 +8,7 @@ description: Applies clean-code conventions: SOLID, KISS, DRY, small single-resp
 Apply when writing or reviewing source code.
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - ENFORCE SOLID, KISS, and DRY.

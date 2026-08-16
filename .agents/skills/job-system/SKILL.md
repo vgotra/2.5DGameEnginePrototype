@@ -6,7 +6,7 @@ description: Applies JobSystem and parallelism conventions: explicit barriers, d
 # Job System & Parallelism
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - ENFORCE caller-owned ordering with explicit waits and completion barriers. Do not infer dependency graphs or require a general DAG. Parallel jobs write disjoint partitions (bands/chunks); merges happen once on the main thread after the barrier.

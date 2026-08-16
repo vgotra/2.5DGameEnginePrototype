@@ -6,7 +6,7 @@ description: Applies build-time asset pipeline conventions: importing and cookin
 # Asset Pipeline
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - COOK assets at build/import time into runtime-friendly formats (atlases, packed audio, compiled shaders); the runtime loads cooked data, not source files. SEE `assets-io`.

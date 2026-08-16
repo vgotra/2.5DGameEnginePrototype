@@ -1,60 +1,26 @@
-# AGENTS.md
+# Repository Instructions
 
-- Windows-first (at current moment) .NET 10 isometric game engine prototype. 
-- Vulkan is the renderer. 
-- Before starting work, read `.agents/context/*` (CurrentState, KnownIssues, ProjectConfig, Roadmap, Implemented, CompletedMilestones) — these are auto-loaded into every session; `CurrentState` is the present snapshot, `Implemented` is the brief feature inventory, and `CompletedMilestones` is the milestone history.
-- For the codebase structure map, use the `mcp-repo-graph` MCP server when available (`orient` first; then `find`/`impact`/`trace`/`read`), with local `rg`/file inspection as the fallback. MCP and tooling details: `.agents/README.md`.
-- For conventions and workflows, load the smallest relevant skill set from `.agents/skills/` using the project-specific matrix in `.agents/skills/README.md`; substitute concrete values from `.agents/context/ProjectConfig.md`.
+- Windows-first .NET 10 isometric 2.5D game-engine prototype.
+- Vulkan is the only renderer; SDL3 owns windowing, input, and Vulkan surfaces.
+- `Engine.Ecs.Sparse` is the canonical ECS. Frame order is explicit; parallel work is opt-in and evidence-driven.
+- Read `.agents/context/ProjectConfig.md` when concrete project values are relevant. It is the only auto-loaded project context file. Do not treat `benchmarks/` as default context: inspect or run it only for performance-regression work.
+- Use the smallest relevant retained skill under `.agents/skills/`; do not load every skill for every task.
+
+## Architecture rules
+
+- Keep gameplay and engine contracts renderer-neutral; keep Vulkan details inside `src/Engine.Rendering.Vulkan` and SDL details inside `src/Engine.Platform.SDL3`.
+- Use value-type ECS components, stable entity IDs, deferred structural changes through `EntityCommands`, and deterministic fixed-step simulation.
+- Avoid reflection, LINQ, and managed allocation in hot paths. Prefer explicit ownership, spans, handles, and small single-purpose types.
+- Preserve isometric painter order, the shared `SpritePacket` contract, and the existing Vulkan-only renderer seam.
 
 ## Verification
-- After any code or shader change, run the `build-and-verify` skill (build → smoke tests → sample run → benchmark gate). Key rule: the brief tests are a plain console app, NOT a test framework — do not use `dotnet test`.
-- Automated IsometricSandbox verification must always include a positive `--frames` limit and `--cap 0`; unbounded sample launches are interactive-only.
-- For Vulkan or renderer changes, also load `swapchain-lifecycle`, `game-loop-frame`, `rendering-batching`, and `profiling-diagnostics`; load `shader-workflow` for any GLSL/SPIR-V change.
 
-## Shaders
-- After editing a GLSL shader, run the `shader-workflow` skill (incremental recompile via `glslc` at build; manual fallback `tools\CompileShaders.ps1`).
+- After code or shader changes, use `.agents/skills/build-and-verify/SKILL.md`; the smoke tests are a plain console app, so use `dotnet run`, never `dotnet test`.
+- Automated `IsometricSandbox` runs must use a positive `--frames` limit and `--cap 0`.
+- Renderer changes also require the retained swapchain, frame-loop, batching, and profiling guidance. GLSL/SPIR-V changes require `shader-workflow` and synchronized shader outputs.
+- Documentation-only changes need stale-reference and `git diff --check` validation; do not run the full runtime verification loop unless behavior changed.
 
-## Architecture
-- Vulkan is the only renderer and the sample uses white/black isometric diamonds; changing `IRenderer` means updating `VulkanRenderer`.
-- `Engine.Ecs.Sparse` is the canonical ECS; frame order is explicit and multithreading is opt-in/adaptive rather than mandatory or parallel-by-default.
+## Scope
 
-## Principles
-Develop code with **SOLID**, **KISS**, and **DRY**:
-- Small, single-responsibility types and methods with clear names; prefer explicit ownership over hidden state.
-- Keep it simple: the smallest solution that works; do not add speculative abstraction or generality.
-- Don't repeat yourself: reuse existing code and contracts instead of duplicating logic; when a pattern appears twice, extract and share it.
-- Code must be **easy to understand, refactor, and support**: follow existing project patterns and conventions, keep hot-path constraints (see `hot-path-interop`, `coding-runtime`, `memory-spans` skills), and keep OS-specific code behind the platform seams (see `platform-neutrality` skill).
-
-## Roadmap
-- Next roadmap features: see the next actions in `.agents/context/Roadmap.md`. Shipped milestones live in `.agents/context/Implemented.md`.
-
-## Mandatory Implementation Workflow
-
-All multi-step implementation work MUST follow the repository workflow defined in: `./AI_WORKFLOW.md`
-
-This includes:
-- roadmap milestones;
-- features;
-- refactors;
-- migrations;
-- architectural changes;
-- bug-fix plans containing multiple implementation steps;
-- any implementation plan approved by the user.
-
-Before modifying code for any such task:
-
-1. Read `./AI_WORKFLOW.md`.
-2. Read `./.ai_workflow_logs/in_progress.md`.
-3. Read `./.ai_workflow_logs/current_milestone.md`.
-4. Consult `./.ai_workflow_logs/completed_items.md` before repeating or reimplementing existing work.
-5. Resume existing in-progress work unless it is blocked or the user explicitly changes priority.
-
-The workflow files are authoritative execution state.
-
-Do NOT:
-- start multi-step implementation without initializing/updating the workflow state;
-- mark work complete before verification;
-- redo work already recorded as verified;
-- postpone workflow-log updates until the end of the session.
-
-Keep `./.ai_workflow_logs/` synchronized with actual repository state throughout implementation.
+- Keep solutions simple and avoid speculative abstractions.
+- Preserve `benchmarks/` and its regression coverage, but do not make benchmark files part of routine repository reading.

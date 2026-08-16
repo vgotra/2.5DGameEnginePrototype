@@ -6,7 +6,7 @@ description: Enforces fixed-step simulation determinism: a fixed timestep accumu
 # Determinism (Fixed-Step Simulation)
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - ENFORCE a fixed timestep (e.g. `<TickRate>` = 60 Hz) driven by the clock accumulator. NEVER advance simulation with per-frame wall-clock `dt`.

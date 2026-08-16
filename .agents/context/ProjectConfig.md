@@ -1,6 +1,6 @@
 # Project Config
 
-Concrete values for the placeholder-based skills (see `.agents/skills/README.md`). Auto-loaded every session. Skills stay generic; substitute these values when applying them.
+Concrete values for the retained project skills. Read when a skill references a project-specific value.
 
 ## Identity
 - `<ProjectName>` — Engine

@@ -6,7 +6,7 @@ description: Applies architecture and ECS (DOD) conventions: value-type componen
 # Architecture & ECS (DOD)
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - USE Data-Oriented Design (SoA) and strict ECS patterns.

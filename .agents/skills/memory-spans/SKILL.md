@@ -6,7 +6,7 @@ description: Applies memory and span-processing conventions: unsafe/raw pointers
 # Memory & Span Processing
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - USE `unsafe` blocks and raw pointers (`*`) for rendering and grid logic.

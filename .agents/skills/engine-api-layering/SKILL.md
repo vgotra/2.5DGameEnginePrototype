@@ -6,7 +6,7 @@ description: Applies engine-layer and API-design conventions: engine vs game vs 
 # Engine API Layering
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - SEPARATE engine, game, and sample/project layers; the engine exposes contracts, games implement content, samples demonstrate.

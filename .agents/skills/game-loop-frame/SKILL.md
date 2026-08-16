@@ -6,7 +6,7 @@ description: Applies game-loop and frame-pipeline conventions: fixed-step simula
 # Game Loop & Frame Pipeline
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - RUN the simulation at a fixed step driven by the clock accumulator; NEVER use per-frame wall-clock `dt` for simulation. SEE `determinism`.

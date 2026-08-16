@@ -6,7 +6,7 @@ description: Keeps contracts and shared code OS-agnostic by forbidding OS-specif
 # Restrictions (Platform Neutrality)
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`; concrete seams are in `.agents/context/ProjectConfig.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - FORBID OS-specific P/Invoke and types in contracts and shared code. Contracts stay the only boundary gameplay code sees.

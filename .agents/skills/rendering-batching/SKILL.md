@@ -6,7 +6,7 @@ description: Applies rendering batching conventions: grouping sprites/instances 
 # Rendering Batching
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - BATCH sprites and instances into the fewest draw calls possible. Group by texture/atlas/bind group first, then by draw order.

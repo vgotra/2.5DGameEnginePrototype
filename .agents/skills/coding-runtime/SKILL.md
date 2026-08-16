@@ -6,7 +6,7 @@ description: Applies runtime coding constraints: zero reflection, LINQ, and mana
 # Coding (Runtime)
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - ENFORCE zero reflection, LINQ, and managed allocation in runtime hot paths. USE structs, spans, explicit loops, and preallocated buffers.

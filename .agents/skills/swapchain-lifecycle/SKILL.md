@@ -6,7 +6,7 @@ description: Applies graphics-API swapchain lifecycle conventions: creation, acq
 # Swapchain Lifecycle
 
 ## Apply
-- Substitute every `<...>` placeholder with this repo's actual names before applying. The placeholder glossary is `.agents/skills/README.md`; concrete values are in `.agents/context/ProjectConfig.md`.
+- Substitute every `<...>` placeholder with this repo's actual names from `.agents/context/ProjectConfig.md` before applying.
 
 ## Rules
 - CREATE the swapchain from the surface at startup: query surface capabilities to pick a color format and `<PresentMode>` (e.g. MAILBOX for low-latency, FIFO for vsync); size the image count to the returned image capacity, never assume a fixed count.

@@ -1,13 +1,18 @@
 # 2.5D Isometric Game Engine
 
-Windows-first (at current moment) .NET 10 prototype using Vortice.Vulkan. The engine uses a simple sparse-set ECS with explicit frame scheduling, adaptive/targeted multithreading, and low-allocation frame execution.
+Windows-first .NET 10 prototype using SDL3, Vulkan, and a sparse-set ECS. The runtime is an isometric 2.5D engine with explicit frame scheduling and renderer-neutral gameplay contracts.
 
-See [.agents/context/CurrentState.md](.agents/context/CurrentState.md) for the architecture and resumable implementation state.
+## Build and run
 
-Platforms: Windows is supported today (Vulkan renderer). Linux (X11/Wayland via SDL3) and macOS (SDL3 + MoltenVK) are planned verification targets — see [.agents/context/CurrentState.md](.agents/context/CurrentState.md) and [.agents/context/Roadmap.md](.agents/context/Roadmap.md). Agent conventions and workflows live in the skills index at [.agents/skills/README.md](.agents/skills/README.md).
+```powershell
+dotnet build Engine.slnx
+dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --frames 10 --cap 0
+```
 
-## How to run, verify, and test
+The bounded sample command is suitable for automated verification. Omit `--frames` only for an interactive run.
 
-Prerequisites, build, smoke tests, sample run (flags and controls), and the benchmark/verification loop are covered by the [`build-and-verify` skill](.agents/skills/build-and-verify/SKILL.md); concrete project names, commands, flags, and controls are in [.agents/context/ProjectConfig.md](.agents/context/ProjectConfig.md).
+## Benchmarks
 
-For automated verification, use bounded sample runs such as `dotnet run --project samples\IsometricSandbox\IsometricSandbox.csproj -- --frames 10 --cap 0`. Launches without `--frames` are interactive and do not terminate automatically.
+`benchmarks\Engine.Benchmark` is retained for opt-in performance-regression checks. Benchmark results are machine-sensitive; use the project’s documented comparison and baseline commands when investigating performance changes.
+
+Project-specific agent instructions are in [`AGENTS.md`](AGENTS.md). Durable implementation notes are limited to the context files that remain in `.agents\context`.
