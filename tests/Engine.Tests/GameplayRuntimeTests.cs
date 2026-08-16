@@ -50,7 +50,7 @@ internal static class GameplayRuntimeTests
         scene.Map.AddMarker("start", new System.Numerics.Vector2(2, 3));
         world.Catalog.Register(HeroIds.Rogue, new HeroDefinition(HeroType.Archer, default, 1, default, System.Numerics.Vector2.One, System.Numerics.Vector4.One));
         var entity = scene.SpawnHero(HeroIds.Rogue, "start");
-        TestAssert.True(!world.EcsWorld.IsAlive(entity), "typed scene spawn is deferred");
+        TestAssert.True(!world.EcsWorld.IsAlive(entity.EntityHandle), "typed scene spawn is deferred");
     }
 
     private static void HeroArchetypes_RegisterDeterministically()

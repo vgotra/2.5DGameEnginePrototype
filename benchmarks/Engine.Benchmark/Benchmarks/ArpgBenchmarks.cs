@@ -1,4 +1,4 @@
-using IsometricSandbox.Game;
+using IsometricSandbox.Game.Workloads;
 using Engine.Threading;
 
 namespace Engine.Benchmark.Benchmarks;

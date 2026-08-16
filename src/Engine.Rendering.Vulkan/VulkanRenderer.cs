@@ -7,9 +7,14 @@ using Vortice.Vulkan;
 
 namespace Engine.Rendering.Vulkan;
 
-public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
+internal sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
 {
     private const int FramesInFlight = 3;
+    private const int PhysicalDeviceQueryCapacity = 8;
+    private const int QueueFamilyQueryCapacity = 16;
+    private const int SurfaceQueryCapacity = 16;
+    private const int InitialBatchVertexCapacity = 16 * 1024;
+    private const int InitialBatchIndexCapacity = 16 * 1024;
 
     private VkInstance _instance;
     private VkInstanceApi _instanceApi = null!;
@@ -92,7 +97,7 @@ public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
         VkResult loadResult = global::Vortice.Vulkan.Vulkan.vkInitialize(LoaderName());
         if (loadResult != VkResult.Success) throw new InvalidOperationException($"Vulkan loader initialization failed: {loadResult}");
         _loaderInitialized = true;
-        ReadOnlySpan<byte> appName = "IsometricSandbox\0"u8;
+        ReadOnlySpan<byte> appName = "EngineGame\0"u8;
         ReadOnlySpan<byte> engineName = "2.5D Isometric Game Engine\0"u8;
         void* createInfoNext = null;
 #if DEBUG
@@ -168,7 +173,7 @@ public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
         nint surfaceHandle = _surfaceFactory!.CreateSurface(_instance.Handle);
         _surface = new VkSurfaceKHR((ulong)surfaceHandle);
         if (_surface.IsNull) throw new InvalidOperationException("Vulkan surface creation failed.");
-        Span<VkPhysicalDevice> devices = stackalloc VkPhysicalDevice[8];
+        Span<VkPhysicalDevice> devices = stackalloc VkPhysicalDevice[PhysicalDeviceQueryCapacity];
         uint deviceCount = (uint)devices.Length;
         VkResult result = _instanceApi.vkEnumeratePhysicalDevices(devices);
         if (result != VkResult.Success || deviceCount == 0) throw new InvalidOperationException("No Vulkan physical device found.");
@@ -199,7 +204,7 @@ public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
             descriptorFeatures.descriptorBindingSampledImageUpdateAfterBind);
         DescriptorMode = DescriptorModeSelector.Select(_descriptorModeOverride, in capabilities);
         indexedSupported = DescriptorMode == DescriptorMode.IndexedArray;
-        Span<VkQueueFamilyProperties> families = stackalloc VkQueueFamilyProperties[16];
+        Span<VkQueueFamilyProperties> families = stackalloc VkQueueFamilyProperties[QueueFamilyQueryCapacity];
         uint familyCount = (uint)families.Length;
         _instanceApi.vkGetPhysicalDeviceQueueFamilyProperties(_physicalDevice, families);
         for (uint i = 0; i < familyCount; i++)
@@ -256,7 +261,7 @@ public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
         _additivePipeline = VulkanPipeline.Create(_device, _deviceApi, vertexModule, fragmentModule, _renderPass, textureLayout, true);
         _textureUploader = new TextureUploader(_device, _deviceApi, _physicalDevice, _memoryProperties, _graphicsQueue, GraphicsQueueFamily, _descriptorAllocator, _indexedDescriptorAllocator);
         _batchRenderer = new BatchRenderer(_device, _deviceApi, _physicalDevice, _memoryProperties, _pipeline, _additivePipeline, _textureUploader, _graphicsQueue, FramesInFlight);
-        _batchRenderer.ResizeBuffers(16 * 1024, 16 * 1024);
+        _batchRenderer.ResizeBuffers(InitialBatchVertexCapacity, InitialBatchIndexCapacity);
     }
 
     public TextureHandle UploadTexture(ReadOnlySpan<byte> rgba, int width, int height, TextureFilter filter = TextureFilter.Linear)
@@ -458,7 +463,7 @@ public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
 
     private VkSurfaceFormatKHR SelectSurfaceFormat()
     {
-        Span<VkSurfaceFormatKHR> formats = stackalloc VkSurfaceFormatKHR[16];
+        Span<VkSurfaceFormatKHR> formats = stackalloc VkSurfaceFormatKHR[SurfaceQueryCapacity];
         uint formatCount = (uint)formats.Length;
         VkResult result = _instanceApi.vkGetPhysicalDeviceSurfaceFormatsKHR(_physicalDevice, _surface, formats);
         if (result != VkResult.Success || formatCount == 0) throw new InvalidOperationException("No Vulkan surface formats found.");
@@ -467,7 +472,7 @@ public sealed unsafe class VulkanRenderer : IRenderer, IPresentationDiagnostics
 
     private VkPresentModeKHR SelectPresentMode()
     {
-        Span<VkPresentModeKHR> modes = stackalloc VkPresentModeKHR[16];
+        Span<VkPresentModeKHR> modes = stackalloc VkPresentModeKHR[SurfaceQueryCapacity];
         uint modeCount = (uint)modes.Length;
         VkResult result = _instanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(_physicalDevice, _surface, modes);
         if (result != VkResult.Success || modeCount == 0) throw new InvalidOperationException("No Vulkan present modes found.");

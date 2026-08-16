@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>IsometricSandbox</AssemblyName></PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Game\ArpgWorkload.cs" />
+    <Compile Remove="Game\Workloads\ArpgWorkload.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Engine.App\Engine.App.csproj" />
@@ -10,7 +10,6 @@
     <ProjectReference Include="..\..\src\Engine.Mathematics\Engine.Mathematics.csproj" />
     <ProjectReference Include="..\..\src\Engine.Ecs\Engine.Ecs.csproj" />
     <ProjectReference Include="..\..\src\Engine.Platform.Desktop\Engine.Platform.Desktop.csproj" />
-    <ProjectReference Include="..\..\src\Engine.Rendering.Vulkan\Engine.Rendering.Vulkan.csproj" />
     <ProjectReference Include="..\..\src\Engine.Threading\Engine.Threading.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,6 @@
 namespace Engine.Platform;
 
-public readonly struct NativeWindowSurface(PlatformKind kind, nint windowHandle, nint displayHandle = 0, nint moduleHandle = 0, IVulkanSurfaceFactory? surfaceFactory = null)
+internal readonly struct NativeWindowSurface(PlatformKind kind, nint windowHandle, nint displayHandle = 0, nint moduleHandle = 0, IVulkanSurfaceFactory? surfaceFactory = null)
 {
     public PlatformKind Kind { get; } = kind;
     public nint WindowHandle { get; } = windowHandle;

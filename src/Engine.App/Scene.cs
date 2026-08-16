@@ -21,14 +21,17 @@ public sealed class Scene
     public SceneMap Map { get; }
     public bool IsLoaded { get; private set; }
 
-    public Entity SpawnMonster(in MonsterDefinition definition) => _world.SpawnMonster(in definition);
+    internal Entity SpawnMonster(in MonsterDefinition definition) => _world.SpawnMonster(in definition);
 
-    public Entity SpawnHero(HeroId id, string marker) => _world.SpawnHero(id, Map.Resolve(marker));
-    public Entity SpawnEnemy(EnemyId id, string marker) => _world.SpawnEnemy(id, Map.Resolve(marker));
-    public Entity SpawnNpc(NpcId id, string marker) => _world.SpawnNpc(id, Map.Resolve(marker));
-    public Entity SpawnItem(in ItemDefinition definition) => _world.SpawnItem(in definition);
+    public Hero SpawnHero(HeroId id, MapLocation location) => _world.CreateHeroHandle(id, location);
+    public Hero SpawnHero(HeroId id, string marker) => SpawnHero(id, Map.Resolve(marker));
+    public Enemy SpawnEnemy(EnemyId id, MapLocation location) => _world.CreateEnemyHandle(id, location);
+    public Enemy SpawnEnemy(EnemyId id, string marker) => SpawnEnemy(id, Map.Resolve(marker));
+    public Npc SpawnNpc(NpcId id, MapLocation location) => _world.CreateNpcHandle(id, location);
+    public Npc SpawnNpc(NpcId id, string marker) => SpawnNpc(id, Map.Resolve(marker));
+    internal Entity SpawnItem(in ItemDefinition definition) => _world.SpawnItem(in definition);
 
-    public Entity SpawnEffect(in EffectDefinition definition) => _world.SpawnEffect(in definition);
+    internal Entity SpawnEffect(in EffectDefinition definition) => _world.SpawnEffect(in definition);
 
     internal void Apply(in SceneDefinition definition)
     {
@@ -73,13 +76,13 @@ public sealed class Scene
         }
     }
 
-    public void Register(Entity entity, EntityLifetime lifetime = EntityLifetime.Scene)
+    internal void Register(Entity entity, EntityLifetime lifetime = EntityLifetime.Scene)
     {
         if (!IsLoaded) throw new InvalidOperationException("Cannot register an entity in an unloaded scene.");
         _entities[entity] = lifetime;
     }
 
-    public void Unregister(Entity entity) => _entities.Remove(entity);
+    internal void Unregister(Entity entity) => _entities.Remove(entity);
 
     internal void Unload()
     {
@@ -87,6 +90,7 @@ public sealed class Scene
         foreach ((Entity entity, EntityLifetime lifetime) in _entities)
         {
             if (lifetime == EntityLifetime.Scene && _ecsWorld.IsAlive(entity)) _ecsWorld.Destroy(entity);
+            _world.RemoveGameplayState(entity);
         }
         _entities.Clear();
         IsLoaded = false;

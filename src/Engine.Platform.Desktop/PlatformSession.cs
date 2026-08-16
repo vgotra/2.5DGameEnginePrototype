@@ -1,6 +1,6 @@
 namespace Engine.Platform.Desktop;
 
-public sealed class PlatformSession : IDisposable
+internal sealed class PlatformSession : IDisposable
 {
     public IGameWindow Window { get; }
     public IInputState Input { get; }

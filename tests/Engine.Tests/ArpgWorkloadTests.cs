@@ -1,7 +1,8 @@
 using System.Numerics;
 using Engine.App;
 using Engine.Rendering;
-using IsometricSandbox.Game;
+using IsometricSandbox.Game.App;
+using IsometricSandbox.Game.Workloads;
 
 namespace Engine.Tests;
 

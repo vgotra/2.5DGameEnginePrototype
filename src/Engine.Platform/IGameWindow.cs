@@ -8,7 +8,6 @@ public interface IGameWindow : IDisposable
     bool ShouldClose { get; }
     bool Fullscreen { get; }
     bool IsMinimized { get; }
-    NativeWindowSurface NativeSurface { get; }
     void PumpEvents();
     void SetFullscreen(bool fullscreen);
     void SetTitle(string title);

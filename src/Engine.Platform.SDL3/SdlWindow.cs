@@ -5,7 +5,7 @@ using Sdl = SDL.SDL3;
 
 namespace Engine.Platform.SDL3;
 
-public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
+internal sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
 {
     private readonly SDL_Window* _window;
     private bool _closed;
@@ -41,7 +41,7 @@ public sealed unsafe class SdlWindow : IGameWindow, IVulkanSurfaceFactory
     public bool Fullscreen => _fullscreen;
     public bool IsMinimized => _minimized;
     internal bool IsFocused => _focused;
-    public NativeWindowSurface NativeSurface => new(PlatformKind.Sdl3, (nint)_window, surfaceFactory: this);
+    internal NativeWindowSurface NativeSurface => new(PlatformKind.Sdl3, (nint)_window, surfaceFactory: this);
 
     internal SDL_Window* Handle => _window;
 

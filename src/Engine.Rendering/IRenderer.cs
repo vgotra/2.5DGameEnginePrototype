@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Engine.Rendering;
 
-public interface IRenderer : IDisposable
+internal interface IRenderer : IDisposable
 {
     void BeginFrame(Vector2 viewport);
     void Submit(ReadOnlySpan<SpritePacket> sprites);

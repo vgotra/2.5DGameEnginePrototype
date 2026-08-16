@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><AssemblyName>IsometricSimulation</AssemblyName></PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\IsometricSandbox\Game\ArpgWorkload.cs" Link="ArpgWorkload.cs" />
+    <Compile Include="..\IsometricSandbox\Game\Workloads\ArpgWorkload.cs" Link="ArpgWorkload.cs" />
     <ProjectReference Include="..\..\src\Engine.App\Engine.App.csproj" />
     <ProjectReference Include="..\..\src\Engine.Rendering\Engine.Rendering.csproj" />
     <ProjectReference Include="..\..\src\Engine.Threading\Engine.Threading.csproj" />

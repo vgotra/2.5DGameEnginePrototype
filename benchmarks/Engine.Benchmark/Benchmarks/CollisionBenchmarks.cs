@@ -1,6 +1,6 @@
 using System.Numerics;
 using Engine.App;
-using IsometricSandbox.Game;
+using IsometricSandbox.Game.Gameplay.Systems;
 
 namespace Engine.Benchmark.Benchmarks;
 

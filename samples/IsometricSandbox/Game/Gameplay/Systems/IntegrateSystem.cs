@@ -1,0 +1,20 @@
+using Engine.App;
+using Engine.Core;
+using Engine.Ecs.Sparse;
+using SparseWorld = Engine.Ecs.Sparse.World;
+
+namespace IsometricSandbox.Game.Gameplay.Systems;
+
+public sealed class IntegrateSystem(TerrainSurface map) : ISystem
+{
+    public Entity Player { get; set; }
+
+    public void Update(SparseWorld world, float deltaSeconds)
+    {
+        ref Position position = ref world.Get<Position>(Player);
+        ref Velocity velocity = ref world.Get<Velocity>(Player);
+        ref Collider collider = ref world.Get<Collider>(Player);
+        IntegrateBody body = new() { Map = map, DeltaSeconds = deltaSeconds };
+        IntegrateBody.Execute(ref body, Player, ref position, ref velocity, ref collider);
+    }
+}

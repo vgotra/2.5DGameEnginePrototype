@@ -8,6 +8,8 @@ internal static class SmokeTestRunner
         (nameof(SparseFrameSchedulerTests), SparseFrameSchedulerTests.Tests),
         (nameof(SparseEcsTests), SparseEcsTests.Tests),
         (nameof(RuntimeContractsTests), RuntimeContractsTests.Tests),
+        (nameof(PublicGameplayApiTests), PublicGameplayApiTests.Tests),
+        (nameof(GameApplicationTests), GameApplicationTests.Tests),
         (nameof(GameplayFoundationTests), GameplayFoundationTests.Tests),
         (nameof(GameplayRuntimeTests), GameplayRuntimeTests.Tests),
         (nameof(GameplayRuntimeScenarioTests), GameplayRuntimeScenarioTests.Tests),

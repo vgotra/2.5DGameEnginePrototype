@@ -26,7 +26,7 @@ public static class PngLoader
         }
     }
 
-    public static TextureHandle? Load(IRenderer renderer, string path, TextureFilter filter = TextureFilter.Nearest)
+    internal static TextureHandle? Load(IRenderer renderer, string path, TextureFilter filter = TextureFilter.Nearest)
     {
         PngImage? image = Decode(path);
         if (!image.HasValue) return null;

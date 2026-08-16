@@ -12,7 +12,7 @@ public readonly record struct PresentationDiagnostics(
     bool UsedFallback,
     uint SwapchainImageCount);
 
-public interface IPresentationDiagnostics
+internal interface IPresentationDiagnostics
 {
     PresentationDiagnostics Presentation { get; }
 }

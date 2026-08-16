@@ -13,6 +13,8 @@ public abstract class GameHost : Game
     private readonly IGameWindow _window;
     private readonly IInputState _input;
     private readonly IRenderer _renderer;
+    private readonly RenderContext _renderContext;
+    private readonly IGameInput _gameInput;
     private readonly JobSystem _jobs;
     private readonly SpritePacket[] _sprites;
     private readonly SpritePacket[] _sortScratch;
@@ -30,12 +32,14 @@ public abstract class GameHost : Game
     private double _schedulerMs;
     private double _presentMs;
 
-    protected GameHost(GameHostConfig config, IGameWindow window, IInputState input, IRenderer renderer, JobSystem jobs)
+    internal GameHost(GameHostConfig config, IGameWindow window, IInputState input, IRenderer renderer, JobSystem jobs)
     {
         _config = config;
         _window = window;
         _input = input;
         _renderer = renderer;
+        _renderContext = new RenderContext(renderer, config.SpriteCapacity);
+        _gameInput = new HostInput(input);
         _jobs = jobs;
         _sprites = new SpritePacket[config.SpriteCapacity];
         _sortScratch = new SpritePacket[config.SpriteCapacity];
@@ -48,17 +52,31 @@ public abstract class GameHost : Game
         if (config.StartFullscreen) _window.SetFullscreen(true);
     }
 
-    public IGameWindow Window => _window;
-    public IInputState Input => _input;
-    public IRenderer Renderer => _renderer;
-    public JobSystem Jobs => _jobs;
+    protected GameHost(GameHostConfig config, IGameApplicationBackend backend)
+        : this(
+            config,
+            GetHostBackend(backend).Window,
+            GetHostBackend(backend).RawInput,
+            GetHostBackend(backend).RawRenderer,
+            GetHostBackend(backend).Jobs)
+    {
+    }
+
+    internal IGameWindow Window => _window;
+    internal IInputState Input => _input;
+    internal IRenderer Renderer => _renderer;
+    public RenderContext Render => _renderContext;
+    public IGameInput GameInput => _gameInput;
+    public bool IsWindowFullscreen => _window.Fullscreen;
+    public void CloseWindow() => _window.Close();
+    protected JobSystem Jobs => _jobs;
     public IsometricCamera Camera { get; }
     public GameClock Clock => _clock;
     public Vector2 Viewport => _viewport;
-    public TerrainSurface? Terrain { get; private set; }
-    public Span<SpritePacket> Sprites => _sprites;
-    public Span<SpritePacket> SortScratch => _sortScratch;
-    public Span<int> SortKeyCounts => _sortKeyCounts;
+    protected TerrainSurface? Terrain { get; private set; }
+    protected Span<SpritePacket> Sprites => _sprites;
+    protected Span<SpritePacket> SortScratch => _sortScratch;
+    protected Span<int> SortKeyCounts => _sortKeyCounts;
 
     protected SpritePacket[] SpriteArray => _sprites;
 
@@ -212,4 +230,18 @@ public abstract class GameHost : Game
         _schedulerMs = 0;
         _presentMs = 0;
     }
+
+    private sealed class HostInput(IInputState input) : IGameInput
+    {
+        public bool IsDown(GameKey key) => input.IsDown(key);
+        public bool WasPressed(GameKey key) => input.WasPressed(key);
+        public bool WasReleased(GameKey key) => input.WasReleased(key);
+        public bool IsMouseButtonDown(MouseButton button) => input.IsMouseButtonDown(button);
+        public bool WasMouseButtonPressed(MouseButton button) => input.WasMouseButtonPressed(button);
+        public Vector2 MousePosition => input.MousePosition;
+    }
+
+    private static IEngineHostBackend GetHostBackend(IGameApplicationBackend backend)
+        => backend as IEngineHostBackend
+            ?? throw new ArgumentException("The application backend does not provide the engine host integration contract.", nameof(backend));
 }

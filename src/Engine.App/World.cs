@@ -8,6 +8,13 @@ public sealed class World
     private readonly Dictionary<string, Scene> _scenes = new(StringComparer.Ordinal);
     private readonly Engine.Ecs.Sparse.World _ecsWorld = new();
     private readonly EntityCommands _commands = new();
+    private readonly List<GameplayCommand> _gameplayCommands = new();
+    private readonly Dictionary<Entity, Inventory> _inventories = new();
+    private readonly Dictionary<Entity, Equipment> _equipment = new();
+    private readonly Dictionary<Entity, SkillKnowledge> _skillKnowledge = new();
+    private readonly Dictionary<Entity, SkillLoadout> _skillLoadouts = new();
+    private readonly Dictionary<Entity, CastRequest> _castRequests = new();
+    private readonly List<Entity> _staleGameplayEntities = new();
 
     internal World(string name)
     {
@@ -19,10 +26,10 @@ public sealed class World
     public WorldMap Map { get; }
     public GameplayCatalog Catalog { get; } = new();
     public Scene? ActiveScene { get; private set; }
-    public Engine.Ecs.Sparse.World EcsWorld => _ecsWorld;
-    public EntityCommands Commands => _commands;
+    internal Engine.Ecs.Sparse.World EcsWorld => _ecsWorld;
+    internal EntityCommands Commands => _commands;
 
-    public Entity SpawnHero(in HeroDefinition definition)
+    internal Entity SpawnHero(in HeroDefinition definition)
     {
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));
@@ -34,18 +41,19 @@ public sealed class World
         _commands.Add(entity, attributes);
         _commands.Add(entity, stats);
         _commands.Add(entity, new HeroState { Type = definition.Type });
+        InitializeGameplayState(entity);
         return RegisterSpawn(entity);
     }
 
-    public Entity SpawnHero(HeroId id, MapLocation location)
+    internal Entity SpawnHero(HeroId id, MapLocation location)
     {
         if (!Catalog.TryGet(id, out HeroDefinition definition)) throw new KeyNotFoundException($"Hero '{id.Value}' is not registered.");
         return SpawnHero(definition with { Position = location.Position });
     }
 
-    public Entity SpawnPlayer(in HeroDefinition definition) => SpawnHero(in definition);
+    internal Entity SpawnPlayer(in HeroDefinition definition) => SpawnHero(in definition);
 
-    public Entity SpawnMonster(in MonsterDefinition definition)
+    internal Entity SpawnMonster(in MonsterDefinition definition)
     {
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));
@@ -55,18 +63,19 @@ public sealed class World
         {
             BottomColor = definition.BottomColor == default ? definition.Color : definition.BottomColor
         });
+        InitializeGameplayState(entity);
         return RegisterSpawn(entity);
     }
 
-    public Entity SpawnEnemy(EnemyId id, MapLocation location)
+    internal Entity SpawnEnemy(EnemyId id, MapLocation location)
     {
         if (!Catalog.TryGet(id, out MonsterDefinition definition)) throw new KeyNotFoundException($"Enemy '{id.Value}' is not registered.");
         return SpawnMonster(definition with { Position = location.Position });
     }
 
-    public Entity SpawnNpc(in MonsterDefinition definition) => SpawnMonster(in definition);
+    internal Entity SpawnNpc(in MonsterDefinition definition) => SpawnMonster(in definition);
 
-    public Entity SpawnNpc(in NpcDefinition definition)
+    internal Entity SpawnNpc(in NpcDefinition definition)
     {
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));
@@ -76,16 +85,17 @@ public sealed class World
         if ((definition.Capabilities.Flags & NpcCapability.Combatant) != 0) _commands.Add(entity, new Faction { Team = definition.Team });
         _commands.Add(entity, new Health(definition.Health));
         _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
+        InitializeGameplayState(entity);
         return RegisterSpawn(entity);
     }
 
-    public Entity SpawnNpc(NpcId id, MapLocation location)
+    internal Entity SpawnNpc(NpcId id, MapLocation location)
     {
         if (!Catalog.TryGet(id, out NpcDefinition definition)) throw new KeyNotFoundException($"NPC '{id.Value}' is not registered.");
         return SpawnNpc(definition with { Position = location.Position });
     }
 
-    public Entity SpawnProjectile(in ProjectileDefinition definition)
+    internal Entity SpawnProjectile(in ProjectileDefinition definition)
     {
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));
@@ -94,7 +104,7 @@ public sealed class World
         return RegisterSpawn(entity);
     }
 
-    public Entity SpawnItem(in ItemDefinition definition)
+    internal Entity SpawnItem(in ItemDefinition definition)
     {
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));
@@ -103,10 +113,213 @@ public sealed class World
         return RegisterSpawn(entity);
     }
 
-    public void ApplyCommands()
+    internal void ApplyCommands()
     {
         _commands.Apply(_ecsWorld);
+        ApplyGameplayCommands();
+        PruneGameplayState();
         _commands.Clear();
+        _gameplayCommands.Clear();
+    }
+
+    internal bool IsEntityAlive(Entity entity) => _ecsWorld.IsAlive(entity);
+
+    internal Inventory GetInventory(Entity entity)
+        => _inventories.TryGetValue(entity, out Inventory inventory) ? inventory : default;
+
+    internal Equipment GetEquipment(Entity entity)
+        => _equipment.TryGetValue(entity, out Equipment equipment) ? equipment : default;
+
+    internal SkillKnowledge GetSkillKnowledge(Entity entity)
+        => _skillKnowledge.TryGetValue(entity, out SkillKnowledge knowledge) ? knowledge : default;
+
+    internal Hero CreateHeroHandle(HeroId id, MapLocation location)
+    {
+        Entity entity = SpawnHero(id, location);
+        return new Hero(this, entity, id);
+    }
+
+    internal Enemy CreateEnemyHandle(EnemyId id, MapLocation location)
+    {
+        Entity entity = SpawnEnemy(id, location);
+        return new Enemy(this, entity, id);
+    }
+
+    internal Npc CreateNpcHandle(NpcId id, MapLocation location)
+    {
+        Entity entity = SpawnNpc(id, location);
+        return new Npc(this, entity, id);
+    }
+
+    internal void QueueInventoryAdd(Entity entity, ItemId item)
+        => _gameplayCommands.Add(new GameplayCommand { Kind = GameplayCommandKind.AddItem, Actor = entity, Item = item });
+
+    internal void QueueInventoryRemove(Entity entity, ItemId item)
+        => _gameplayCommands.Add(new GameplayCommand { Kind = GameplayCommandKind.RemoveItem, Actor = entity, Item = item });
+
+    internal void QueueEquip(Entity entity, EquipmentSlot slot, ItemId item)
+        => _gameplayCommands.Add(new GameplayCommand { Kind = GameplayCommandKind.Equip, Actor = entity, Slot = slot, Item = item });
+
+    internal void QueueUnequip(Entity entity, EquipmentSlot slot)
+        => _gameplayCommands.Add(new GameplayCommand { Kind = GameplayCommandKind.Unequip, Actor = entity, Slot = slot });
+
+    internal void QueueLearnSkill(Entity entity, SkillId skill)
+        => _gameplayCommands.Add(new GameplayCommand { Kind = GameplayCommandKind.LearnSkill, Actor = entity, Skill = skill });
+
+    internal void QueueForgetSkill(Entity entity, SkillId skill)
+        => _gameplayCommands.Add(new GameplayCommand { Kind = GameplayCommandKind.ForgetSkill, Actor = entity, Skill = skill });
+
+    internal void QueueCast(Entity actor, SkillId skill, Entity target)
+        => _gameplayCommands.Add(new GameplayCommand { Kind = GameplayCommandKind.Cast, Actor = actor, Target = target, Skill = skill });
+
+    internal bool HasPendingCast(Entity actor)
+        => _castRequests.TryGetValue(actor, out CastRequest request) && request.Requested;
+
+    internal bool TryConsumeCast(Entity actor, out SkillId skill, out Entity target)
+    {
+        if (!_castRequests.TryGetValue(actor, out CastRequest request) || !request.Requested)
+        {
+            skill = default;
+            target = default;
+            return false;
+        }
+
+        skill = request.Skill;
+        target = request.Target;
+        request.Requested = false;
+        _castRequests[actor] = request;
+        return true;
+    }
+
+    internal void RemoveGameplayState(Entity entity)
+    {
+        _inventories.Remove(entity);
+        _equipment.Remove(entity);
+        _skillKnowledge.Remove(entity);
+        _skillLoadouts.Remove(entity);
+        _castRequests.Remove(entity);
+    }
+
+    private void ApplyGameplayCommands()
+    {
+        for (int index = 0; index < _gameplayCommands.Count; index++)
+        {
+            GameplayCommand command = _gameplayCommands[index];
+            if (!_ecsWorld.IsAlive(command.Actor)) continue;
+
+            switch (command.Kind)
+            {
+                case GameplayCommandKind.AddItem:
+                    ApplyInventoryAdd(command);
+                    break;
+                case GameplayCommandKind.RemoveItem:
+                    ApplyInventoryRemove(command);
+                    break;
+                case GameplayCommandKind.Equip:
+                    ApplyEquip(command);
+                    break;
+                case GameplayCommandKind.Unequip:
+                    ApplyUnequip(command);
+                    break;
+                case GameplayCommandKind.LearnSkill:
+                    ApplyLearnSkill(command);
+                    break;
+                case GameplayCommandKind.ForgetSkill:
+                    ApplyForgetSkill(command);
+                    break;
+                case GameplayCommandKind.Cast:
+                    ApplyCast(command);
+                    break;
+            }
+        }
+    }
+
+    private void ApplyInventoryAdd(in GameplayCommand command)
+    {
+        Inventory inventory = GetInventory(command.Actor);
+        InventorySystem.TryAdd(ref inventory, command.Item, Inventory.Capacity);
+        _inventories[command.Actor] = inventory;
+    }
+
+    private void ApplyInventoryRemove(in GameplayCommand command)
+    {
+        Inventory inventory = GetInventory(command.Actor);
+        InventorySystem.TryRemove(ref inventory, command.Item);
+        _inventories[command.Actor] = inventory;
+    }
+
+    private void ApplyEquip(in GameplayCommand command)
+    {
+        Equipment equipment = GetEquipment(command.Actor);
+        Inventory inventory = GetInventory(command.Actor);
+        GameplayCatalog catalog = Catalog;
+        EquipmentSystem.TryEquip(ref equipment, ref inventory, command.Item, in catalog);
+        _equipment[command.Actor] = equipment;
+        _inventories[command.Actor] = inventory;
+    }
+
+    private void ApplyUnequip(in GameplayCommand command)
+    {
+        Equipment equipment = GetEquipment(command.Actor);
+        Inventory inventory = GetInventory(command.Actor);
+        EquipmentSystem.TryUnequip(ref equipment, ref inventory, command.Slot);
+        _equipment[command.Actor] = equipment;
+        _inventories[command.Actor] = inventory;
+    }
+
+    private void ApplyLearnSkill(in GameplayCommand command)
+    {
+        if (!Catalog.TryGet(command.Skill, out GameplaySkillDefinition definition)) return;
+        SkillKnowledge knowledge = GetSkillKnowledge(command.Actor);
+        knowledge.Learn(in definition);
+        _skillKnowledge[command.Actor] = knowledge;
+    }
+
+    private void ApplyForgetSkill(in GameplayCommand command)
+    {
+        SkillKnowledge knowledge = GetSkillKnowledge(command.Actor);
+        knowledge.Forget(command.Skill);
+        SkillLoadout loadout = _skillLoadouts.TryGetValue(command.Actor, out SkillLoadout existingLoadout) ? existingLoadout : default;
+        loadout.RemoveSkill(command.Skill);
+        _skillKnowledge[command.Actor] = knowledge;
+        _skillLoadouts[command.Actor] = loadout;
+    }
+
+    private void ApplyCast(in GameplayCommand command)
+    {
+        if (!_ecsWorld.IsAlive(command.Target) || !Catalog.TryGet(command.Skill, out _)) return;
+        CastRequest request = _castRequests.TryGetValue(command.Actor, out CastRequest existingRequest) ? existingRequest : default;
+        request.Skill = command.Skill;
+        request.Target = command.Target;
+        request.Requested = true;
+        _castRequests[command.Actor] = request;
+    }
+
+    private void InitializeGameplayState(Entity entity)
+    {
+        _inventories[entity] = default;
+        _equipment[entity] = default;
+        _skillKnowledge[entity] = default;
+        _skillLoadouts[entity] = default;
+        _castRequests[entity] = default;
+    }
+
+    private void PruneGameplayState()
+    {
+        PruneState(_inventories);
+        PruneState(_equipment);
+        PruneState(_skillKnowledge);
+        PruneState(_skillLoadouts);
+        PruneState(_castRequests);
+    }
+
+    private void PruneState<T>(Dictionary<Entity, T> state)
+    {
+        _staleGameplayEntities.Clear();
+        foreach (Entity entity in state.Keys)
+            if (!_ecsWorld.IsAlive(entity)) _staleGameplayEntities.Add(entity);
+        for (int index = 0; index < _staleGameplayEntities.Count; index++)
+            state.Remove(_staleGameplayEntities[index]);
     }
 
     public Scene LoadScene(string name)
@@ -185,7 +398,7 @@ public sealed class World
         return entity;
     }
 
-    public Entity SpawnEffect(in EffectDefinition definition)
+    internal Entity SpawnEffect(in EffectDefinition definition)
     {
         Entity entity = _commands.Create(_ecsWorld);
         _commands.Add(entity, new Position(definition.Position));

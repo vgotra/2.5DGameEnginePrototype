@@ -1,6 +1,6 @@
 namespace Engine.Platform;
 
-public interface IVulkanSurfaceFactory
+internal interface IVulkanSurfaceFactory
 {
     string[] RequiredInstanceExtensions { get; }
     nint CreateSurface(nint instanceHandle);

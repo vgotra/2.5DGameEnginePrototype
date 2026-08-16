@@ -5,7 +5,7 @@ using Sdl = SDL.SDL3;
 
 namespace Engine.Platform.SDL3;
 
-public sealed unsafe class SdlInput(SdlWindow window) : IInputState
+internal sealed unsafe class SdlInput(SdlWindow window) : IInputState
 {
     private readonly SDLBool* _keyboardState = Sdl.SDL_GetKeyboardState(null);
     private uint _current;

@@ -91,7 +91,8 @@ public static class EquipmentSystem
     }
 
     public static bool EquipMainHand(ref Equipment equipment, ItemId item) { equipment.MainHand = item; return true; }
-    private static ItemId Get(in Equipment equipment, EquipmentSlot slot) => slot switch { EquipmentSlot.MainHand => equipment.MainHand, EquipmentSlot.OffHand => equipment.OffHand, EquipmentSlot.Head => equipment.Head, EquipmentSlot.Chest => equipment.Chest, EquipmentSlot.Hands => equipment.Hands, EquipmentSlot.Feet => equipment.Feet, EquipmentSlot.Ring1 => equipment.Ring1, EquipmentSlot.Ring2 => equipment.Ring2, EquipmentSlot.Amulet => equipment.Amulet, _ => default };
+    public static ItemId GetItem(in Equipment equipment, EquipmentSlot slot) => slot switch { EquipmentSlot.MainHand => equipment.MainHand, EquipmentSlot.OffHand => equipment.OffHand, EquipmentSlot.Head => equipment.Head, EquipmentSlot.Chest => equipment.Chest, EquipmentSlot.Hands => equipment.Hands, EquipmentSlot.Feet => equipment.Feet, EquipmentSlot.Ring1 => equipment.Ring1, EquipmentSlot.Ring2 => equipment.Ring2, EquipmentSlot.Amulet => equipment.Amulet, _ => default };
+    private static ItemId Get(in Equipment equipment, EquipmentSlot slot) => GetItem(in equipment, slot);
     private static void Set(ref Equipment equipment, EquipmentSlot slot, ItemId item) { switch (slot) { case EquipmentSlot.MainHand: equipment.MainHand = item; break; case EquipmentSlot.OffHand: equipment.OffHand = item; break; case EquipmentSlot.Head: equipment.Head = item; break; case EquipmentSlot.Chest: equipment.Chest = item; break; case EquipmentSlot.Hands: equipment.Hands = item; break; case EquipmentSlot.Feet: equipment.Feet = item; break; case EquipmentSlot.Ring1: equipment.Ring1 = item; break; case EquipmentSlot.Ring2: equipment.Ring2 = item; break; case EquipmentSlot.Amulet: equipment.Amulet = item; break; } }
 }
 

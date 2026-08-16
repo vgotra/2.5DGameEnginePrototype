@@ -2,7 +2,8 @@ using System.Numerics;
 using Engine.App;
 using Engine.Ecs.Sparse;
 using Engine.Platform;
-using IsometricSandbox.Game;
+using IsometricSandbox.Game.Gameplay.Components;
+using IsometricSandbox.Game.Gameplay.Systems;
 using SparseWorld = Engine.Ecs.Sparse.World;
 
 namespace Engine.Tests;

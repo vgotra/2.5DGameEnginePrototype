@@ -1,5 +1,5 @@
 using Engine.Threading;
-using IsometricSandbox.Game;
+using IsometricSandbox.Game.Workloads;
 
 int frames = ReadPositiveInt(args, "--frames", 10);
 bool parallel = args.Contains("--parallel");

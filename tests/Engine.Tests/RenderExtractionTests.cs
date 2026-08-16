@@ -2,7 +2,7 @@ using System.Numerics;
 using Engine.App;
 using Engine.Ecs.Sparse;
 using Engine.Rendering;
-using IsometricSandbox.Game;
+using IsometricSandbox.Game.Gameplay.Systems;
 
 namespace Engine.Tests;
 

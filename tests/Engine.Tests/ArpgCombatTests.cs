@@ -2,7 +2,9 @@ using System.Numerics;
 using Engine.App;
 using Engine.Ecs.Sparse;
 using Engine.Rendering;
-using IsometricSandbox.Game;
+using IsometricSandbox.Game.Configuration;
+using IsometricSandbox.Game.Gameplay.Components;
+using IsometricSandbox.Game.Gameplay.Systems;
 using EcsWorld = Engine.Ecs.Sparse.World;
 
 namespace Engine.Tests;

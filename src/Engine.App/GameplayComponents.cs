@@ -60,6 +60,12 @@ public struct SkillLoadout
     public readonly SkillId Get(int slot) => slot is >= 0 and < MaxSlots ? slot switch { 0 => Slot1, 1 => Slot2, 2 => Slot3, 3 => Slot4, 4 => Slot5, 5 => Slot6, 6 => Slot7, 7 => Slot8, 8 => Slot9, _ => Slot10 } : default;
     public bool AssignSkill(int slot, SkillId skill, in SkillKnowledge knowledge) { if (slot is < 0 or >= MaxSlots || skill.Value is null || !knowledge.IsKnown(skill)) return false; Set(slot, skill); return true; }
     public bool RemoveSkill(int slot) { if (slot is < 0 or >= MaxSlots) return false; Set(slot, default); return true; }
+    public bool RemoveSkill(SkillId skill)
+    {
+        for (int slot = 0; slot < MaxSlots; slot++)
+            if (Get(slot) == skill) Set(slot, default);
+        return true;
+    }
     private void Set(int slot, SkillId skill) { switch (slot) { case 0: Slot1 = skill; break; case 1: Slot2 = skill; break; case 2: Slot3 = skill; break; case 3: Slot4 = skill; break; case 4: Slot5 = skill; break; case 5: Slot6 = skill; break; case 6: Slot7 = skill; break; case 7: Slot8 = skill; break; case 8: Slot9 = skill; break; default: Slot10 = skill; break; } }
 }
 
@@ -84,6 +90,15 @@ public struct SkillKnowledge
         int slot = Find(skill);
         if (slot < 0 || maximumLevel <= 0 || GetLevelBySlot(slot) >= maximumLevel) return false;
         SetLevel(slot, GetLevelBySlot(slot) + 1);
+        return true;
+    }
+
+    public bool Forget(SkillId skill)
+    {
+        int slot = Find(skill);
+        if (slot < 0) return false;
+        SetSkill(slot, default);
+        SetLevel(slot, 0);
         return true;
     }
 
@@ -123,4 +138,11 @@ public struct Equipment
     public ItemId Hands;
     public ItemId Feet;
     public ItemId Amulet;
+}
+
+internal struct CastRequest
+{
+    public SkillId Skill;
+    public Entity Target;
+    public bool Requested;
 }
