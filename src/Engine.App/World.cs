@@ -16,15 +16,16 @@ public sealed class World
     private readonly Dictionary<Entity, CastRequest> _castRequests = new();
     private readonly List<Entity> _staleGameplayEntities = new();
 
-    internal World(string name)
+    internal World(string name, GameplayCatalog? catalog = null)
     {
         Name = name;
         Map = new WorldMap();
+        Catalog = catalog ?? new GameplayCatalog();
     }
 
     public string Name { get; }
     public WorldMap Map { get; }
-    public GameplayCatalog Catalog { get; } = new();
+    public GameplayCatalog Catalog { get; }
     public Scene? ActiveScene { get; private set; }
     internal Engine.Ecs.Sparse.World EcsWorld => _ecsWorld;
     internal EntityCommands Commands => _commands;
@@ -133,22 +134,32 @@ public sealed class World
     internal SkillKnowledge GetSkillKnowledge(Entity entity)
         => _skillKnowledge.TryGetValue(entity, out SkillKnowledge knowledge) ? knowledge : default;
 
-    internal Hero CreateHeroHandle(HeroId id, MapLocation location)
+    internal Hero CreateHeroHandle(Scene scene, HeroId id, MapLocation location)
     {
         Entity entity = SpawnHero(id, location);
-        return new Hero(this, entity, id);
+        return new Hero(this, scene, entity, id);
     }
 
-    internal Enemy CreateEnemyHandle(EnemyId id, MapLocation location)
+    internal Enemy CreateEnemyHandle(Scene scene, EnemyId id, MapLocation location)
     {
         Entity entity = SpawnEnemy(id, location);
-        return new Enemy(this, entity, id);
+        return new Enemy(this, scene, entity, id);
     }
 
-    internal Npc CreateNpcHandle(NpcId id, MapLocation location)
+    internal Npc CreateNpcHandle(Scene scene, NpcId id, MapLocation location)
     {
         Entity entity = SpawnNpc(id, location);
-        return new Npc(this, entity, id);
+        return new Npc(this, scene, entity, id);
+    }
+
+    internal Projectile CreateProjectileHandle(in ProjectileDefinition definition)
+        => new(this, SpawnProjectile(in definition));
+
+    internal Item CreateItemHandle(ItemId id, MapLocation location)
+    {
+        if (!Catalog.TryGet(id, out _)) throw new KeyNotFoundException($"Item '{id.Value}' is not registered.");
+        Entity entity = SpawnItem(new ItemDefinition(ItemType.Unknown, location.Position, default, Vector2.One, Vector4.One));
+        return new Item(this, entity, id);
     }
 
     internal void QueueInventoryAdd(Entity entity, ItemId item)
@@ -409,4 +420,7 @@ public sealed class World
             _commands.Add(entity, new Renderable(definition.Texture, definition.SpriteSize, definition.Color));
         return RegisterSpawn(entity);
     }
+
+    internal Effect CreateEffectHandle(in EffectDefinition definition)
+        => new(this, SpawnEffect(in definition));
 }

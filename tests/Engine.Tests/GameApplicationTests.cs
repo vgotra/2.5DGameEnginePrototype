@@ -30,7 +30,7 @@ internal static class GameApplicationTests
 
     private sealed class TestModule : IGameModule
     {
-        public void Initialize(GameContext context) => context.World.LoadScene("test");
+        public void Initialize(GameContext context) => context.Game.Scenes.LoadScene("test");
 
         public void Update(GameContext context)
         {

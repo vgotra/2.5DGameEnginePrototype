@@ -57,19 +57,21 @@ public interface IGameModule
 
 public sealed class GameContext
 {
-    internal GameContext(World world, IGameApplicationBackend backend, GameClock clock)
+    internal GameContext(Game game, World world, IGameApplicationBackend backend, GameClock clock)
     {
-        World = world;
+        Game = game;
+        Runtime = new WorldRuntimeBridge(world);
         Backend = backend;
         Clock = clock;
     }
 
-    public World World { get; }
-    public Scene? ActiveScene => World.ActiveScene;
-    public WorldMap Map => World.Map;
+    public Game Game { get; }
+    public Scene? ActiveScene => Game.ActiveScene;
+    public WorldMap? Map => Game.WorldMap;
     public IGameInput Input => Backend.Input;
     public RenderContext Renderer => Backend.Renderer;
     public GameClock Clock { get; }
 
     internal IGameApplicationBackend Backend { get; }
+    internal IGameRuntimeBridge Runtime { get; }
 }

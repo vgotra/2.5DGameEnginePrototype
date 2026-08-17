@@ -11,6 +11,9 @@ internal static class PublicGameplayApiTests
         new(nameof(HeroCommandsApplyInOrderAtBoundary), HeroCommandsApplyInOrderAtBoundary),
         new(nameof(CastCommandsBecomePendingGameplayIntent), CastCommandsBecomePendingGameplayIntent),
         new(nameof(SceneUnloadInvalidatesDomainHandles), SceneUnloadInvalidatesDomainHandles),
+        new(nameof(GameAuthoringApiCreatesAndStartsScene), GameAuthoringApiCreatesAndStartsScene),
+        new(nameof(PublicContentAndItemApiRemainSceneSafe), PublicContentAndItemApiRemainSceneSafe),
+        new(nameof(PublicContentRegistryRejectsDuplicateIds), PublicContentRegistryRejectsDuplicateIds),
     ];
 
     private static void SpawnedCharactersExposeTypedHandles()
@@ -79,6 +82,69 @@ internal static class PublicGameplayApiTests
         world.UnloadScene(scene.Name);
 
         TestAssert.True(!hero.IsAlive && hero.Inventory.Count == 0, "scene unload invalidates and clears domain state");
+    }
+
+    private static void GameAuthoringApiCreatesAndStartsScene()
+    {
+        Game game = new();
+        Scene scene = game.Scenes.LoadScene("Scene1");
+        scene.Map.AddMarker("ForestEntrance", new Vector2(2, 3));
+        scene.SetEnv(new SceneParams { Map = new MapId("Scene1"), Difficulty = 1 });
+        RegisterContent(game.ActiveWorld!);
+
+        Hero hero = scene.SpawnHero(HeroIds.Rogue, MapLocation.At("ForestEntrance"));
+        Enemy enemy = scene.SpawnEnemy(TestIds.Enemy, MapLocation.At("ForestEntrance"));
+        hero.Inventory.Add(TestIds.Bow);
+        hero.Equipment.Equip(EquipmentSlot.MainHand, TestIds.Bow);
+        hero.Skills.Learn(SkillIds.PowerShot);
+        hero.Cast(SkillIds.PowerShot, enemy);
+
+        game.StartScene("Scene1");
+
+        TestAssert.True(game.ActiveWorld!.ActiveScene == scene, "public game API starts the requested scene");
+        TestAssert.True(scene.Environment!.Difficulty == 1, "scene environment is retained");
+        TestAssert.True(!hero.IsAlive, "public authoring spawns remain deferred until the fixed-step boundary");
+        game.ActiveWorld!.ApplyCommands();
+        TestAssert.True(hero.HasPendingCast, "public authoring commands become observable at the boundary");
+    }
+
+    private static void PublicContentAndItemApiRemainSceneSafe()
+    {
+        Game game = new();
+        Scene scene = game.Scenes.LoadScene("items");
+        scene.Map.AddMarker("loot", Vector2.One);
+        game.Content.RegisterDefaultItems();
+
+        Item item = scene.SpawnItem(GameContent.GoblinSlayerBow, MapLocation.At("loot"));
+
+        TestAssert.True(game.Content.TryGet(GameContent.GoblinSlayerBow, out GameplayItemDefinition definition), "public content registry resolves registered items");
+        TestAssert.True(definition.Id == GameContent.GoblinSlayerBow && !item.IsAlive, "item handles preserve identity and remain deferred");
+        bool rejected = false;
+        try
+        {
+            scene.SpawnItem(GameContent.GoblinSlayerBow, MapLocation.At(new MapId("other"), Vector2.Zero));
+        }
+        catch (ArgumentException)
+        {
+            rejected = true;
+        }
+        TestAssert.True(rejected, "wrong-map item locations are rejected");
+    }
+
+    private static void PublicContentRegistryRejectsDuplicateIds()
+    {
+        Game game = new();
+        game.Content.RegisterHero(HeroIds.Rogue, HeroDefinitions.Create(HeroIds.Rogue));
+        bool rejected = false;
+        try
+        {
+            game.Content.RegisterHero(HeroIds.Rogue, HeroDefinitions.Create(HeroIds.Rogue));
+        }
+        catch (InvalidOperationException)
+        {
+            rejected = true;
+        }
+        TestAssert.True(rejected, "duplicate public content IDs are rejected");
     }
 
     private static void RegisterContent(World world)

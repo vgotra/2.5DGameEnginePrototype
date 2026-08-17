@@ -11,6 +11,7 @@ public sealed class GameApplication : IDisposable
     private readonly GameClock _clock = new();
     private readonly FrameTimer _frameTimer;
     private readonly World _world;
+    private readonly Game _game;
     private readonly GameContext _context;
     private bool _disposed;
 
@@ -23,11 +24,11 @@ public sealed class GameApplication : IDisposable
             throw new ArgumentOutOfRangeException(nameof(options), "Sprite capacity must be positive.");
         _backend = backend;
         _frameTimer = new FrameTimer(options.FrameCap);
-        _world = new World(options.WindowTitle);
-        _context = new GameContext(_world, backend, _clock);
+        _game = new Game();
+        _world = _game.CreatePublicWorld();
+        _context = new GameContext(_game, _world, backend, _clock);
     }
 
-    public World World => _world;
     public GameContext Context => _context;
 
     public void Run(IGameModule module)
@@ -59,7 +60,7 @@ public sealed class GameApplication : IDisposable
                 while (_clock.TryConsumeFixedStep())
                 {
                     module.Update(_context);
-                    _world.ApplyCommands();
+                    _context.Runtime.ApplyCommands();
                 }
 
                 module.Render(_context);

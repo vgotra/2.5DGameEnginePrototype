@@ -34,6 +34,16 @@ public static class GameContent
         world.Map.Unlock(new WorldMapLocationId("village"));
     }
 
+    public static void ConfigureWorld(Game game)
+    {
+        ArgumentNullException.ThrowIfNull(game);
+        WorldMap map = game.WorldMap ?? throw new InvalidOperationException("The game runtime world has not been created.");
+        map.Register(new WorldLocation(new WorldMapLocationId("village"), VillageScene));
+        map.Register(new WorldLocation(new WorldMapLocationId("goblin-forest"), GoblinForestScene));
+        map.Connect(new WorldMapLocationId("village"), new WorldMapLocationId("goblin-forest"));
+        map.Unlock(new WorldMapLocationId("village"));
+    }
+
     public static void ConfigureVillage(Scene scene)
     {
         scene.Map.AddMarker("player-start", new Vector2(3, 3));

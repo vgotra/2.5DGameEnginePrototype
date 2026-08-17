@@ -13,6 +13,7 @@ using IsometricSandbox.Game.Gameplay.Systems;
 using IsometricSandbox.Game.Rendering;
 using IsometricSandbox.Game.Ui;
 using IsometricSandbox.Game.World;
+using IsometricSandbox.Game.Runtime;
 using RuntimeWorld = Engine.App.World;
 using SparseWorld = Engine.Ecs.Sparse.World;
 
@@ -33,6 +34,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private RuntimeWorld? _runtimeWorld;
     private readonly FrameScheduler _scheduler;
     private SampleEntitySpawner? _spawner;
+    private SampleRuntimeBridge? _runtimeBridge;
     private readonly TextureLibrary _textures;
     private readonly SplashFont _font;
     private readonly SplashScreen _splash;
@@ -54,6 +56,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private int _frameCount;
 
     private Entity _player;
+    private Hero _playerHandle = null!;
     private Vector2 _playerStart;
     private int _score;
     private int _lastScore = -1;
@@ -154,7 +157,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         InitializeGameWorld();
         _playerMove.Player = _player;
         _integrate.Player = _player;
-        Camera.Follow(EcsWorld.Get<Position>(_player).Value, Terrain!);
+        if (_runtimeBridge!.TryGetPosition(_player, out Vector2 playerPosition)) Camera.Follow(playerPosition, Terrain!);
     }
 
     protected override void OnResize()
@@ -173,42 +176,40 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             return;
         }
         if (!_inputActions.Snapshot().IsPressed(InputAction.PrimaryAttack)) return;
-        ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
-        Camera.Follow(playerPosition.Value, Terrain!);
-        ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
-        state.AimTarget = Camera.ScreenToWorld(GameInput.MousePosition, Terrain!);
-        state.PendingShot = true;
+        if (_runtimeBridge!.TryGetPosition(_player, out Vector2 playerPosition))
+        {
+            Camera.Follow(playerPosition, Terrain!);
+            _runtimeBridge.SetPlayerAim(_player, Camera.ScreenToWorld(GameInput.MousePosition, Terrain!));
+        }
     }
 
     protected override void OnFixedStep(float deltaSeconds)
     {
         _gameProgression!.Tick(_inputActions.Snapshot());
-        _presentation.BeginStep(EcsWorld);
+        _runtimeBridge!.BeginPresentationStep(_presentation);
         _vfxPool.Update(deltaSeconds);
-        ref AbilityState abilityState = ref EcsWorld.Get<AbilityState>(_player);
+        ref AbilityState abilityState = ref _runtimeBridge!.GetAbilityState(_player);
         AbilityPipeline.Tick(ref abilityState, deltaSeconds);
         long schedulerStart = Stopwatch.GetTimestamp();
-        _scheduler.Run(EcsWorld, deltaSeconds);
+        _runtimeBridge!.RunFixedStep(_scheduler, deltaSeconds);
         RecordSchedulerTime((Stopwatch.GetTimestamp() - schedulerStart) * 1000.0 / Stopwatch.Frequency);
         RecordEcsTime((Stopwatch.GetTimestamp() - schedulerStart) * 1000.0 / Stopwatch.Frequency);
-        _presentation.EndStep(EcsWorld);
-        _runtimeWorld!.ApplyCommands();
+        _runtimeBridge.EndPresentationStep(_presentation);
+        _runtimeBridge!.ApplyCommands();
         _score += _projectiles.LastKills;
         for (int i = 0; i < _projectiles.LastEnemyKills; i++) _gameProgression!.RecordProjectileKill();
 
-        ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
-        if (state.PendingShot)
+        if (_runtimeBridge.TryConsumePlayerShot(_player, out Vector2 aimTarget))
         {
-            state.PendingShot = false;
-            Vector2 origin = EcsWorld.Get<Position>(_player).Value;
-            Vector2 direction = state.AimTarget - origin;
+            _runtimeBridge.TryGetPosition(_player, out Vector2 origin);
+            Vector2 direction = aimTarget - origin;
             AbilityResult ability = AbilityPipeline.TryActivate(ref abilityState, in BasicShot, in Bow, origin, direction, 0.12f, _textures.Player, new Vector2(18, 18));
-            if (ability.Activated && EcsWorld.Query<Position, ArrowProjectile>().Count < SampleConfig.MaxArrows)
+            if (ability.Activated && _runtimeBridge.ProjectileCount() < SampleConfig.MaxArrows)
             {
                 ProjectileDefinition projectileDefinition = ability.Projectile;
                 EffectDefinition effectDefinition = ability.Effect;
                 Entity projectile = _spawner!.SpawnAbilityProjectile(in projectileDefinition);
-                _runtimeWorld!.Commands.Add(projectile, new ArrowProjectile { Direction = projectileDefinition.Direction, Speed = projectileDefinition.Speed, Lifetime = projectileDefinition.Lifetime });
+                _runtimeBridge!.AttachProjectile(projectile, in projectileDefinition);
                 _vfxPool.TryAcquire(in effectDefinition, out _);
             }
         }
@@ -217,8 +218,8 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     protected override void OnRender()
     {
         TerrainSurface grid = Terrain!;
-        ref Position playerPosition = ref EcsWorld.Get<Position>(_player);
-        Vector2 renderPlayer = _presentation.TryGetInterpolated(_player, Clock.InterpolationAlpha, out Vector2 interpolatedPlayer) ? interpolatedPlayer : playerPosition.Value;
+        _runtimeBridge!.TryGetPosition(_player, out Vector2 playerPosition);
+        Vector2 renderPlayer = _runtimeBridge.TryGetInterpolated(_presentation, _player, Clock.InterpolationAlpha, out Vector2 interpolatedPlayer) ? interpolatedPlayer : playerPosition;
         Camera.Follow(renderPlayer, grid);
 
         int written;
@@ -229,7 +230,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
             JobHandle tiles = _tileWork!.Schedule(Jobs, grid, Camera, _textures, _bands!, _bandCounts!, _bandFlickers!, bandCount, rowsPerBand);
             Jobs.Wait(tiles);
             written = MergeBands(bandCount);
-            written = RenderEntities(written, renderPlayer);
+            written = _runtimeBridge!.ExtractEntities(Terrain!, Camera, SpriteArray, written, renderPlayer, PlayerSize, _textures.Player, White, _player, _presentation, Clock.InterpolationAlpha, _vfxPool, _vfxRenderItems);
             SpriteExtraction.StableSortByKey(Sprites, written, SortKeyCounts, SortScratch);
             Present(Sprites.Slice(0, written));
             _lastSpriteCount = written;
@@ -237,7 +238,7 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         else
         {
             written = SpriteExtraction.ExtractTiles(grid, Camera, _textures, _flicker, Sprites);
-            written = RenderEntities(written, renderPlayer);
+            written = _runtimeBridge!.ExtractEntities(Terrain!, Camera, SpriteArray, written, renderPlayer, PlayerSize, _textures.Player, White, _player, _presentation, Clock.InterpolationAlpha, _vfxPool, _vfxRenderItems);
             SpriteExtraction.StableSortByKey(Sprites, written, SortKeyCounts, SortScratch);
             Present(Sprites.Slice(0, written));
             _lastSpriteCount = written;
@@ -246,16 +247,12 @@ public sealed class ArcherGameApp : GameHost, IDisposable
 
     protected override void OnRestart()
     {
-        EntityCommands reset = _runtimeWorld!.Commands;
-        ArrowCollectBody arrowBody = new() { Buffer = reset };
-        EcsWorld.Query<ArrowProjectile>().ForEach(ref arrowBody);
-        _runtimeWorld.ApplyCommands();
+        _runtimeBridge!.ClearProjectiles();
+        _runtimeBridge!.ApplyCommands();
 
         _score = 0;
         _lastScore = -1;
-        EcsWorld.Get<Position>(_player).Value = _playerStart;
-        EcsWorld.Get<Velocity>(_player).Value = Vector2.Zero;
-        EcsWorld.SetComponent(_player, PlayerState.At(_playerStart));
+        _runtimeBridge!.ResetPlayer(_player, _playerStart);
         Camera.Follow(_playerStart, Terrain!);
     }
 
@@ -279,18 +276,22 @@ public sealed class ArcherGameApp : GameHost, IDisposable
     private void InitializeGameWorld()
     {
         RuntimeWorld world = _runtimeWorld!;
-        GameContent.ConfigureWorld(world);
-        Scene village = world.LoadScene(GameContent.VillageScene.Value);
+        GameContent.ConfigureWorld(this);
+        Content.RegisterDefaultItems();
+        Content.RegisterDefaultSkills();
+        Content.RegisterDefaultNpcs();
+        Scene village = Scenes.LoadScene(GameContent.VillageScene.Value);
         GameContent.ConfigureVillage(village);
-        Scene forest = world.LoadScene(GameContent.GoblinForestScene.Value);
+        Scene forest = Scenes.LoadScene(GameContent.GoblinForestScene.Value);
         GameContent.ConfigureGoblinForest(forest);
-        world.ChangeScene(GameContent.VillageScene.Value);
+        StartScene(GameContent.VillageScene.Value);
         _activeScene = village;
         string manifestPath = Path.Combine(AppContext.BaseDirectory, "assets", "game-bake.json");
         _textures.RegisterManifestAtlases(manifestPath, out _);
-        _spawner = new SampleEntitySpawner(world, _textures);
-        _projectiles.Buffer = world.Commands;
-        _lifetimes.Buffer = world.Commands;
+        _runtimeBridge = new SampleRuntimeBridge(world);
+        _runtimeBridge.ConfigureScheduler(_scheduler);
+        _spawner = new SampleEntitySpawner(this, _runtimeBridge, _textures);
+        _runtimeBridge!.ConfigureProjectileSystems(_projectiles, _lifetimes);
         _spawner.RegisterHeroDefinition();
         Vector4 warriorColor = new(0.08f, 0.28f, 0.10f, 1f);
         Vector4 archerColor = new(0.16f, 0.42f, 0.18f, 1f);
@@ -299,33 +300,19 @@ public sealed class ArcherGameApp : GameHost, IDisposable
         Vector4 archerBottomColor = new(0.24f, 0.55f, 0.26f, 1f);
         Vector4 shamanBottomColor = new(0.20f, 0.48f, 0.22f, 1f);
         TextureHandle enemyTexture = default;
-        world.Catalog.Register(EnemyIds.GoblinWarrior, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1.2f, 0.4f, 6, enemyTexture, new Vector2(36, 44), warriorColor, warriorBottomColor));
-        world.Catalog.Register(GameContent.GoblinArcher, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1f, 0.35f, 4, enemyTexture, new Vector2(32, 40), archerColor, archerBottomColor));
-        world.Catalog.Register(EnemyIds.GoblinShaman, new MonsterDefinition(MonsterType.GoblinShaman, Vector2.Zero, 0.8f, 0.4f, 8, enemyTexture, new Vector2(34, 44), shamanColor, shamanBottomColor));
+        Content.RegisterEnemy(EnemyIds.GoblinWarrior, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1.2f, 0.4f, 6, enemyTexture, new Vector2(36, 44), warriorColor, warriorBottomColor));
+        Content.RegisterEnemy(GameContent.GoblinArcher, new MonsterDefinition(MonsterType.Goblin, Vector2.Zero, 1f, 0.35f, 4, enemyTexture, new Vector2(32, 40), archerColor, archerBottomColor));
+        Content.RegisterEnemy(EnemyIds.GoblinShaman, new MonsterDefinition(MonsterType.GoblinShaman, Vector2.Zero, 0.8f, 0.4f, 8, enemyTexture, new Vector2(34, 44), shamanColor, shamanBottomColor));
 
         MapLocation start = village.Map.Resolve("player-start");
         Hero player = _spawner.SpawnHero(HeroIds.Rogue, start);
+        _playerHandle = player;
         _player = player.EntityHandle;
-        world.Commands.Add(_player, new CharacterMovement { Mode = CharacterIntentKind.Stop });
+        _runtimeBridge!.AttachPlayerMovement(_player);
         _playerStart = start.Position;
-        world.ApplyCommands();
-        _gameProgression = new GameProgression(world, Terrain!);
-        _gameProgression.Start(_player);
-    }
-
-    private int RenderEntities(int written, Vector2 playerWorld)
-    {
-        ref PlayerState state = ref EcsWorld.Get<PlayerState>(_player);
-        written = SpriteExtraction.WriteEntity(Terrain!, Camera, Sprites, written, playerWorld, PlayerSize, _textures.Player, state.JumpHeight, White);
-        EntityRenderBody entityBody = new() { Grid = Terrain!, Camera = Camera, Sprites = SpriteArray, Written = written, ExcludedEntity = _player, History = _presentation, InterpolationAlpha = Clock.InterpolationAlpha };
-        EcsWorld.Query<Position, Renderable>().ForEach(ref entityBody);
-        written = entityBody.Written;
-        ArrowRenderBody arrowBody = new() { Grid = Terrain!, Camera = Camera, Sprites = SpriteArray, Written = written, History = _presentation, InterpolationAlpha = Clock.InterpolationAlpha };
-        EcsWorld.Query<Position, ArrowProjectile>().ForEach(ref arrowBody);
-        int vfxCount = _vfxPool.Extract(_vfxRenderItems, new Vector2(0f, -SampleConfig.PlayerSpriteHeight * 0.5f));
-        for (int i = 0; i < vfxCount; i++)
-            arrowBody.Written = SpriteExtraction.WriteEntity(Terrain!, Camera, SpriteArray, arrowBody.Written, in _vfxRenderItems[i]);
-        return arrowBody.Written;
+        _runtimeBridge!.ApplyCommands();
+        _gameProgression = new GameProgression(this, _runtimeBridge!, Terrain!);
+        _gameProgression.Start(_playerHandle);
     }
 
     private bool UseParallelExtraction()

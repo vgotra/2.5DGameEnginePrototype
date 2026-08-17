@@ -2,10 +2,16 @@ using System.Numerics;
 
 namespace Engine.App;
 
-public readonly record struct MapLocation(MapId Map, Vector2 Position, float Elevation = 0f)
+public readonly record struct MapLocation(MapId Map, Vector2 Position, float Elevation = 0f, string? Marker = null)
 {
     public static MapLocation At(MapId map, Vector2 position, float elevation = 0f)
         => new(map, position, elevation);
+
+    public static MapLocation At(string marker)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(marker);
+        return new MapLocation(default, default, 0f, marker);
+    }
 }
 
 public sealed class SceneMap

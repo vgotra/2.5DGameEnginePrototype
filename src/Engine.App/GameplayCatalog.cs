@@ -7,6 +7,8 @@ public sealed class GameplayCatalog
     private readonly Dictionary<NpcId, NpcDefinition> _npcs = new();
     private readonly Dictionary<SkillId, GameplaySkillDefinition> _skills = new();
     private readonly Dictionary<ItemId, GameplayItemDefinition> _items = new();
+    private readonly Dictionary<EffectId, GameplayEffectDefinition> _effects = new();
+    private readonly Dictionary<QuestId, QuestDefinition> _quests = new();
 
     public void Register(HeroId id, in HeroDefinition definition) => _heroes[id] = definition with { Id = id };
 
@@ -21,6 +23,8 @@ public sealed class GameplayCatalog
     public void Register(NpcId id, in NpcDefinition definition) => _npcs[id] = definition;
     public void Register(SkillId id, in GameplaySkillDefinition definition) => _skills[id] = definition;
     public void Register(ItemId id, in GameplayItemDefinition definition) => _items[id] = definition;
+    public void Register(EffectId id, in GameplayEffectDefinition definition) => _effects[id] = definition;
+    public void Register(QuestId id, in QuestDefinition definition) => _quests[id] = definition;
 
     public void RegisterDefaultItems()
     {
@@ -53,6 +57,8 @@ public sealed class GameplayCatalog
     public bool TryGet(NpcId id, out NpcDefinition definition) => _npcs.TryGetValue(id, out definition);
     public bool TryGet(SkillId id, out GameplaySkillDefinition definition) => _skills.TryGetValue(id, out definition);
     public bool TryGet(ItemId id, out GameplayItemDefinition definition) => _items.TryGetValue(id, out definition);
+    public bool TryGet(EffectId id, out GameplayEffectDefinition definition) => _effects.TryGetValue(id, out definition);
+    public bool TryGet(QuestId id, out QuestDefinition definition) => _quests.TryGetValue(id, out definition);
 
     public bool TryLearn(SkillId id, ref SkillKnowledge knowledge)
         => TryGet(id, out GameplaySkillDefinition definition) && knowledge.Learn(in definition);

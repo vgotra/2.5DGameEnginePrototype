@@ -2,16 +2,18 @@ using System.Numerics;
 using Engine.App;
 using Engine.Ecs.Sparse;
 using Engine.Rendering;
-using AppWorld = Engine.App.World;
 using IsometricSandbox.Game.Configuration;
 using IsometricSandbox.Game.Rendering;
 using IsometricSandbox.Game.Gameplay.Components;
+using IsometricSandbox.Game.Runtime;
+using EngineGame = Engine.App.Game;
 
 namespace IsometricSandbox.Game.World;
 
-public sealed class SampleEntitySpawner(AppWorld world, TextureLibrary textures)
+internal sealed class SampleEntitySpawner(EngineGame game, SampleRuntimeBridge runtime, TextureLibrary textures)
 {
-    private readonly AppWorld _world = world;
+    private readonly EngineGame _game = game;
+    private readonly SampleRuntimeBridge _runtime = runtime;
     private readonly TextureLibrary _textures = textures;
 
     public HeroDefinition CreateHeroDefinition()
@@ -24,28 +26,26 @@ public sealed class SampleEntitySpawner(AppWorld world, TextureLibrary textures)
         };
 
     public void RegisterHeroDefinition()
-        => _world.Catalog.Register(HeroIds.Rogue, CreateHeroDefinition());
+        => _game.Content.RegisterHero(HeroIds.Rogue, CreateHeroDefinition());
 
     public Hero SpawnHero(Vector2 position)
     {
-        Hero hero = _world.ActiveScene!.SpawnHero(HeroIds.Rogue, new MapLocation(_world.ActiveScene.Map.Id, position));
+        Hero hero = _game.ActiveScene!.SpawnHero(HeroIds.Rogue, new MapLocation(_game.ActiveScene.Map.Id, position));
         return AttachHeroComponents(hero, position);
     }
 
     public Hero SpawnHero(HeroId id, MapLocation location)
     {
-        Hero hero = _world.ActiveScene!.SpawnHero(id, location);
+        Hero hero = _game.ActiveScene!.SpawnHero(id, location);
         return AttachHeroComponents(hero, location.Position);
     }
 
     public Entity SpawnAbilityProjectile(in ProjectileDefinition definition)
-        => _world.SpawnProjectile(in definition);
+        => _runtime.SpawnProjectile(in definition);
 
     private Hero AttachHeroComponents(Hero hero, Vector2 position)
     {
-        Entity entity = hero.EntityHandle;
-        _world.Commands.Add(entity, PlayerState.At(position));
-        _world.Commands.Add(entity, new AbilityState());
+        _runtime.AttachHero(hero, position);
         return hero;
     }
 }
